@@ -1,39 +1,3 @@
-#========================================================================================
-
-Compute the foward looking operator
-
-v_0 * g - ∂(v1 * g) + 0.5 * ∂∂(v2 * g)
-
-========================================================================================#
-function build_operator(x, v0, v1, v2)
-    Δ = EconPDEs.make_Δ(x)
-    n = length(x)
-    T = BandedMatrix(Zeros(n, n), (1, 1))
-    build_operator!(T, Δ, v0, v1, v2)
-end
-
-function build_operator!(T, Δ, v0, v1, v2)
-    x, invΔx, invΔxm, invΔxp = Δ
-    n = length(x)
-    fill!(T, 0.0)
-    # construct matrix T. The key is that sum of each column = 0.0 and off diagonals are positive (singular M-matrix)
-    for i in 1:n
-        if v1[i] >= 0
-            T[min(i + 1, n), i] += v1[i] * invΔxp[i]
-            T[i, i] -= v1[i] * invΔxp[i]
-        else
-            T[i, i] += v1[i] * invΔxm[i]
-            T[max(i - 1, 1), i] -= v1[i] * invΔxm[i]
-        end
-        T[max(i - 1, 1), i] += v2[i] * invΔxm[i] * invΔx[i]
-        T[i, i] -= v2[i] * 2 * invΔxm[i] * invΔxp[i]
-        T[min(i + 1, n), i] += v2[i] * invΔxp[i] * invΔx[i]
-        # Make sure each column sums to zero. Important in some cases: for isntance, otherwise cannot find sdf decomposition in GP model
-        T[i, i] += v0[i] - sum(view(T, :, i))
-    end
-    return T
-end
-
 
 #========================================================================================
 
@@ -103,4 +67,30 @@ function principal_eigenvalue_BLAS(T; eigenvector = :right)
         vl = e.vectors[:, out]
     end 
     return vl, η, vr
+end
+
+
+#========================================================================================
+
+Stationary Distribution with one state variable
+
+========================================================================================#
+#now there are still two issues
+#1. Does not satisfy walras law. Or mathematically does not satisfy IPP ∑ μ.g = ∑ a.Ag. 
+# 1.1. First part due to drift if not positive at left boundary or not negative ar right boundary In the case drift is positive, there is a remaning term μ_NdG(a_N) To satisfy it, do amax super super high (intuitively, x high enough so that cutting behavior at the top does not matter for aggregate as g(x)x -> 0)
+#1.2 Second part is due to volatility. Note that it requires to put invΔx[i] for central derivative, which is different with the formula in Moll notes
+#2. A g can be negative when updating forward. Use implicit scheme
+
+
+function stationary_distribution(x::AbstractVector, μ::AbstractVector, σ::AbstractVector)
+    A = build_operator(x, zero(x), μ, 0.5 * σ.^2)
+    _, _, density = principal_eigenvalue(A; eigenvector = :right)
+    clean_density(density)
+end
+
+
+function stationary_distribution(x::AbstractVector, μ::AbstractVector, σ::AbstractVector, δ, ψ)
+    A = build_operator(x, zero(x), μ, 0.5 * σ.^2)
+    density = (δ * I - A) \ (δ * ψ)
+    clean_density(density)
 end

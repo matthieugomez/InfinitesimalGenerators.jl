@@ -1,3 +1,4 @@
+module ContinuousTimeOperators
 using LinearAlgebra, BandedMatrices, KrylovKit
 
 ##############################################################################
@@ -5,8 +6,8 @@ using LinearAlgebra, BandedMatrices, KrylovKit
 ## Load files
 ##
 ##############################################################################
-include("matrix_operator")
-include("stationary_distribution.jl")
+include("build_matrix.jl")
+include("eigenproblem.jl")
 include("feynman_kac.jl")
 include("geometric_functionals.jl")
 
@@ -16,10 +17,9 @@ include("geometric_functionals.jl")
 ## Exported methods and types 
 ##
 ##############################################################################
-export 
+export stationary_distribution,
 feynman_kac_backward,
 feynman_kac_forward,
-stationary_distribution,
 compute_Eψm,
 compute_η,
 compute_ϵ 

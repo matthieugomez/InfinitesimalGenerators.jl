@@ -1,6 +1,6 @@
 #========================================================================================
 
-Compute E[M_tψ(x_t)|x_0 = x] using Implicit Feynman Kac
+Compute u(x, T) = E[M_Tψ(x_T)|x_t = x] using Implicit Feynman Kac
 where
 dx = μx dt + σx dZ_t
 and M_t is a geometric functional
@@ -13,13 +13,11 @@ end
 
 #========================================================================================
 
-Multiplicative Functionals
-dx = μx(x) dt +σx(x) dZ
-dM/M = μM(x) dt +σM(x) dZ
+Compute Hansen Scheinkmann decomposition M = e^{ηt}f(x_t)W_t
+Return f, η, g
 
 ========================================================================================#
 # Compute η in Hansen Scheinkmann decomposition M = e^{ηt}f(x_t)W_t
-# f is the left eigenvector
 function compute_η(x, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
     n = length(x)
     T = zeros(n, n)
@@ -31,6 +29,13 @@ function compute_η!(T, Δ, μx, σx, μM, σM; method = :krylov, eigenvector = 
     build_operator!(T, Δ, μM, σM .* σx .+ μx, 0.5 .* σx.^2)
     principal_eigenvalue(T; method = method, eigenvector = eigenvector)
 end
+
+#========================================================================================
+
+Compute ϵ(x, T) = σD(x) * (σM + σE[M_T | X_t = x])
+
+========================================================================================#
+
 
 # compute ϵ(x, t) = σD(x) * (σM + σE[M_t | X_0 = x])
 function compute_ϵ(x, μx, σx, μM, σM, σD; Y = 100, P = 4)
