@@ -12,7 +12,7 @@ function feynman_kac_backward(x, μx, σx; ψ::AbstractVector, t::AbstractVector
 	u = zeros(length(x), length(t))
 	u[:, length(t)] = ψ
 	Δ = make_Δ(x)
-    𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
+	𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
 	if (T <: AbstractVector)
 		dt = t[2] - t[1]
 		𝔹 = factorize(I - build_operator!(𝔸, Δ .* dt, V .* dt, μx .* dt, 0.5 .* σx.^2 .* dt)')
@@ -23,14 +23,14 @@ function feynman_kac_backward(x, μx, σx; ψ::AbstractVector, t::AbstractVector
 	elseif T <: AbstractVector
 		for i in (length(t)-1):(-1):1
 			dt = t[i+1] - t[i]
-            𝔹 = I - build_operator!(𝔸, Δ .* dt, V .* dt, μx .* dt, 0.5 .* σx.^2 .* dt)'
+			𝔹 = I - build_operator!(𝔸, Δ .* dt, V .* dt, μx .* dt, 0.5 .* σx.^2 .* dt)'
 			ψ = 𝔹 \  (u[:, i+1] .+ f .* dt)
 			u[:, i] = ψ
 		end
 	else
 		for i in (length(t)-1):(-1):1
 			dt = t[i+1] - t[i]
-            𝔹 = (I - build_operator!(𝔸, Δ, V[:, i] .* dt, μx .* dt, 0.5 .* σx.^2 .* dt)')
+			𝔹 = (I - build_operator!(𝔸, Δ, V[:, i] .* dt, μx .* dt, 0.5 .* σx.^2 .* dt)')
 			ψ = 𝔹 \ (u[:, i+1] .+ f[:, i] .* dt)
 			u[:, i] = ψ
 		end
