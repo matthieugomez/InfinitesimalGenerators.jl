@@ -6,7 +6,7 @@ using LinearAlgebra, BandedMatrices, KrylovKit
 ## Load files
 ##
 ##############################################################################
-include("build_matrix.jl")
+include("build_operator.jl")
 include("eigenproblem.jl")
 include("feynman_kac.jl")
 include("geometric_functionals.jl")
