@@ -20,7 +20,7 @@ include("geometric_functionals.jl")
 export stationary_distribution,
 feynman_kac_backward,
 feynman_kac_forward,
-compute_Eψm,
+compute_EψM,
 compute_η,
 compute_ϵ 
 end
