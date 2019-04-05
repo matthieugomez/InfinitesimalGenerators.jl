@@ -30,7 +30,7 @@ function operator!(𝔸, Δ, v0, v1, v2)
         # Make sure each column sums to zero. Important in some cases: for isntance, otherwise cannot find sdf decomposition in GP model
         𝔸[i, i] += v0[i] - sum(view(𝔸, :, i))
     end
-    return 𝔸'
+    return adjoint(𝔸)
 end
 
 function make_Δ(x)
