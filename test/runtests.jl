@@ -15,7 +15,7 @@ g = stationary_distribution(x, μx, σx)
 
 ## Feynman-Kac
 ψ = x.^2
-t = range(0, 100, step = 1/100)
+t = range(0, stop = 100, step = 1/100)
 u = feynman_kac_forward(x, μx, σx; ψ = ψ, t = t)
 # Check results using exponential integrator
 𝔸 = generator(x, μx, σx)
