@@ -21,6 +21,5 @@ stationary_distribution,
 feynman_kac_backward,
 feynman_kac_forward,
 hansen_scheinkman,
-compute_η,
 compute_ϵ 
 end
