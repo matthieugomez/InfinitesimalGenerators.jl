@@ -1,6 +1,6 @@
-[![Build Status](https://travis-ci.org/matthieugomez/ContinuousTimeMarkovOperators.jl.svg?branch=master)](https://travis-ci.org/matthieugomez/ContinuousTimeMarkovOperators.jl)
+[![Build Status](https://travis-ci.org/matthieugomez/InfinitesimalGenerators.jl.svg?branch=master)](https://travis-ci.org/matthieugomez/InfinitesimalGenerators.jl)
 
-A set of tools to work with Diffusion Processes:
+A set of tools to work with Diffusive Processes.
 
 # Infinitesimal Generator
 For a diffusive process `dx = μx(x)dt + σx(dZ_t)`
