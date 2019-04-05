@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/matthieugomez/ContinuousTimeMarkovOperators.jl.svg?branch=master)](https://travis-ci.org/matthieugomez/ContinuousTimeMarkovOperators.jl)
+
 A set of tools for diffusive Markov Process:
 
 - eigenvalue/eigenvector problems (in particular, stationary distribution)
