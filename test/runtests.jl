@@ -1,4 +1,4 @@
-using ContinuousTimeOperators, Test
+using ContinuousTimeMarkovOperators, Test
 
 
 

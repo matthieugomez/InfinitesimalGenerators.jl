@@ -1,9 +1,8 @@
 #========================================================================================
 
-Compute the foward looking operator
-
-𝔸g = v_0 * g - ∂(v1 * g) + 0.5 * ∂∂(v2 * g)
-𝔸'f = v_0 * f + v1 * ∂(f) + 0.5 * v2 * ∂∂(f)
+Compute the operator
+𝔸f = v_0 * f + v1 * ∂(f) + 0.5 * v2 * ∂∂(f)
+𝔸'g = v_0 * g - ∂(v1 * g) + 0.5 * ∂∂(v2 * g)
 
 ========================================================================================#
 
@@ -31,7 +30,7 @@ function build_operator!(𝔸, Δ, v0, v1, v2)
         # Make sure each column sums to zero. Important in some cases: for isntance, otherwise cannot find sdf decomposition in GP model
         𝔸[i, i] += v0[i] - sum(view(𝔸, :, i))
     end
-    return 𝔸
+    return 𝔸'
 end
 
 function make_Δ(x)
@@ -48,4 +47,75 @@ function make_Δ(x)
     Δxp[end] = x[n] - x[n-1]
     Δx = (Δxm .+ Δxp) / 2
     return x, 1 ./ Δx, 1 ./ Δxm, 1 ./ Δxp
+end
+
+#========================================================================================
+
+Compute the principal eigenvector and eigenvalue of an operator
+
+========================================================================================#
+clean_eigenvalue(η::Union{Nothing, Real}) = η
+
+function clean_eigenvalue(η::Complex)
+    if abs(imag(η) .>= eps())
+        @warn "Principal Eigenvalue has some imaginary part $(η)"
+    end
+    real(η)
+end
+clean_density(::Nothing) = nothing
+clean_density(v::Vector) = abs.(v) ./ sum(abs.(v))
+
+clean_f(v::Vector) = abs.(v)
+clean_f(::Nothing) = nothing
+
+function principal_eigenvalue(T; method = :krylov, eigenvector = :right)
+    η = nothing
+    if method == :krylov
+        vl, η, vr = principal_eigenvalue_krylov(T; eigenvector = eigenvector)
+        if η == nothing
+            @warn "Krylov Methods Failed"
+        end
+    end
+    if η == nothing
+        # use SuiteSparse maybe? LU decomposition sometimes?
+        vl, η, vr = principal_eigenvalue_BLAS(convert(Matrix{Float64}, T); eigenvector = eigenvector)
+    end
+    return clean_density(vl), clean_eigenvalue(η), clean_f(vr)
+end
+
+function principal_eigenvalue_krylov(T; eigenvector = :right)
+    vl, η, vr = nothing, nothing, nothing
+    if eigenvector ∈ (:right, :both)
+        vals, vecs, info = KrylovKit.eigsolve(T, 1, :LR)
+        if info.converged > 0
+            η = vals[1]
+            vr = vecs[1]
+        end
+    end
+    if eigenvector ∈ (:left, :both)
+        vals, vecs, info = KrylovKit.eigsolve(T', 1, :LR)
+        if info.converged > 0
+            η = vals[1]
+            vl = vecs[1]
+        end
+    end 
+    return vl, η, vr
+end
+
+
+function principal_eigenvalue_BLAS(T; eigenvector = :right)
+    vl, η, vr = nothing, nothing, nothing
+    if eigenvector ∈ (:right, :both)
+        e = eigen(T)
+        _, out = findmax(real.(e.values))
+        η = e.values[out]
+        vr = e.vectors[:, out]
+    end
+    if eigenvector ∈ (:left, :both)
+        e = eigen(copy(T'))
+        _, out = findmax(real.(e.values))
+        η = e.values[out]
+        vl = e.vectors[:, out]
+    end 
+    return vl, η, vr
 end

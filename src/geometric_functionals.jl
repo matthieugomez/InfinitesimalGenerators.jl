@@ -1,23 +1,9 @@
 #========================================================================================
 
-Compute u(x, T) = E[M_Tψ(x_T)|x_t = x] using Implicit Feynman Kac
-where
-dx = μx dt + σx dZ_t
-and M_t is a geometric functional
-dMt/Mt = μM dt + σM dZt
-========================================================================================#
-
-function compute_EψM(x, μx, σx; t::AbstractVector = range(0, 100, step = 1/12), ψ = ones(length(x)), μM = zeros(length(x)), σM = zeros(length(x)))
-    feynman_kac_forward(x, μx .+ σM .* σx, σx; t = t, ψ = ψ, V = μM)
-end
-
-#========================================================================================
-
 Compute Hansen Scheinkmann decomposition M = e^{ηt}f(x_t)W_t
-Return f, η, g
+Return g, η, f
 
 ========================================================================================#
-# Compute η in Hansen Scheinkmann decomposition M = e^{ηt}f(x_t)W_t
 function compute_η(x, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
     n = length(x)
     𝔸 = zeros(n, n)
@@ -29,6 +15,22 @@ function compute_η!(𝔸, Δ, μx, σx, μM, σM; method = :krylov, eigenvector
     build_operator!(𝔸, Δ, μM, σM .* σx .+ μx, 0.5 .* σx.^2)
     principal_eigenvalue(𝔸; method = method, eigenvector = eigenvector)
 end
+
+
+#========================================================================================
+
+Compute u(x, T) = E[M_Tψ(x_T)|x_t = x] using Implicit Feynman Kac
+where
+dx = μx dt + σx dZ_t
+and M_t is a geometric functional
+dMt/Mt = μM dt + σM dZt
+========================================================================================#
+
+function compute_EψM(x, μx, σx; t::AbstractVector = range(0, 100, step = 1/12), ψ = ones(length(x)), μM = zeros(length(x)), σM = zeros(length(x)))
+    feynman_kac_forward(x, μx .+ σM .* σx, σx; t = t, ψ = ψ, V = μM)
+end
+
+
 
 #========================================================================================
 

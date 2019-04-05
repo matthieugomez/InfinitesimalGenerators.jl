@@ -7,7 +7,7 @@ using LinearAlgebra, BandedMatrices, KrylovKit
 ##
 ##############################################################################
 include("build_operator.jl")
-include("eigenproblem.jl")
+include("stationary_distribution.jl")
 include("feynman_kac.jl")
 include("geometric_functionals.jl")
 
