@@ -1,4 +1,4 @@
-using LinearAlgebra, ContinuousTimeMarkovOperators, Expokit, Test
+using InfinitesimalGenerators, Test, LinearAlgebra,  Expokit
 
 
 ##  Ornstein–Uhlenbeck
@@ -16,13 +16,13 @@ g = stationary_distribution(x, μx, σx)
 ## Feynman-Kac
 ψ = x.^2
 t = range(0, stop = 100, step = 1/100)
-u = feynman_kac_forward(x, μx, σx; ψ = ψ, t = t)
+u = feynman_kac_forward(x, μx, σx; t = t, ψ = ψ)
 # Check results using exponential integrator
 𝔸 = generator(x, μx, σx)
 @test maximum(abs, u[:, 50] .- expmv(t[50], 𝔸, ψ)) <= 1e-3
 @test maximum(abs, u[:, 200] .- expmv(t[200], 𝔸, ψ)) <= 1e-3
 @test maximum(abs, u[:, end] .- expmv(t[end], 𝔸, ψ)) <= 1e-5
-@test maximum(abs, feynman_kac_forward(x, μx, σx; ψ = ψ, t = t) .- feynman_kac_forward(x, μx, σx; ψ = ψ, t = collect(t))) <= 1e-5
+@test maximum(abs, feynman_kac_forward(x, μx, σx; t = t, ψ = ψ) .- feynman_kac_forward(x, μx, σx; t = collect(t), ψ = ψ)) <= 1e-5
 
 
 

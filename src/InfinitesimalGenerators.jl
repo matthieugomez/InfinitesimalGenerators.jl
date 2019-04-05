@@ -1,4 +1,4 @@
-module ContinuousTimeMarkovOperators
+module InfinitesimalGenerators
 using LinearAlgebra, BandedMatrices, KrylovKit
 
 ##############################################################################
@@ -20,7 +20,7 @@ export generator,
 stationary_distribution,
 feynman_kac_backward,
 feynman_kac_forward,
-compute_EψM,
+hansen_scheinkman,
 compute_η,
 compute_ϵ 
 end

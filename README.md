@@ -4,7 +4,7 @@ A set of tools to work with Diffusion Processes:
 
 # Infinitesimal Generator
 For a diffusive process `dx = μx(x)dt + σx(dZ_t)`
-- `generator(x, μx, σx)` returns the infinetisimal generator for the process 
+- `generator(x, μx, σx)` returns the infinitesimal generator for the process 
 - `stationary_distribution(x, μx, σx)` returns the stationary distribution of the process 
 - ```julia
 	feynman_kac_forward(x, μx, σx; 

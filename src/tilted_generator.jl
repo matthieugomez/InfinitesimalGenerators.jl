@@ -29,13 +29,13 @@ dMt/Mt = μM dt + σM dZt
 The function returns g, η, f
 
 ========================================================================================#
-function hansen_scheinkman_decomposition(x, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
+function hansen_scheinkman(x, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
     𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
     Δ = make_Δ(x)
-    hansen_scheinkman_decomposition!(𝔸, Δ, μx, σx, μM, σM; method = method, eigenvector = eigenvector)
+    hansen_scheinkman!(𝔸, Δ, μx, σx, μM, σM; method = method, eigenvector = eigenvector)
 end
 
-function hansen_scheinkman_decomposition!(𝔸, Δ, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
+function hansen_scheinkman!(𝔸, Δ, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
     generator!(𝔸, Δ, μx, σx, μM, σM)
     principal_eigenvalue(𝔸; method = method, eigenvector = eigenvector)
 end
