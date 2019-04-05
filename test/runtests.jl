@@ -31,7 +31,7 @@ g, η, f = hansen_scheinkman(x, μx, σx, μM, σM; eigenvector = :both)
 @test η ≈ 0.5 * σ^2 / κx^2 atol = 1e-2
 @test maximum(abs, f ./ exp.(x ./ κx) .- mean(f ./ exp.(x ./ κx))) <= 1e-2
 
-t = range(0, 100, step = 1/10)
+t = range(0, stop = 100, step = 1/10)
 u = feynman_kac_forward(x, μx, σx, μM, σM; t = t)
 @test log.(stationary_distribution(x, μx, σx)' * u[:, end]) ./ t[end] ≈ η atol = 1e-2
 
