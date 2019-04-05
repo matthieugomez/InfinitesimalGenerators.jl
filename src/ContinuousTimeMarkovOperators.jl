@@ -17,7 +17,8 @@ include("geometric_functionals.jl")
 ## Exported methods and types 
 ##
 ##############################################################################
-export stationary_distribution,
+export compute_generator,
+stationary_distribution,
 feynman_kac_backward,
 feynman_kac_forward,
 compute_EψM,

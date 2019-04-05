@@ -1,18 +1,34 @@
 #========================================================================================
 
+Compute generator 𝔸f = E[d(Mf)]
+
+========================================================================================#
+
+
+function compute_generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector)
+    𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
+    Δ = make_Δ(x)
+    compute_generator!(𝔸, Δ, μx, σx, μM, σM)
+end
+
+function compute_generator!(𝔸::AbstractMatrix, Δ, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector)
+    build_operator!(𝔸, Δ, μM, σM .* σx .+ μx, 0.5 * σx.^2)
+end
+
+#========================================================================================
+
 Compute Hansen Scheinkmann decomposition M = e^{ηt}f(x_t)W_t
 Return g, η, f
 
 ========================================================================================#
 function compute_η(x, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
-    n = length(x)
-    𝔸 = zeros(n, n)
-    Δ = EconPDEs.make_Δ(x)
+    𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
+    Δ = make_Δ(x)
     compute_η!(𝔸, Δ, μx, σx, μM, σM; method = method, eigenvector = eigenvector)
 end
 
 function compute_η!(𝔸, Δ, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
-    build_operator!(𝔸, Δ, μM, σM .* σx .+ μx, 0.5 .* σx.^2)
+    compute_generator!(𝔸, Δ, μx, σx, μM, σM)
     principal_eigenvalue(𝔸; method = method, eigenvector = eigenvector)
 end
 
@@ -29,8 +45,6 @@ dMt/Mt = μM dt + σM dZt
 function compute_EψM(x, μx, σx; t::AbstractVector = range(0, 100, step = 1/12), ψ = ones(length(x)), μM = zeros(length(x)), σM = zeros(length(x)))
     feynman_kac_forward(x, μx .+ σM .* σx, σx; t = t, ψ = ψ, V = μM)
 end
-
-
 
 #========================================================================================
 
