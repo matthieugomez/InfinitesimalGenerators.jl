@@ -3,7 +3,7 @@
 Compute generator 𝔸f = E[d(Mf(x))]
 where x is a diffusive process
 dx = μx dt + σx dZt
-and M_t is a geometric functional
+and M_t is a multiplicative functional
 dMt/Mt = μM dt + σM dZt
 
 ========================================================================================#
@@ -23,7 +23,7 @@ end
 Compute Hansen Scheinkmann decomposition M = e^{ηt}f(x_t)W_t
 where x is a diffusive process
 dx = μx dt + σx dZt
-and M_t is a geometric functional
+and M_t is a multiplicative functional
 dMt/Mt = μM dt + σM dZt
 
 The function returns g, η, f
@@ -45,7 +45,7 @@ end
 Compute u(x, T) = E[M_Tψ(x_T)|x_t = x] using Implicit Feynman Kac
 where x is a diffusive process
 dx = μx dt + σx dZt
-and M_t is a geometric functional
+and M_t is a multiplicative functional
 dMt/Mt = μM dt + σM dZt
 
 ========================================================================================#
@@ -59,7 +59,7 @@ end
 Compute ϵ(x, T) = σD(x) * (σM + σE[M_T | X_0 = x])
 where x is a diffusive process
 dx = μx dt + σx dZt
-and M_t is a geometric functional
+and M_t is a multiplicative functional
 dMt/Mt = μM dt + σM dZt
 
 ========================================================================================#
