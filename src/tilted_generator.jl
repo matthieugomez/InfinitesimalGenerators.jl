@@ -29,13 +29,13 @@ dMt/Mt = μM dt + σM dZt
 The function returns g, η, f
 
 ========================================================================================#
-function compute_η(x, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
+function hansen_scheinkman_decomposition(x, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
     𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
     Δ = make_Δ(x)
-    compute_η!(𝔸, Δ, μx, σx, μM, σM; method = method, eigenvector = eigenvector)
+    hansen_scheinkman_decomposition!(𝔸, Δ, μx, σx, μM, σM; method = method, eigenvector = eigenvector)
 end
 
-function compute_η!(𝔸, Δ, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
+function hansen_scheinkman_decomposition!(𝔸, Δ, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
     generator!(𝔸, Δ, μx, σx, μM, σM)
     principal_eigenvalue(𝔸; method = method, eigenvector = eigenvector)
 end
@@ -50,7 +50,7 @@ dMt/Mt = μM dt + σM dZt
 
 ========================================================================================#
 
-function compute_EψM(x, μx, σx; t::AbstractVector = range(0, 100, step = 1/12), ψ = ones(length(x)), μM = zeros(length(x)), σM = zeros(length(x)))
+function feynman_kac_forward(x, μx, σx, μM, σM; t::AbstractVector = range(0, 100, step = 1/12), ψ = ones(length(x)))
     feynman_kac_forward(x, μx .+ σM .* σx, σx; t = t, ψ = ψ, V = μM)
 end
 
@@ -65,7 +65,7 @@ dMt/Mt = μM dt + σM dZt
 ========================================================================================#
 
 function compute_ϵ(x, μx, σx, μM, σM, σD; t::AbstractVector = range(0, 100, step = 1/12))
-    u = compute_EψM(x, μx, σx; t = t, μM = μM, σM = σM)
+    u = feynman_kac_forward(x, μx, σx, μM, σM; t = t)
     for i in 1:length(t)
         u[:, i] = σD .* (σM .+ _derive(u[:, i], x, μx) ./ u[:, i] .* σx)
     end

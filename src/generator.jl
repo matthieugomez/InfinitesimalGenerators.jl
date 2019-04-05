@@ -57,7 +57,7 @@ u(x_T, T) = ψ(x_T)
 
 ========================================================================================#
 
-function feynman_kac_backward(x, μx, σx; ψ::AbstractVector, t::AbstractVector = range(0, 100, step = 1/12), f::T = zeros(length(x)), V::T = zeros(length(x))) where {T <: Union{AbstractVector, AbstractMatrix}}
+function feynman_kac_backward(x, μx, σx; t::AbstractVector = range(0, 100, step = 1/12), ψ::AbstractVector, f::T = zeros(length(x)), V::T = zeros(length(x))) where {T <: Union{AbstractVector, AbstractMatrix}}
     u = zeros(length(x), length(t))
     u[:, length(t)] = ψ
     𝔸 = generator(x, μx, σx)
@@ -92,7 +92,7 @@ Compute u(x_t, T)= E[∫t^T e^{-∫ts V(x_τ)dτ}f(x_s)ds + e^{-∫tTV(x_τ)dτ}
 
 ========================================================================================#
 
-function feynman_kac_forward(x, μx, σx; ψ::AbstractVector, t::AbstractVector = range(0, 100, step = 1/12), f::AbstractVector = zeros(length(x)), V::AbstractVector = zeros(length(x)))
+function feynman_kac_forward(x, μx, σx; t::AbstractVector = range(0, 100, step = 1/12), ψ::AbstractVector, f::AbstractVector = zeros(length(x)), V::AbstractVector = zeros(length(x)))
     u = feynman_kac_backward(x, μx, σx; ψ = ψ, t = .- reverse(t), f = f, V = V)
     return u[:,end:-1:1]
 end
