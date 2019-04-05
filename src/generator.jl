@@ -1,7 +1,7 @@
 #========================================================================================
 
 Compute generator 𝔸f = E[df(x)]
-where
+where x is a diffusion process
 dx = μx dt + σx dZ_t
 
 ========================================================================================#
@@ -20,7 +20,7 @@ end
 #========================================================================================
 
 Stationary Distribution of x
-where
+where x is a diffusion process
 dx = μx dt + σx dZ_t
 
 ========================================================================================#
@@ -38,22 +38,21 @@ end
 
 function stationary_distribution(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, δ, ψ)
     𝔸 = generator(x, μx, σx)
-    density = (δ * I - 𝔸') \ (δ * ψ)
+    density = (δ * I - adjoint(𝔸)) \ (δ * ψ)
     clean_density(density)
 end
 
 #========================================================================================
-Feynman Kac.
 
 Compute u(x_t, t) = E[∫t^T e^{-∫ts V(x_τ, τ)dτ}f(x_s, s)ds + e^{-∫tT V(x_τ, τ)dτ}ψ(x_T)|x_t = x]
-where
+where x is a diffusion process
 dx = μx dt + σx dZ_t
-and
 
-This uses the fact that
+This uses the Feynman Kac formula, i.e. u satisfies the PDE:
 u(x_T, T) = ψ(x_T)
 0 = (u_{t+1} - u_{t})/dt + 𝔸u_t - Vu + f
 that is
+u(x_T, T) = ψ(x_T)
 (I + Vu - 𝔸dt)u_t =  u_{t+1} + f dt
 
 ========================================================================================#
