@@ -64,7 +64,7 @@ dMt/Mt = μM dt + σM dZt
 
 ========================================================================================#
 
-function compute_ϵ(x, μx, σx, μM, σM, σD; t::AbstractVector = range(0, 100, step = 1/12))
+function impulse_response(x, μx, σx, μM, σM; t::AbstractVector = range(0, 100, step = 1/12),  σD = ones(length(x)))
     u = feynman_kac_forward(x, μx, σx, μM, σM; t = t)
     for i in 1:length(t)
         u[:, i] = σD .* (σM .+ _derive(u[:, i], x, μx) ./ u[:, i] .* σx)

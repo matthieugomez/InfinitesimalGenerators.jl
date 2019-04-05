@@ -12,3 +12,5 @@ For a diffusive process `dx = μx(x)dt + σx(dZ_t)` and an associated multiplica
 - `generator(x, μx, σx, μM, σM)` returns the infinitesimal generator of the process `x` tilded by the multiplicative functional `M` 
 - `hansen_scheinkman_decomposition(x, μx, σx, μM, σM)` returns the hansen-scheinkman decomposition of the multiplicative functional `M`
 - `feynman_kac_forward(x, μx, σx, μM, σM; t, ψ)` returns  `E[M_tψ(x_t)|x_0 = x]`
+- `impulse_response(x, μx, σx, μM, σM; t, σD)` returns  `σD(x) * (σM + σE[M_T | X_0 = x])`
+
