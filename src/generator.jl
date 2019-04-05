@@ -1,3 +1,11 @@
+#========================================================================================
+
+Compute generator 𝔸f = E[df(x)]
+where
+dx = μx dt + σx dZ_t
+
+========================================================================================#
+
 
 function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
     𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
@@ -11,7 +19,9 @@ end
 
 #========================================================================================
 
-Stationary Distribution with one state variable
+Stationary Distribution of x
+where
+dx = μx dt + σx dZ_t
 
 ========================================================================================#
 #now there are still two issues
@@ -26,7 +36,6 @@ function stationary_distribution(x::AbstractVector, μx::AbstractVector, σx::Ab
     return density
 end
 
-
 function stationary_distribution(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, δ, ψ)
     𝔸 = generator(x, μx, σx)
     density = (δ * I - 𝔸') \ (δ * ψ)
@@ -34,22 +43,28 @@ function stationary_distribution(x::AbstractVector, μx::AbstractVector, σx::Ab
 end
 
 #========================================================================================
+Feynman Kac.
 
 Compute u(x_t, t) = E[∫t^T e^{-∫ts V(x_τ, τ)dτ}f(x_s, s)ds + e^{-∫tT V(x_τ, τ)dτ}ψ(x_T)|x_t = x]
-using
-0 = (u_{t+1} - u_{t})/dt + 𝔸u_t + f
+where
+dx = μx dt + σx dZ_t
+and
+
+This uses the fact that
+u(x_T, T) = ψ(x_T)
+0 = (u_{t+1} - u_{t})/dt + 𝔸u_t - Vu + f
 that is
-(I - 𝔸dt)u_t =  u_{t+1} + f dt
+(I + Vu - 𝔸dt)u_t =  u_{t+1} + f dt
+
 ========================================================================================#
 
 function feynman_kac_backward(x, μx, σx; ψ::AbstractVector, t::AbstractVector = range(0, 100, step = 1/12), f::T = zeros(length(x)), V::T = zeros(length(x))) where {T <: Union{AbstractVector, AbstractMatrix}}
     u = zeros(length(x), length(t))
     u[:, length(t)] = ψ
-    Δ = make_Δ(x)
-    𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
+    𝔸 = generator(x, μx, σx)
     if (T <: AbstractVector)
         dt = t[2] - t[1]
-        𝔹 = factorize(I - operator!(𝔸, Δ, V .* dt, μx .* dt, 0.5 .* σx.^2 .* dt))
+        𝔹 = factorize(I + Diagonal(V) .* dt - 𝔸 .* dt)
         for i in (length(t)-1):(-1):1
             ψ = ldiv!(𝔹, u[:, i+1] .+ f .* dt)
             u[:, i] = ψ
@@ -57,14 +72,14 @@ function feynman_kac_backward(x, μx, σx; ψ::AbstractVector, t::AbstractVector
     elseif T <: AbstractVector
         for i in (length(t)-1):(-1):1
             dt = t[i+1] - t[i]
-            𝔹 = I - operator!(𝔸, Δ, V .* dt, μx .* dt, 0.5 .* σx.^2 .* dt)
+            𝔹 = I + Diagonal(V) .* dt - 𝔸 .* dt
             ψ = 𝔹 \  (u[:, i+1] .+ f .* dt)
             u[:, i] = ψ
         end
     else
         for i in (length(t)-1):(-1):1
             dt = t[i+1] - t[i]
-            𝔹 = (I - operator!(𝔸, Δ, V[:, i] .* dt, μx .* dt, 0.5 .* σx.^2 .* dt))
+            𝔹 = I + Diagonal(V[:, i]) .* dt - A .* dt
             ψ = 𝔹 \ (u[:, i+1] .+ f[:, i] .* dt)
             u[:, i] = ψ
         end
@@ -82,4 +97,3 @@ function feynman_kac_forward(x, μx, σx; ψ::AbstractVector, t::AbstractVector 
     u = feynman_kac_backward(x, μx, σx; ψ = ψ, t = .- reverse(t), f = f, V = V)
     return u[:,end:-1:1]
 end
-

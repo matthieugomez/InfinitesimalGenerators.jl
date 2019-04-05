@@ -1,6 +1,8 @@
 #========================================================================================
 
-Compute generator 𝔸f = E[d(Mf)]
+Compute generator 𝔸f = E[d(Mf(x))]
+where  M_t is a geometric functional
+dMt/Mt = μM dt + σM dZt
 
 ========================================================================================#
 
@@ -34,10 +36,7 @@ end
 #========================================================================================
 
 Compute u(x, T) = E[M_Tψ(x_T)|x_t = x] using Implicit Feynman Kac
-where
-dx = μx dt + σx dZ_t
-and M_t is a geometric functional
-dMt/Mt = μM dt + σM dZt
+
 ========================================================================================#
 
 function compute_EψM(x, μx, σx; t::AbstractVector = range(0, 100, step = 1/12), ψ = ones(length(x)), μM = zeros(length(x)), σM = zeros(length(x)))
