@@ -4,15 +4,14 @@ Compute generator 𝔸f = E[d(Mf)]
 
 ========================================================================================#
 
-
-function compute_generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector)
+function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector)
     𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
     Δ = make_Δ(x)
-    compute_generator!(𝔸, Δ, μx, σx, μM, σM)
+    generator!(𝔸, Δ, μx, σx, μM, σM)
 end
 
-function compute_generator!(𝔸::AbstractMatrix, Δ, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector)
-    build_operator!(𝔸, Δ, μM, σM .* σx .+ μx, 0.5 * σx.^2)
+function generator!(𝔸::AbstractMatrix, Δ, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector)
+    operator!(𝔸, Δ, μM, σM .* σx .+ μx, 0.5 * σx.^2)
 end
 
 #========================================================================================
@@ -28,10 +27,9 @@ function compute_η(x, μx, σx, μM, σM; method = :krylov, eigenvector = :righ
 end
 
 function compute_η!(𝔸, Δ, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
-    compute_generator!(𝔸, Δ, μx, σx, μM, σM)
+    generator!(𝔸, Δ, μx, σx, μM, σM)
     principal_eigenvalue(𝔸; method = method, eigenvector = eigenvector)
 end
-
 
 #========================================================================================
 
@@ -48,11 +46,10 @@ end
 
 #========================================================================================
 
-Compute ϵ(x, T) = σD(x) * (σM + σE[M_T | X_t = x])
+Compute ϵ(x, T) = σD(x) * (σM + σE[M_T | X_0 = x])
 
 ========================================================================================#
 
-# compute ϵ(x, t) = σD(x) * (σM + σE[M_t | X_0 = x])
 function compute_ϵ(x, μx, σx, μM, σM, σD; t::AbstractVector = range(0, 100, step = 1/12))
     u = compute_EψM(x, μx, σx; t = t, μM = μM, σM = σM)
     for i in 1:length(t)

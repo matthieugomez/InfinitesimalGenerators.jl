@@ -6,12 +6,12 @@ Compute the operator
 
 ========================================================================================#
 
-function build_operator(x, v0, v1, v2)
+function operator(x, v0, v1, v2)
     𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
-    build_operator!(𝔸, make_Δ(x), v0, v1, v2)
+    operator!(𝔸, make_Δ(x), v0, v1, v2)
 end
 
-function build_operator!(𝔸, Δ, v0, v1, v2)
+function operator!(𝔸, Δ, v0, v1, v2)
     x, invΔx, invΔxm, invΔxp = Δ
     n = length(x)
     fill!(𝔸, 0.0)

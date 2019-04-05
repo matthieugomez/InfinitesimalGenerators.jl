@@ -6,10 +6,9 @@ using LinearAlgebra, BandedMatrices, KrylovKit
 ## Load files
 ##
 ##############################################################################
-include("build_operator.jl")
-include("stationary_distribution.jl")
-include("feynman_kac.jl")
-include("geometric_functionals.jl")
+include("utils.jl")
+include("generator.jl")
+include("tilted_generator.jl")
 
 
 ##############################################################################
@@ -17,7 +16,7 @@ include("geometric_functionals.jl")
 ## Exported methods and types 
 ##
 ##############################################################################
-export compute_generator,
+export generator,
 stationary_distribution,
 feynman_kac_backward,
 feynman_kac_forward,
