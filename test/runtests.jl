@@ -16,7 +16,7 @@ g = stationary_distribution(x, μx, σx)
 ψ = x.^2
 t = range(0, stop = 100, step = 1/10)
 u = feynman_kac_forward(x, μx, σx; t = t, ψ = ψ)
-# Check results using exponential integrator
+# Check results using exponential integrator. I could also use KrylovKit.exponentiate
 𝔸 = generator(x, μx, σx)
 @test maximum(abs, u[:, 50] .- expmv(t[50], 𝔸, ψ)) <= 1e-3
 @test maximum(abs, u[:, 200] .- expmv(t[200], 𝔸, ψ)) <= 1e-3

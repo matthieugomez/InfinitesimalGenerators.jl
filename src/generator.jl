@@ -6,7 +6,6 @@ dx = μx dt + σx dZ_t
 
 ========================================================================================#
 
-
 function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
     operator(x, zeros(length(μx)), μx, 0.5 * σx.^2)
 end
@@ -56,7 +55,7 @@ function feynman_kac_backward(x, μx, σx; t::AbstractVector = range(0, 100, ste
     u[:, length(t)] = ψ
     𝔸 = generator(x, μx, σx)
     if isa(f, AbstractVector) && isa(V, AbstractVector)
-	    if isa(t, StepRange)
+	    if isa(t, AbstractRange)
 	        dt = t[2] - t[1]
 	        𝔹 = factorize(I + Diagonal(V) .* dt - 𝔸 .* dt)
 	        for i in (length(t)-1):(-1):1
