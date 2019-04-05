@@ -42,7 +42,7 @@ end
 
 #========================================================================================
 
-Compute u(x, T) = E[M_Tψ(x_T)|x_t = x] using Implicit Feynman Kac
+Compute u(x, t) = E[M_tψ(x_t)|x_0 = x] using Implicit Feynman Kac
 where x is a diffusive process
 dx = μx dt + σx dZt
 and M_t is a multiplicative functional
@@ -51,7 +51,7 @@ dMt/Mt = μM dt + σM dZt
 ========================================================================================#
 
 function feynman_kac_forward(x, μx, σx, μM, σM; t::AbstractVector = range(0, 100, step = 1/12), ψ = ones(length(x)))
-    feynman_kac_forward(x, μx .+ σM .* σx, σx; t = t, ψ = ψ, V = μM)
+    feynman_kac_forward(x, μx .+ σM .* σx, σx; t = t, ψ = ψ, V = - μM)
 end
 
 #========================================================================================

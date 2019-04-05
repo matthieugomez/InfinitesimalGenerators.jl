@@ -18,19 +18,22 @@ function operator!(𝔸, Δ, v0, v1, v2)
     # construct matrix T. The key is that sum of each column = 0.0 and off diagonals are positive (singular M-matrix)
     for i in 1:n
         if v1[i] >= 0
-            𝔸[min(i + 1, n), i] += v1[i] * invΔxp[i]
+            𝔸[i, min(i + 1, n)] += v1[i] * invΔxp[i]
             𝔸[i, i] -= v1[i] * invΔxp[i]
         else
             𝔸[i, i] += v1[i] * invΔxm[i]
-            𝔸[max(i - 1, 1), i] -= v1[i] * invΔxm[i]
+            𝔸[i, max(i - 1, 1)] -= v1[i] * invΔxm[i]
         end
-        𝔸[max(i - 1, 1), i] += v2[i] * invΔxm[i] * invΔx[i]
+        𝔸[i, max(i - 1, 1)] += v2[i] * invΔxm[i] * invΔx[i]
         𝔸[i, i] -= v2[i] * 2 * invΔxm[i] * invΔxp[i]
-        𝔸[min(i + 1, n), i] += v2[i] * invΔxp[i] * invΔx[i]
-        # Make sure each column sums to zero. Important in some cases: for isntance, otherwise cannot find sdf decomposition in GP model
-        𝔸[i, i] += v0[i] - sum(view(𝔸, :, i))
+        𝔸[i, min(i + 1, n)] += v2[i] * invΔxp[i] * invΔx[i]
     end
-    return adjoint(𝔸)
+    # Make sure each row sums to zero. Important in some cases: for isntance, otherwise cannot find sdf decomposition in GP model
+    c = sum(𝔸, dims = 2)
+    for i in 1:n
+        𝔸[i, i] += v0[i] - c[i]
+    end
+    return 𝔸
 end
 
 function make_Δ(x)
@@ -101,7 +104,6 @@ function principal_eigenvalue_krylov(T; eigenvector = :right)
     end 
     return vl, η, vr
 end
-
 
 function principal_eigenvalue_BLAS(T; eigenvector = :right)
     vl, η, vr = nothing, nothing, nothing
