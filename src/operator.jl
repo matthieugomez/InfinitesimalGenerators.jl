@@ -86,17 +86,18 @@ function principal_eigenvalue(T; method = :krylov, eigenvector = :right)
     return clean_density(vl), clean_eigenvalue(η), clean_f(vr)
 end
 
+# I could also use Arpack.eigs but it seems less fast in my trials
 function principal_eigenvalue_krylov(T; eigenvector = :right)
     vl, η, vr = nothing, nothing, nothing
     if eigenvector ∈ (:right, :both)
-        vals, vecs, info = KrylovKit.eigsolve(T, 1, :LR)
+        vals, vecs, info = KrylovKit.eigsolve(T, 1, :LR, maxiter = size(T, 1))
         if info.converged > 0
             η = vals[1]
             vr = vecs[1]
         end
     end
     if eigenvector ∈ (:left, :both)
-        vals, vecs, info = KrylovKit.eigsolve(T', 1, :LR)
+        vals, vecs, info = KrylovKit.eigsolve(T', 1, :LR, maxiter = size(T, 1))
         if info.converged > 0
             η = vals[1]
             vl = vecs[1]
