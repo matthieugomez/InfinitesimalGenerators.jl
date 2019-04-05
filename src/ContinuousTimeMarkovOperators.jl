@@ -1,4 +1,4 @@
-module ContinuousTimeOperators
+module ContinuousTimeMarkovOperators
 using LinearAlgebra, BandedMatrices, KrylovKit
 
 ##############################################################################
