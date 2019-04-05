@@ -9,13 +9,7 @@ dMt/Mt = μM dt + σM dZt
 ========================================================================================#
 
 function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector)
-    𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
-    Δ = make_Δ(x)
-    generator!(𝔸, Δ, μx, σx, μM, σM)
-end
-
-function generator!(𝔸::AbstractMatrix, Δ, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector)
-    operator!(𝔸, Δ, μM, σM .* σx .+ μx, 0.5 * σx.^2)
+    operator(x, μM, σM .* σx .+ μx, 0.5 * σx.^2)
 end
 
 #========================================================================================
@@ -30,13 +24,7 @@ The function returns g, η, f
 
 ========================================================================================#
 function hansen_scheinkman(x, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
-    𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
-    Δ = make_Δ(x)
-    hansen_scheinkman!(𝔸, Δ, μx, σx, μM, σM; method = method, eigenvector = eigenvector)
-end
-
-function hansen_scheinkman!(𝔸, Δ, μx, σx, μM, σM; method = :krylov, eigenvector = :right)
-    generator!(𝔸, Δ, μx, σx, μM, σM)
+    𝔸 = generator(x, μx, σx, μM, σM)
     principal_eigenvalue(𝔸; method = method, eigenvector = eigenvector)
 end
 

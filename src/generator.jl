@@ -8,13 +8,7 @@ dx = μx dt + σx dZ_t
 
 
 function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
-    𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
-    Δ = make_Δ(x)
-    generator!(𝔸, Δ, μx, σx)
-end
-
-function generator!(𝔸::AbstractMatrix, Δ, μx::AbstractVector, σx::AbstractVector)
-    operator!(𝔸, Δ, zeros(length(μx)), μx, 0.5 * σx.^2)
+    operator(x, zeros(length(μx)), μx, 0.5 * σx.^2)
 end
 
 #========================================================================================
