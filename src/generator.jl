@@ -56,7 +56,7 @@ function feynman_kac_backward(x, μx, σx; t::AbstractVector = range(0, 100, ste
     𝔸 = generator(x, μx, σx)
     if isa(f, AbstractVector) && isa(V, AbstractVector)
 	    if isa(t, AbstractRange)
-	        dt = t[2] - t[1]
+	        dt = step(t)
 	        𝔹 = factorize(I + Diagonal(V) .* dt - 𝔸 .* dt)
 	        for i in (length(t)-1):(-1):1
 	            ψ = ldiv!(𝔹, u[:, i+1] .+ f .* dt)
