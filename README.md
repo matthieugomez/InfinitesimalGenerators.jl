@@ -5,7 +5,7 @@
 For a diffusive process `dx = μx(x)dt + σx(dZ_t)`
 - `generator(x, μx, σx)` returns the infinitesimal generator of `x`.
 - `stationary_distribution(x, μx, σx)` returns the stationary distribution of `x`.
-- `feynman_kac_forward(x, μx, σx; t, ψ, f, V)`	returns `E[∫0^t e^{-∫0s V(x_τ)dτ}f(x_s)ds + e^{-∫0t V(x_τ)dτ}ψ(x_t)|x_0 = x]`. 
+- `feynman_kac_forward(x, μx, σx; t, ψ, f, V)`	returns `E[∫0^t e^{-∫0^s V(x_τ)dτ}f(x_s)ds + e^{-∫0^t V(x_τ)dτ}ψ(x_t)|x_0 = x]`. 
 
 ## Multiplicative Functional
 For a diffusive process `dx = μx(x)dt + σx(dZ_t)` and an associated multiplicative functional `dM/M = μM(x)dt + σM(dZ_t)`
