@@ -7,8 +7,8 @@ For a diffusive process `dx = μx(x)dt + σx(dZ_t)`
 - `generator(x, μx, σx)` returns the infinetisimal generator for the process 
 - `stationary_distribution(x, μx, σx)` returns the stationary distribution of the process 
 - ```julia
-feynman_kac_forward(x, μx, σx; t = range(0, 100, step = 1/12), ψ = ones(length(x)), f = zeros(length(x)), V = zeros(length(x)))
-``` 
+	feynman_kac_forward(x, μx, σx; t = range(0, 100, step = 1/12), ψ = ones(length(x)), f = zeros(length(x)), V = zeros(length(x)))
+	```	 
 returns `E[∫0^t e^{-∫0s V(x_τ)dτ}f(x_s)ds + e^{-∫0t V(x_τ)dτ}ψ(x_t)|x_0 = x]` 
 
 # Infinitesimal Generator for Tilded Process
