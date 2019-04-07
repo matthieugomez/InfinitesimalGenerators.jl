@@ -119,8 +119,10 @@ function clean_eigenvalue(η::Complex)
     end
     real(η)
 end
+
 clean_eigenvector_left(::Nothing) = nothing
 clean_eigenvector_left(g::Vector) = abs.(g) ./ sum(abs.(g))
+
 clean_eigenvector_right(::Nothing) = nothing
 clean_eigenvector_right(f::Vector) = abs.(f)
 
@@ -201,9 +203,7 @@ end
 # Stationary Distribution of x
 function stationary_distribution(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
     g, η, _ = principal_eigenvalue(generator(x, μx, σx); eigenvector = :left)
-    if abs(η) >= 1e-5
-        @warn "Principal Eigenvalue does not seem to be zero"
-    end
+    abs(η) >= 1e-5 && @warn "Principal Eigenvalue does not seem to be zero"
     return g
 end
 
