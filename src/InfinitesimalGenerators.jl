@@ -281,7 +281,6 @@ export generator,
 principal_eigenvalue,
 feynman_kac_backward,
 feynman_kac_forward,
-generator,
 stationary_distribution,
 hansen_scheinkman
 end
