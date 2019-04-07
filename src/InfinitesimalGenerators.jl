@@ -1,6 +1,13 @@
 module InfinitesimalGenerators
 using LinearAlgebra, SparseArrays, Lazy, BandedMatrices, KrylovKit
 
+
+#========================================================================================
+
+Define Type
+
+========================================================================================#
+
 struct InfinitesimalGenerator{T, CONTAINER, RAXIS} <: BandedMatrices.AbstractBandedMatrix{T}
     B::BandedMatrix{T, CONTAINER, RAXIS}
 end
@@ -11,9 +18,7 @@ import Base.+
 
 
 Lazy.@forward InfinitesimalGenerator.B LinearAlgebra.svdvals!, LinearAlgebra.factorize
-
 Lazy.@forward InfinitesimalGenerator.B SparseArrays.sparse
-
 Lazy.@forward InfinitesimalGenerator.B BandedMatrices.bandeddata, BandedMatrices.bandwidths, BandedMatrices.data_colrange, BandedMatrices.data_rowrange,  BandedMatrices.MemoryLayout
 @inline BandedMatrices.inbands_getindex(𝔸::InfinitesimalGenerator, u::Integer, k::Integer, j::Integer) = BandedMatrices.inbands_getindex(𝔸.B, u, k, j)
 @inline BandedMatrices.inbands_getindex(𝔸::InfinitesimalGenerator, k::Integer, j::Integer) = BandedMatrices.inbands_getindex(𝔸.B, k, j)
@@ -29,33 +34,33 @@ Compute the operator
 ========================================================================================#
 
 function InfinitesimalGenerator(x::AbstractVector, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
-    𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
-    InfinitesimalGenerator!(𝔸, make_Δ(x), v0, v1, v2)
+    B = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
+    InfinitesimalGenerator!(B, make_Δ(x), v0, v1, v2)
 end
 
-function InfinitesimalGenerator!(𝔸, Δ, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
+function InfinitesimalGenerator!(B::AbstractMatrix, Δ, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
     x, invΔx, invΔxm, invΔxp = Δ
     n = length(x)
-    fill!(𝔸, 0.0)
+    fill!(B, 0.0)
     # construct matrix T. The key is that sum of each column = 0.0 and off diagonals are positive (singular M-matrix)
     for i in 1:n
         if v1[i] >= 0
-            𝔸[i, min(i + 1, n)] += v1[i] * invΔxp[i]
-            𝔸[i, i] -= v1[i] * invΔxp[i]
+            B[i, min(i + 1, n)] += v1[i] * invΔxp[i]
+            B[i, i] -= v1[i] * invΔxp[i]
         else
-            𝔸[i, i] += v1[i] * invΔxm[i]
-            𝔸[i, max(i - 1, 1)] -= v1[i] * invΔxm[i]
+            B[i, i] += v1[i] * invΔxm[i]
+            B[i, max(i - 1, 1)] -= v1[i] * invΔxm[i]
         end
-        𝔸[i, max(i - 1, 1)] += v2[i] * invΔxm[i] * invΔx[i]
-        𝔸[i, i] -= v2[i] * 2 * invΔxm[i] * invΔxp[i]
-        𝔸[i, min(i + 1, n)] += v2[i] * invΔxp[i] * invΔx[i]
+        B[i, max(i - 1, 1)] += v2[i] * invΔxm[i] * invΔx[i]
+        B[i, i] -= v2[i] * 2 * invΔxm[i] * invΔxp[i]
+        B[i, min(i + 1, n)] += v2[i] * invΔxp[i] * invΔx[i]
     end
     # Make sure each row sums to zero. Important in some cases: for isntance, otherwise cannot find sdf decomposition in GP model
-    c = sum(𝔸, dims = 2)
+    c = sum(B, dims = 2)
     for i in 1:n
-        𝔸[i, i] += v0[i] - c[i]
+        B[i, i] += v0[i] - c[i]
     end
-    return InfinitesimalGenerator(𝔸)
+    return InfinitesimalGenerator(B)
 end
 
 function make_Δ(x)
@@ -72,6 +77,15 @@ function make_Δ(x)
     Δxp[end] = x[n] - x[n-1]
     Δx = (Δxm .+ Δxp) / 2
     return x, 1 ./ Δx, 1 ./ Δxm, 1 ./ Δxp
+end
+
+
+function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
+    InfinitesimalGenerator(x, zeros(length(x)), μx, 0.5 * σx.^2)
+end
+
+function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector)
+    InfinitesimalGenerator(x, μM, σM .* σx .+ μx, 0.5 * σx.^2)
 end
 
 #========================================================================================
@@ -93,7 +107,7 @@ clean_eigenvector_right(vr::Vector) = abs.(vr)
 
 
 
-function principal_eigenvalue(T::InfinitesimalGenerator; method = :krylov, eigenvector = :right)
+function principal_eigenvalue(T::AbstractMatrix; method = :krylov, eigenvector = :right)
     η = nothing
     if method == :krylov
         vl, η, vr = principal_eigenvalue_krylov(T; eigenvector = eigenvector)
@@ -109,7 +123,7 @@ function principal_eigenvalue(T::InfinitesimalGenerator; method = :krylov, eigen
 end
 
 # I could also use Arpack.eigs but it seems slower
-function principal_eigenvalue_krylov(T::InfinitesimalGenerator; eigenvector = :right)
+function principal_eigenvalue_krylov(T::AbstractMatrix; eigenvector = :right)
     vl, η, vr = nothing, nothing, nothing
     if eigenvector ∈ (:right, :both)
         vals, vecs, info = KrylovKit.eigsolve(T, 1, :LR, maxiter = size(T, 1))
@@ -128,7 +142,7 @@ function principal_eigenvalue_krylov(T::InfinitesimalGenerator; eigenvector = :r
     return vl, η, vr
 end
 
-function principal_eigenvalue_BLAS(T::InfinitesimalGenerator; eigenvector = :right)
+function principal_eigenvalue_BLAS(T::AbstractMatrix; eigenvector = :right)
     vl, η, vr = nothing, nothing, nothing
     if eigenvector ∈ (:right, :both)
         e = eigen(T)
@@ -206,19 +220,18 @@ where x is a diffusion process
 dx = μx dt + σx dZ_t
 
 ========================================================================================#
-
-function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
-    InfinitesimalGenerator(x, zeros(length(x)), μx, 0.5 * σx.^2)
-end
-
 # Stationary Distribution of x
 function stationary_distribution(𝔸::InfinitesimalGenerator)
-    principal_eigenvalue(𝔸; eigenvector = :left)[1]
+    g, η, _ = principal_eigenvalue(𝔸; eigenvector = :left)
+    if abs(η) >= 1e-5
+        @warn "Principal Eigenvalue does not seem to be zero"
+    end
+    return g
 end
+
 function stationary_distribution(𝔸::InfinitesimalGenerator, δ, ψ)
     clean_eigenvector_left((δ * I - adjoint(𝔸)) \ (δ * ψ))
 end
-
 
 #========================================================================================
 
@@ -229,10 +242,6 @@ and M_t is a multiplicative functional
 dMt/Mt = μM dt + σM dZt
 
 ========================================================================================#
-
-function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector)
-    InfinitesimalGenerator(x, μM, σM .* σx .+ μx, 0.5 * σx.^2)
-end
 
 # Compute Hansen Scheinkmann decomposition M = e^{ηt}f(x_t)W_t
 function hansen_scheinkman(𝔸::InfinitesimalGenerator)
