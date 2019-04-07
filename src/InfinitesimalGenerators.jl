@@ -181,11 +181,8 @@ u_t = (I - 𝔸dt) \ (u_{t+1} + f dt)
 ========================================================================================#
 
 function feynman_kac_forward(𝔸::AbstractMatrix; 
-	t::AbstractVector = range(0, 100, step = 1/12), 
-	ψ::AbstractVector = ones(size(𝔸, 1)), 
-	f::AbstractVector = zeros(size(𝔸, 1)), 
-	V::AbstractVector = zeros(size(𝔸, 1)))
-    u = feynman_kac_backward(𝔸; ψ = ψ, t = - reverse(t), f = f, V = V)
+	t::AbstractVector = range(0, 100, step = 1/12), kwargs...)
+    u = feynman_kac_backward(𝔸; t = - reverse(t), kwargs...)
     return u[:,end:-1:1]
 end
 
