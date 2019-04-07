@@ -4,29 +4,6 @@ using LinearAlgebra, BandedMatrices, KrylovKit
 
 #========================================================================================
 
-Define Type
-
-========================================================================================#
-
-#struct InfinitesimalGenerator{T, CONTAINER, RAXIS} <: BandedMatrices.AbstractBandedMatrix{T}
-#    B::BandedMatrix{T, CONTAINER, RAXIS}
-#end
-#Lazy.@forward InfinitesimalGenerator.B Base.axes, Base.size, Base.getindex, Base.setindex!, Base.copy
-#Base.convert(::Type{T}, 𝔸::InfinitesimalGenerator) where {T <: BandedMatrix}= convert(T, 𝔸.B)
-#import Base.+
-#(+)(x::InfinitesimalGenerator, y::InfinitesimalGenerator) =  InfinitesimalGenerator(x.B + y.B)
-#
-#
-#Lazy.@forward InfinitesimalGenerator.B LinearAlgebra.svdvals!, LinearAlgebra.factorize
-#Lazy.@forward InfinitesimalGenerator.B SparseArrays.sparse
-#Lazy.@forward InfinitesimalGenerator.B BandedMatrices.bandeddata, BandedMatrices.bandwidths, BandedMatrices.#data_colrange, BandedMatrices.data_rowrange,  BandedMatrices.MemoryLayout
-#@inline BandedMatrices.inbands_getindex(𝔸::InfinitesimalGenerator, u::Integer, k::Integer, j::Integer) = #BandedMatrices.inbands_getindex(𝔸.B, u, k, j)
-#@inline BandedMatrices.inbands_getindex(𝔸::InfinitesimalGenerator, k::Integer, j::Integer) = BandedMatrices.inbands_getindex(𝔸.B, k, j)
-
-
-
-#========================================================================================
-
 Compute the operator
 𝔸f = v_0 * f + v1 * ∂(f) + v2 * ∂∂(f)
 Note that
