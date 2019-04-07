@@ -7,8 +7,7 @@ For a diffusive process
 - `generator(x, μx, σx)` returns the infinitesimal generator of `x` <img src="img/generator.png" height ="50%" width = "50%">
 
 - `stationary_distribution(x, μx, σx)` returns the stationary distribution of `x`, i.e. the solution of <img src="img/stationary.png" height ="35%" width = "35%">
-- `feynman_kac_forward(x, μx, σx; t, ψ, f, V)`	returns <br>
-<img src="img/feynman_kac.png" height ="60%" width = "60%">
+- `feynman_kac_forward(x, μx, σx; t, ψ, f, V)`	returns <img src="img/feynman_kac.png" height ="60%" width = "60%">
 
 ## Multiplicative Functional
 For an associated multiplicative functional
