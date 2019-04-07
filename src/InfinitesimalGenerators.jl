@@ -4,12 +4,22 @@ using LinearAlgebra, SparseArrays, Lazy, BandedMatrices, KrylovKit
 struct InfinitesimalGenerator{T, CONTAINER, RAXIS} <: BandedMatrices.AbstractBandedMatrix{T}
     B::BandedMatrix{T, CONTAINER, RAXIS}
 end
-Lazy.@forward InfinitesimalGenerator.B Base.axes, Base.size, Base.getindex, Base.setindex!, LinearAlgebra.svdvals!, LinearAlgebra.factorize, SparseArrays.sparse, BandedMatrices.bandeddata, BandedMatrices.bandwidths, BandedMatrices.data_colrange, BandedMatrices.data_rowrange,  BandedMatrices.MemoryLayout, Base.copy
-
-@inline inbands_getindex(𝔸::InfinitesimalGenerator, u::Integer, k::Integer, j::Integer) = BandedMatrices.inbands_getindex(𝔸.B, u, k, j)
-@inline inbands_getindex(𝔸::InfinitesimalGenerator, k::Integer, j::Integer) = BandedMatrices.inbands_getindex(𝔸.B, k, j)
+Lazy.@forward InfinitesimalGenerator.B Base.axes, Base.size, Base.getindex, Base.setindex!, Base.copy
 Base.convert(::Type{T}, 𝔸::InfinitesimalGenerator) where {T <: BandedMatrix}= convert(T, 𝔸.B)
-convert(::Type{InfinitesimalGenerator{U, V, C}}, M) where {U, V, C} = convert(BandedMatrix{U, V, C}, M)
+import Base.+
+(+)(x::InfinitesimalGenerator, y::InfinitesimalGenerator) =  InfinitesimalGenerator(x.B + y.B)
+(+)(x::InfinitesimalGenerator, y::UniformScaling) =  InfinitesimalGenerator(x.B + y)
+(+)(x::InfinitesimalGenerator, y::Diagonal) =  InfinitesimalGenerator(x.B + y)
+(+)(x::UniformScaling, y::InfinitesimalGenerator) =  InfinitesimalGenerator(x + y.B)
+(+)(x::Diagonal, y::InfinitesimalGenerator) =  InfinitesimalGenerator(x + y.B)
+
+Lazy.@forward InfinitesimalGenerator.B LinearAlgebra.svdvals!, LinearAlgebra.factorize
+
+Lazy.@forward InfinitesimalGenerator.B SparseArrays.sparse
+
+Lazy.@forward InfinitesimalGenerator.B BandedMatrices.bandeddata, BandedMatrices.bandwidths, BandedMatrices.data_colrange, BandedMatrices.data_rowrange,  BandedMatrices.MemoryLayout
+@inline BandedMatrices.inbands_getindex(𝔸::InfinitesimalGenerator, u::Integer, k::Integer, j::Integer) = BandedMatrices.inbands_getindex(𝔸.B, u, k, j)
+@inline BandedMatrices.inbands_getindex(𝔸::InfinitesimalGenerator, k::Integer, j::Integer) = BandedMatrices.inbands_getindex(𝔸.B, k, j)
 
 
 

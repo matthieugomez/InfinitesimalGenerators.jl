@@ -3,9 +3,9 @@ using InfinitesimalGenerators, Test, BandedMatrices, Statistics, LinearAlgebra, 
 
 B = BandedMatrix(-1=> 1:5, 2=>1:3)
 A = InfinitesimalGenerator(B)
-@test isa(A + A, BandedMatrix)
+@test isa(A + A, InfinitesimalGenerator)
+@test isa(A + I, InfinitesimalGenerator)
 @test isa(A * A, BandedMatrix)
-@test isa(A + I, BandedMatrix)
 
 
 ##  Ornstein–Uhlenbeck
