@@ -13,7 +13,7 @@ For a diffusive process
 For an associated multiplicative functional
 <img src="img/dM.png" height ="40%" width = "40%">
 - `generator(x, μx, σx, μM, σM)` returns the tilted infinitesimal generator 𝔸: <br> <img src="img/generator_tilted.png" height ="70%" width = "70%">
-- `hansen_scheinkman_decomposition(x, μx, σx, μM, σM)` returns the Hansen-Scheinkman decomposition of `M`.
+- `hansen_scheinkman_decomposition(x, μx, σx, μM, σM)` returns the Hansen-Scheinkman decomposition of `M`, i.e. the principal eigenvectors and the principal eigenvalue of 𝔸:
 - `feynman_kac_forward(x, μx, σx, μM, σM; t, ψ)` returns  <img src="img/feynman_kac_tilded.png" height ="22%" width = "22%">
 - `impulse_response(x, μx, σx, μM, σM; t, σD)` returns  `σD(x) * (σM + σE[M_T | X_0 = x])`.
 
