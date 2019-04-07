@@ -4,7 +4,7 @@ using InfinitesimalGenerators, Test, BandedMatrices, Statistics, LinearAlgebra, 
 B = BandedMatrix(-1=> 1:5, 2=>1:3)
 A = InfinitesimalGenerator(B)
 @test isa(A + A, InfinitesimalGenerator)
-@test isa(A + I, InfinitesimalGenerator)
+@test isa(A + I, BandedMatrix)
 @test isa(A * A, BandedMatrix)
 
 
@@ -26,7 +26,6 @@ g = stationary_distribution(𝔸)
 t = range(0, stop = 100, step = 1/10)
 u = feynman_kac_forward(𝔸; t = t, ψ = ψ)
 # Check results using exponential integrator. I could also use KrylovKit.exponentiate
-𝔸 = generator(x, μx, σx)
 @test maximum(abs, u[:, 50] .- expmv(t[50], 𝔸, ψ)) <= 1e-3
 @test maximum(abs, u[:, 200] .- expmv(t[200], 𝔸, ψ)) <= 1e-3
 @test maximum(abs, u[:, end] .- expmv(t[end], 𝔸, ψ)) <= 1e-5
