@@ -2,7 +2,7 @@
 
 
 ## Markov Process
-For a diffusive process
+For a diffusive process <br>
 	<img src="img/dx.png" height ="30%" width = "30%">
 - `generator(x, μx, σx)` returns the infinitesimal generator of `x` <img src="img/generator.png" height ="50%" width = "50%">
 
