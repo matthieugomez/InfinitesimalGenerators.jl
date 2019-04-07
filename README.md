@@ -2,15 +2,16 @@
 
 
 ## Markov Process
-For a diffusive process `dx = μx(x)dt + σx(dZ_t)`
-- `generator(x, μx, σx)` returns the infinitesimal generator of `x`.
+For a diffusive process <img src="img/dx.png">
+- `generator(x, μx, σx)` returns the infinitesimal generator of `x` <img src="img/generator.png">
+
 - `stationary_distribution(x, μx, σx)` returns the stationary distribution of `x`.
-- `feynman_kac_forward(x, μx, σx; t, ψ, f, V)`	returns `E[∫0^t e^{-∫0^s V(x_τ)dτ}f(x_s)ds + e^{-∫0^t V(x_τ)dτ}ψ(x_t)|x_0 = x]`. 
+- `feynman_kac_forward(x, μx, σx; t, ψ, f, V)`	returns <img src="img/feynman_kac.png">
 
 ## Multiplicative Functional
-For a diffusive process `dx = μx(x)dt + σx(dZ_t)` and an associated multiplicative functional `dM/M = μM(x)dt + σM(dZ_t)`
-- `generator(x, μx, σx, μM, σM)` returns the infinitesimal generator of `x` tilded by `M`. 
+For an associated multiplicative functional <img src="img/dM.png">
+- `generator(x, μx, σx, μM, σM)` returns the infinitesimal generator of `x` tilted by `M` <img src="img/generator_tilted.png">
 - `hansen_scheinkman_decomposition(x, μx, σx, μM, σM)` returns the Hansen-Scheinkman decomposition of `M`.
-- `feynman_kac_forward(x, μx, σx, μM, σM; t, ψ)` returns  `E[M_tψ(x_t)|x_0 = x]`.
+- `feynman_kac_forward(x, μx, σx, μM, σM; t, ψ)` returns  <img src="img/feynman_kac_tilded.png">
 - `impulse_response(x, μx, σx, μM, σM; t, σD)` returns  `σD(x) * (σM + σE[M_T | X_0 = x])`.
 
