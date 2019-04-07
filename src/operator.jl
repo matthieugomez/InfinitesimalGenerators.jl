@@ -86,7 +86,7 @@ function principal_eigenvalue(T; method = :krylov, eigenvector = :right)
     return clean_density(vl), clean_eigenvalue(η), clean_f(vr)
 end
 
-# I could also use Arpack.eigs but it seems less fast in my trials
+# I could also use Arpack.eigs but it seems slower
 function principal_eigenvalue_krylov(T; eigenvector = :right)
     vl, η, vr = nothing, nothing, nothing
     if eigenvector ∈ (:right, :both)
