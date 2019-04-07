@@ -8,10 +8,7 @@ Lazy.@forward InfinitesimalGenerator.B Base.axes, Base.size, Base.getindex, Base
 Base.convert(::Type{T}, 𝔸::InfinitesimalGenerator) where {T <: BandedMatrix}= convert(T, 𝔸.B)
 import Base.+
 (+)(x::InfinitesimalGenerator, y::InfinitesimalGenerator) =  InfinitesimalGenerator(x.B + y.B)
-(+)(x::InfinitesimalGenerator, y::UniformScaling) =  InfinitesimalGenerator(x.B + y)
-(+)(x::InfinitesimalGenerator, y::Diagonal) =  InfinitesimalGenerator(x.B + y)
-(+)(x::UniformScaling, y::InfinitesimalGenerator) =  InfinitesimalGenerator(x + y.B)
-(+)(x::Diagonal, y::InfinitesimalGenerator) =  InfinitesimalGenerator(x + y.B)
+
 
 Lazy.@forward InfinitesimalGenerator.B LinearAlgebra.svdvals!, LinearAlgebra.factorize
 
