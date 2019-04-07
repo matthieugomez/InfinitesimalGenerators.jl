@@ -12,7 +12,7 @@ For a diffusive process
 ## Multiplicative Functional
 For an associated multiplicative functional
 <img src="img/dM.png" height ="40%" width = "40%">
-- `generator(x, μx, σx, μM, σM)` returns the infinitesimal generator tilted by `M` <br> <img src="img/generator_tilted.png" height ="70%" width = "70%">
+- `generator(x, μx, σx, μM, σM)` returns the tilted infinitesimal generator 𝔸: <br> <img src="img/generator_tilted.png" height ="70%" width = "70%">
 - `hansen_scheinkman_decomposition(x, μx, σx, μM, σM)` returns the Hansen-Scheinkman decomposition of `M`.
 - `feynman_kac_forward(x, μx, σx, μM, σM; t, ψ)` returns  <img src="img/feynman_kac_tilded.png" height ="22%" width = "22%">
 - `impulse_response(x, μx, σx, μM, σM; t, σD)` returns  `σD(x) * (σM + σE[M_T | X_0 = x])`.
