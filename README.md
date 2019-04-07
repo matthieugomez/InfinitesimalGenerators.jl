@@ -15,7 +15,7 @@ For an infinitesimal generator 𝔸:
 - `feynman_kac_backward(𝔸,  t, ψ, f, V)` returns the solution of the PDE `u_t(x, t) + 𝔸 u  - V(x, t) u + f(x, t) = 0` with `u(x, T) = ψ(x)`
 
 ## Convenience Functions
-In addition, the package provides the following convenience functions, which simply apply the tools above to particular generators:
+In addition, the package provides the following convenience functions, obtained by applying the functions above to particular generators:
 - `stationary_distribution(x, μx, σx)` returns the stationary distribution of `x`
 - `hansen_scheinkman_decomposition(x, μx, σx, μM, σM)` returns the [Hansen-Scheinkman decomposition](https://www.nber.org/papers/w12650) of `M`
 - `feynman_kac_forward(x, μx, σx; t, ψ, f, V)`	returns <img src="img/feynman_kac.png" height ="60%" width = "60%">
