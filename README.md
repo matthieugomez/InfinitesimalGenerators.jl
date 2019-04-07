@@ -10,7 +10,8 @@ For a diffusive process
 - `feynman_kac_forward(x, μx, σx; t, ψ, f, V)`	returns <img src="img/feynman_kac.png" height ="60%" width = "60%">
 
 ## Multiplicative Functional
-For an associated multiplicative functional
+For a diffusive process
+	<img src="img/dx.png" height ="30%" width = "30%"> and an associated multiplicative functional
 <img src="img/dM.png" height ="40%" width = "40%">
 - `generator(x, μx, σx, μM, σM)` returns the infinitesimal generator of `x` tilted by `M` <img src="img/generator_tilted.png" height ="70%" width = "70%">
 - `hansen_scheinkman_decomposition(x, μx, σx, μM, σM)` returns the Hansen-Scheinkman decomposition of `M`.
