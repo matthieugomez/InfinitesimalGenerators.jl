@@ -4,9 +4,9 @@
 
 
 ## Create Infinitesimal Generators
-- `generator(x, μx, σx)` returns the infinitesimal generator 𝔸 associated with the Markov process x: <br>
+- `generator(x, μx, σx)` returns the infinitesimal generator 𝔸 associated with a Markov process: <br>
 	<img src="img/dx.png" height ="30%" width = "30%">: <br> <img src="img/generator.png" height ="60%" width = "60%"> <br clear="all" />
--  `generator(x, μx, σx, μM, σM)` returns the tilted infinitesimal generator 𝔸 associated with the multiplicative functional M: <br>
+-  `generator(x, μx, σx, μM, σM)` returns the tilted infinitesimal generator 𝔸 associated with a multiplicative functional: <br>
 	<img src="img/dM.png" height ="40%" width = "40%">: <br> <img src="img/generator_tilted.png" height ="80%" width = "80%"> <br clear="all" />
 
 ## General Tools
