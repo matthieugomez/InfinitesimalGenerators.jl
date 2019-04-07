@@ -18,5 +18,5 @@ For an associated multiplicative functional
 - `impulse_response(x, μx, σx, μM, σM; t, σD)` returns  `σD(x) * (σM + σE[M_T | X_0 = x])`.
 
 ## Related Packages
-- This package relies on [BandedMatrices.jl](https://github.com/JuliaMatrices/BandedMatrices.jl) to represent infinitesimal generators as matrices, and [KrylovKit.jl](https://github.com/Jutho/KrylovKit.jl) to solve for the principal eigenvalues.
+- This package relies on [BandedMatrices.jl](https://github.com/JuliaMatrices/BandedMatrices.jl) to represent infinitesimal generators as matrices, as well as [KrylovKit.jl](https://github.com/Jutho/KrylovKit.jl) to solve for the principal eigenvalue/eigenvector.
 - This package is related to [DiffEqOperators.jl](https://github.com/JuliaDiffEq/DiffEqOperators.jl), which contains more general tools to solve differential equations.
