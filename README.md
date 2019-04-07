@@ -6,7 +6,7 @@ For a diffusive process
 	<img src="img/dx.png" height ="30%" width = "30%">
 - `generator(x, μx, σx)` returns the infinitesimal generator 𝔸: <br> <img src="img/generator.png" height ="50%" width = "50%">
 
-- `stationary_distribution(x, μx, σx)` returns the stationary distribution of `x`, defined as the left principal eigenvector of the infinitesimal generator  𝔸 <br> <img src="img/stationary.png" height ="35%" width = "35%">
+- `stationary_distribution(x, μx, σx)` returns the stationary distribution of `x`, i.e. the left principal eigenvector of  𝔸 <br> <img src="img/stationary.png" height ="35%" width = "35%">
 - `feynman_kac_forward(x, μx, σx; t, ψ, f, V)`	returns <img src="img/feynman_kac.png" height ="60%" width = "60%">
 
 ## Multiplicative Functional
