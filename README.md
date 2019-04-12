@@ -23,5 +23,5 @@ In addition, the package provides the following convenience functions, obtained 
 
 
 ## Related Packages
-- This package relies [BandedMatrices.jl](https://github.com/JuliaMatrices/BandedMatrices.jl) to represent infinitesimal generators efficiently. The principal eigenvalue of infinitesimal generators is found using [KrylovKit.jl](https://github.com/Jutho/KrylovKit.jl)
-- This package is related to [DiffEqOperators.jl](https://github.com/JuliaDiffEq/DiffEqOperators.jl), which contains more general tools to solve differential equations.
+- The principal eigenvalue of infinitesimal generators is found using [KrylovKit.jl](https://github.com/Jutho/KrylovKit.jl)
+- [https://github.com/QuantEcon/SimpleDifferentialOperators.jl](https://github.com/QuantEcon/SimpleDifferentialOperators.jl) contains more general tools to define operators with different boundary counditions.

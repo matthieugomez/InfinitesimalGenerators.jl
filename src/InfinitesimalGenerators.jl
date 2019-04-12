@@ -12,7 +12,7 @@ Note that
 ========================================================================================#
 
 function operator(x::AbstractVector, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
-    𝔸 = BandedMatrix(Zeros(length(x), length(x)), (1, 1))
+    𝔸 = Tridiagonal(zeros(length(x)-1), zeros(length(x)), zeros(length(x)-1))
     operator!(𝔸, make_Δ(x), v0, v1, v2)
 end
 
@@ -232,13 +232,20 @@ dM/M = μM dt + σM dZt
 ========================================================================================#
 
 # Compute generator 𝔸f = E[d(Mf(x))]
-function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector)
-    operator(x, μM, σM .* σx .+ μx, 0.5 * σx.^2)
+function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector; symmetrize = false)
+    𝔸 = operator(x, μM, σM .* σx .+ μx, 0.5 * σx.^2)
+    if symmetrize
+        g = stationary_distribution(x, μx, σx)
+        𝔸 = Symmetric(Diagonal(sqrt.(g))' * 𝔸 * Diagonal(1 ./ sqrt.(g)))
+    end
+    return 𝔸
 end
 
+
+
 # Compute Hansen Scheinkmann decomposition M_t= e^{ηt}f(x_t)W_t
-function hansen_scheinkman(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector)
-	principal_eigenvalue(generator(x, μx, σx, μM, σM); eigenvector = :right)[2:3]
+function hansen_scheinkman(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector; symmetrize = false)
+    principal_eigenvalue(generator(x, μx, σx, μM, σM; symmetrize = symmetrize); eigenvector = :right)[2:3]
 end
 
 # Compute E[M_t ψ(x_t)|x_0 = x]
