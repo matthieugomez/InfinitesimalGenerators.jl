@@ -4,7 +4,7 @@ using InfinitesimalGenerators, Test, BandedMatrices, Statistics, LinearAlgebra, 
 ##  Ornstein–Uhlenbeck
 κx = 0.1
 σ = 0.02
-x = range(- 3 * sqrt(σ^2 /(2 * κx)), stop = 3 * sqrt(σ^2 /(2 * κx)), length = 1000)
+x = range(- 3 * sqrt(σ^2 /(2 * κx)), stop = 3 * sqrt(σ^2 /(2 * κx)), length = 1_000)
 μx = -κx .* x
 σx = σ .* ones(length(x))
 

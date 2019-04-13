@@ -1,192 +1,8 @@
 module InfinitesimalGenerators
 using LinearAlgebra, BandedMatrices, KrylovKit
 
-
-#========================================================================================
-
-Compute the operator
-𝔸f = v_0 * f + v1 * ∂(f) + v2 * ∂∂(f)
-Note that
-𝔸'g = v_0 * g - ∂(v1 * g) + ∂∂(v2 * g)
-
-========================================================================================#
-
-function operator(x::AbstractVector, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
-    𝔸 = Tridiagonal(zeros(length(x)-1), zeros(length(x)), zeros(length(x)-1))
-    operator!(𝔸, make_Δ(x), v0, v1, v2)
-end
-
-function operator!(𝔸::AbstractMatrix, Δ, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
-    x, invΔx, invΔxm, invΔxp = Δ
-    n = length(x)
-    fill!(𝔸, 0.0)
-    # construct matrix T. The key is that sum of each column = 0.0 and off diagonals are positive (singular M-matrix)
-    for i in 1:n
-        if v1[i] >= 0
-            𝔸[i, min(i + 1, n)] += v1[i] * invΔxp[i]
-            𝔸[i, i] -= v1[i] * invΔxp[i]
-        else
-            𝔸[i, i] += v1[i] * invΔxm[i]
-            𝔸[i, max(i - 1, 1)] -= v1[i] * invΔxm[i]
-        end
-        𝔸[i, max(i - 1, 1)] += v2[i] * invΔxm[i] * invΔx[i]
-        𝔸[i, i] -= v2[i] * 2 * invΔxm[i] * invΔxp[i]
-        𝔸[i, min(i + 1, n)] += v2[i] * invΔxp[i] * invΔx[i]
-    end
-    c = sum(𝔸, dims = 2)
-    for i in 1:n
-        𝔸[i, i] += v0[i] - c[i]
-    end
-    return 𝔸
-end
-
-function make_Δ(x)
-    n = length(x)
-    Δxm = zero(x)
-    Δxm[1] = x[2] - x[1]
-    for i in 2:n
-        Δxm[i] = x[i] - x[i-1]
-    end
-    Δxp = zero(x)
-    for i in 1:(n-1)
-        Δxp[i] = x[i+1] - x[i]
-    end
-    Δxp[end] = x[n] - x[n-1]
-    Δx = (Δxm .+ Δxp) / 2
-    return x, 1 ./ Δx, 1 ./ Δxm, 1 ./ Δxp
-end
-
-#========================================================================================
-
-Compute the principal eigenvector and eigenvalue of 𝔸
-
-========================================================================================#
-function principal_eigenvalue(𝔸::AbstractMatrix; method = :krylov, eigenvector = :right)
-    η = nothing
-    if method == :krylov
-        g, η, f = principal_eigenvalue_krylov(𝔸; eigenvector = eigenvector)
-        if η == nothing
-            @warn "Krylov Methods Failed"
-        end
-    end
-    if η == nothing
-        g, η, f = principal_eigenvalue_BLAS(convert(Matrix{Float64}, 𝔸); eigenvector = eigenvector)
-    end
-    return clean_eigenvector_left(g), clean_eigenvalue(η), clean_eigenvector_right(f)
-end
-
-# I could also use Arpack.eigs but it seems slower
-function principal_eigenvalue_krylov(𝔸::AbstractMatrix; eigenvector = :right)
-    g, η, f = nothing, nothing, nothing
-    if eigenvector ∈ (:right, :both)
-        vals, vecs, info = KrylovKit.eigsolve(𝔸, 1, :LR, maxiter = size(𝔸, 1))
-        if info.converged > 0
-            η = vals[1]
-            f = vecs[1]
-        end
-    end
-    if eigenvector ∈ (:left, :both)
-        vals, vecs, info = KrylovKit.eigsolve(adjoint(𝔸), 1, :LR, maxiter = size(𝔸, 1))
-        if info.converged > 0
-            η = vals[1]
-            g = vecs[1]
-        end
-    end 
-    return g, η, f
-end
-
-function principal_eigenvalue_BLAS(𝔸::AbstractMatrix; eigenvector = :right)
-    g, η, f = nothing, nothing, nothing
-    if eigenvector ∈ (:right, :both)
-        e = eigen(𝔸)
-        _, out = findmax(real.(e.values))
-        η = e.values[out]
-        f = e.vectors[:, out]
-    end
-    if eigenvector ∈ (:left, :both)
-        e = eigen(copy(adjoint(𝔸)))
-        _, out = findmax(real.(e.values))
-        η = e.values[out]
-        g = e.vectors[:, out]
-    end 
-    return g, η, f
-end
-
-clean_eigenvalue(η::Union{Nothing, Real}) = η
-function clean_eigenvalue(η::Complex)
-    if abs(imag(η) .>= eps())
-        @warn "Principal Eigenvalue has some imaginary part $(η)"
-    end
-    real(η)
-end
-
-clean_eigenvector_left(::Nothing) = nothing
-clean_eigenvector_left(g::Vector) = abs.(g) ./ sum(abs.(g))
-
-clean_eigenvector_right(::Nothing) = nothing
-clean_eigenvector_right(f::Vector) = abs.(f)
-
-#========================================================================================
-Solve the PDE backward in time
-u(x, T) = ψ(x)
-0 = u_t + 𝔸u_t - V(x, t)u +  f(x, t)
-
-using an implicit finite difference scheme, that is
-u_T = ψ
-u_t = (I - 𝔸dt) \ (u_{t+1} + f dt)
-========================================================================================#
-
-function feynman_kac_backward(𝔸::AbstractMatrix; 
-	t::AbstractVector = range(0, 100, step = 1/12), 
-	ψ::AbstractVector = ones(size(𝔸, 1)), 
-	f::Union{AbstractVector, AbstractMatrix} = zeros(size(𝔸, 1)), 
-	V::Union{AbstractVector, AbstractMatrix} = zeros(size(𝔸, 1)))
-    u = zeros(size(𝔸, 1), length(t))
-    u[:, length(t)] = ψ
-    if isa(f, AbstractVector) && isa(V, AbstractVector)
-        if isa(t, AbstractRange)
-            dt = step(t)
-            𝔹 = factorize(I + Diagonal(V) * dt - 𝔸 * dt)
-            for i in (length(t)-1):(-1):1
-                ψ = ldiv!(𝔹, u[:, i+1] .+ f .* dt)
-                u[:, i] .= ψ
-            end
-        else
-            for i in (length(t)-1):(-1):1
-                dt = t[i+1] - t[i]
-                𝔹 = I + Diagonal(V) * dt - 𝔸 * dt
-                ψ = 𝔹 \  (u[:, i+1] .+ f .* dt)
-                u[:, i] .= ψ
-            end
-        end
-    elseif isa(f, AbstractMatrix) && isa(V, AbstractMatrix)
-        for i in (length(t)-1):(-1):1
-            dt = t[i+1] - t[i]
-            𝔹 = I + Diagonal(V[:, i]) * dt - 𝔸 * dt
-            ψ = 𝔹 \ (u[:, i+1] .+ f[:, i] .* dt)
-            u[:, i] .= ψ
-        end
-    else
-        error("f and V must be Vectors or Matrices")
-    end
-    return u
-end
-
-#========================================================================================
-Solve the PDE forward in time
-u(x, 0) = ψ(x)
-u_t = 𝔸u - V(x)u + f(x)
-
-using implicit finite difference scheme, that is
-u_0 = ψ
-u_t = (I - 𝔸dt) \ (u_{t+1} + f dt)
-========================================================================================#
-
-function feynman_kac_forward(𝔸::AbstractMatrix; 
-	t::AbstractVector = range(0, 100, step = 1/12), kwargs...)
-    u = feynman_kac_backward(𝔸; t = - reverse(t), kwargs...)
-    return u[:,end:-1:1]
-end
+include("operators.jl")
+include("feynman_kac.jl")
 
 #========================================================================================
 
@@ -241,8 +57,6 @@ function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, 
     return 𝔸
 end
 
-
-
 # Compute Hansen Scheinkmann decomposition M_t= e^{ηt}f(x_t)W_t
 function hansen_scheinkman(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector; symmetrize = false)
     principal_eigenvalue(generator(x, μx, σx, μM, σM; symmetrize = symmetrize); eigenvector = :right)[2:3]
@@ -253,15 +67,43 @@ function feynman_kac_forward(x::AbstractVector, μx::AbstractVector, σx::Abstra
     feynman_kac_forward(generator(x, μx, σx, μM, σM); kwargs...)
 end
 
+# Compute tail index of the process M given by
+# dM/M = μ dt + σ dW_t
+# with death rate δ
+function tail_index(μ, σ, δ = 0)
+    if σ > 0
+        (1 - 2 * μ / σ^2 + sqrt((1- 2 * μ / σ^2)^2 + 8 * δ / σ^2)) / 2
+    else
+        δ / μ
+    end
+end
+
+
+
+# Compute tail index of the process M given by
+# dM/M = μM(x) dt + νM(x) dW_t
+# dx = μ(x) dt + σ(x) dW_t
+# with death rate δ
+function tail_index(x, μx, σx, μM, σM, δ = 0.0)
+    ζ = find_zero(ξ -> hansen_scheinkman(x, μx, σx, ξ .* μM .+ 0.5 * ξ * (ξ - 1) .* σM.^2 .- δ, ξ .* σM)[1], (1e-6, 10.0))
+    out = hansen_scheinkman(x, μx, σx, ζ .* μM .+ 0.5 * ζ * (ζ - 1) .* σM.^2, ζ .* σM)
+    (abs(out) > 1e-3) && @warn "could not find zero power law"
+    return ζ
+end
+
+
 ##############################################################################
 ##
 ## Exported methods and types 
 ##
 ##############################################################################
-export generator,
+
+export 
+generator,
 principal_eigenvalue,
 feynman_kac_backward,
 feynman_kac_forward,
 stationary_distribution,
-hansen_scheinkman
+hansen_scheinkman,
+tail_index
 end
