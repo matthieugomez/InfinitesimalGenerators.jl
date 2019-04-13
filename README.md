@@ -5,9 +5,9 @@
 
 ### Create Infinitesimal Generators
 - `generator(x, μx, σx)` returns the infinitesimal generator 𝔸 associated with a Markov process: <br>
-	<img src="img/dx.png" height ="30%" width = "30%">: <br> <img src="img/generator.png" height ="60%" width = "60%"> <br clear="all" />
+	<img src="img/dx.png" height ="25%" width = "25%">: <br> <img src="img/generator.png" height ="40%" width = "40%"> <br clear="all" />
 -  `generator(x, μx, σx, μM, σM)` returns the tilted infinitesimal generator 𝔸 associated with a multiplicative functional: <br>
-	<img src="img/dM.png" height ="40%" width = "40%">: <br> <img src="img/generator_tilted.png" height ="80%" width = "80%"> <br clear="all" />
+	<img src="img/dM.png" height ="30%" width = "30%">: <br> <img src="img/generator_tilted.png" height ="60%" width = "80%"> <br clear="all" />
 
 ### Work with Infinitesimal Generators
 For an infinitesimal generator 𝔸:
@@ -18,8 +18,8 @@ For an infinitesimal generator 𝔸:
 In addition, the package provides the following convenience functions, obtained by applying the functions above to particular generators:
 - `stationary_distribution(x, μx, σx)` returns the stationary distribution of `x`
 - `hansen_scheinkman_decomposition(x, μx, σx, μM, σM)` returns the [Hansen-Scheinkman decomposition](https://www.nber.org/papers/w12650) of `M`
-- `feynman_kac_forward(x, μx, σx; t, ψ, f, V)`	returns <img src="img/feynman_kac.png" height ="60%" width = "60%">
-- `feynman_kac_forward(x, μx, σx, μM, σM; t, ψ)` returns  <img src="img/feynman_kac_tilded.png" height ="22%" width = "22%">
+- `feynman_kac_forward(x, μx, σx; t, ψ, f, V)`	returns <img src="img/feynman_kac.png" height ="45%" width = "45%">
+- `feynman_kac_forward(x, μx, σx, μM, σM; t, ψ)` returns  <img src="img/feynman_kac_tilded.png" height ="22%" width = "15%">
 - `tail_index(x, μx, σx, μM, σM)` returns the tail index of the process `M`.
 
 
