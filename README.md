@@ -9,7 +9,7 @@
 -  `generator(x, μx, σx, μM, σM)` returns the tilted infinitesimal generator 𝔸 associated with a multiplicative functional: <br>
 	<img src="img/dM.png" height ="40%" width = "40%">: <br> <img src="img/generator_tilted.png" height ="80%" width = "80%"> <br clear="all" />
 
-### General Tools
+### Work with Infinitesimal Generators
 For an infinitesimal generator 𝔸:
 - `principal_eigenvalue(𝔸)` returns a the principal eigenvalue of the matrix `𝔸`, its left eigenvector, and its right eigenvector
 - `feynman_kac_backward(𝔸,  t, ψ, f, V)` returns the solution of the PDE `u_t(x, t) + 𝔸 u  - V(x, t) u + f(x, t) = 0` with `u(x, T) = ψ(x)`
