@@ -1,4 +1,4 @@
-using InfinitesimalGenerators, Test, BandedMatrices, Statistics, LinearAlgebra,  Expokit
+using InfinitesimalGenerators, Test, Statistics, LinearAlgebra,  Expokit
 
 
 ##  Ornstein–Uhlenbeck
