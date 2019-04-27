@@ -118,7 +118,9 @@ function clean_eigenvalue(η::Complex)
 end
 
 clean_eigenvector_left(::Nothing) = nothing
-clean_eigenvector_left(g::Vector) = abs.(g) ./ sum(abs.(g))
+function clean_eigenvector_left(g::Vector)
+    abs.(g) ./ sum(abs.(g))
+end
 
 clean_eigenvector_right(::Nothing) = nothing
-clean_eigenvector_right(f::Vector) = abs.(f)
+clean_eigenvector_right(f::Vector) = abs.(f) / sum(abs.(f)) .* length(f)
