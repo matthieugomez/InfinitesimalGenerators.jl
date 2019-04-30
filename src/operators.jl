@@ -58,6 +58,9 @@ end
 Compute the principal eigenvector and eigenvalue of 𝔸
 
 ========================================================================================#
+
+
+
 function principal_eigenvalue(𝔸::AbstractMatrix; method = :krylov, eigenvector = :right)
     η = nothing
     if method == :krylov
@@ -67,9 +70,9 @@ function principal_eigenvalue(𝔸::AbstractMatrix; method = :krylov, eigenvecto
         end
     end
     if η == nothing
-        g, η, f = principal_eigenvalue_BLAS(convert(Matrix{Float64}, 𝔸); eigenvector = eigenvector)
+        g, η, f = principal_eigenvalue_BLAS(𝔸; eigenvector = eigenvector)
     end
-    return clean_eigenvector_left(g), clean_eigenvalue(η), clean_eigenvector_right(f)
+    return g, η, f
 end
 
 # I could also use Arpack.eigs but it seems slower
@@ -89,7 +92,7 @@ function principal_eigenvalue_krylov(𝔸::AbstractMatrix; eigenvector = :right)
             g = vecs[1]
         end
     end 
-    return g, η, f
+    return clean_eigenvector_left(g), clean_eigenvalue(η), clean_eigenvector_right(f)
 end
 
 function principal_eigenvalue_BLAS(𝔸::AbstractMatrix; eigenvector = :right)
@@ -106,7 +109,7 @@ function principal_eigenvalue_BLAS(𝔸::AbstractMatrix; eigenvector = :right)
         η = e.values[out]
         g = e.vectors[:, out]
     end 
-    return g, η, f
+    return clean_eigenvector_left(g), clean_eigenvalue(η), clean_eigenvector_right(f)
 end
 
 clean_eigenvalue(η::Union{Nothing, Real}) = η

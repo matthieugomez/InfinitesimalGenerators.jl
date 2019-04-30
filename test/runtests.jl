@@ -39,6 +39,14 @@ u = feynman_kac_forward(x, μx, σx, μM, σM; t = t)
 @test log.(stationary_distribution(x, μx, σx)' * u[:, end]) ./ t[end] ≈ η atol = 1e-2
 
 
+## test left and right eigenvector
+μM = x
+σM = 0.01 * ones(length(x))
+g, η, f = hansen_scheinkman(x, μx, σx, μM, σM; eigenvector = :both)
+ψ = stationary_distribution(x, μx .+ σM .* σx, σx)
+@test (f .* ψ) ./sum(f .* ψ) ≈ g
+
+
 
 ## test left and right eigenvector
 κx = 0.1
@@ -48,12 +56,13 @@ x = range(- 3 * sqrt(σ^2 /(2 * κx)), stop = 3 * sqrt(σ^2 /(2 * κx)), length 
 σx = σ .* ones(length(x))
 μM = -0.01 .+ x
 σM = 0.1 .* ones(length(x))
-ρ = 0.0
+ρ = 1.0
 ζ = tail_index(x, μx, σx, μM, σM; ρ = ρ)
-g, _, f = principal_eigenvalue(generator_longrun(x, μx, σx, μM, σM)(ζ); eigenvector = :both)
+g, η, f = principal_eigenvalue(generator_longrun(x, μx, σx, μM, σM; ρ = ρ)(ζ); eigenvector = :both)
+@test η ≈ 0.0 atol = 1e-5
 ψ = stationary_distribution(x, μx .+ ζ .* ρ .* σM .* σx, σx)
-@test (f .* ψ) ./sum(f .* ψ) ≈ g
-plot(x, [ψ g./sum(g) f.*g./sum(f.*g)])
+@test (f .* ψ) ./ sum(f .* ψ) ≈ g atol = 1e-3
+
 
 
 

@@ -53,9 +53,20 @@ function generator(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, �
     return 𝔸
 end
 
+
+
 # Compute Hansen Scheinkmann decomposition M_t= e^{ηt}f(x_t)\hat{M}_t
-function hansen_scheinkman(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; eigenvector = :right)
-    principal_eigenvalue(generator(x, μx, σx, μM, σM); eigenvector = eigenvector)
+function hansen_scheinkman(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; eigenvector = :right, symmetrize = false)
+    if symmetrize
+        𝔸 = generator(x, μx, σx, μM, σM)
+        ψ = stationary_distribution(x, μx .+ σM .* σx, σx)
+        𝔸 = SymTridiagonal(𝔸.d, 0.5 .* 𝔸.du ./ sqrt.(ψ[2:end]) .* sqrt.(ψ[1:(end-1)]) .+ 0.5 .* 𝔸.dl ./ sqrt.(ψ[1:(end-1)]) .* sqrt.(ψ[2:end]))
+        g, η, f = principal_eigenvalue(𝔸; eigenvector = :right, method = :full)
+        return clean_eigenvector_left(f .* sqrt.(ψ)), η, clean_eigenvector_right(f ./ sqrt.(ψ))
+    else
+        g, η, f = principal_eigenvalue(generator(x, μx, σx, μM, σM); eigenvector = eigenvector)
+        return g, η, f
+    end
 end
 
 # Compute E[M_t ψ(x_t)|x_0 = x]
