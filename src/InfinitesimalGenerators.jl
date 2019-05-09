@@ -18,7 +18,7 @@ end
 
 # Stationary Distribution of x
 function stationary_distribution(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number})
-    g, η, _ = principal_eigenvalue(generator(x, μx, σx); eigenvector = :left)
+    g, η, _ = principal_eigenvalue(generator(x, μx, σx); which = :SM, eigenvector = :left)
     abs(η) >= 1e-5 && @warn "Principal Eigenvalue does not seem to be zero"
     return g
 end
@@ -49,13 +49,12 @@ dM/M = μM dt + σM dZt
 
 # Compute generator 𝔸f = E[d(Mf(x))]
 function generator(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number})
-    𝔸 = operator(x, μM, μx .+ σM .* σx, 0.5 * σx.^2)
-    return 𝔸
+    operator(x, μM, μx .+ σM .* σx, 0.5 * σx.^2)
 end
 
 # Compute Hansen Scheinkmann decomposition M_t= e^{ηt}f(x_t)\hat{M}_t
 function hansen_scheinkman(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; eigenvector = :right, symmetrize = false)
-    principal_eigenvalue(generator(x, μx, σx, μM, σM); eigenvector = eigenvector)
+    principal_eigenvalue(generator(x, μx, σx, μM, σM); which = :LR, eigenvector = eigenvector)
 end
 
 # Compute E[M_t ψ(x_t)|x_0 = x]
@@ -100,13 +99,13 @@ end
 
 # Compute ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
 function moment_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
-    ξ -> principal_eigenvalue(generator_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ); eigenvector = :right)[2]
+    ξ -> principal_eigenvalue(generator_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ); which = :SM, eigenvector = :right)[2]
 end
 
 # Compute first derivative of ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
 function ∂moment_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
     return ξ -> begin
-        g, η, f = principal_eigenvalue(generator_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ); eigenvector = :both)
+        g, η, f = principal_eigenvalue(generator_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ); which = :SM, eigenvector = :both)
         ∂𝔸 = operator(x, μM .+ (η - 1/2) .* σM.^2, σM .* ρ .* σx, zeros(length(x)))
         (g' * ∂𝔸 * f) / (g' * f)
     end
