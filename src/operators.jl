@@ -29,7 +29,7 @@ function operator(x::AbstractVector, v0::AbstractVector, v1::AbstractVector, v2:
     for i in 1:n
         𝔸[i, i] += v0[i] - c[i]
     end
-    return deepcopy(𝔸')
+    return Tridiagonal(adjoint(𝔸))
 end
 
 function make_Δ(x)
