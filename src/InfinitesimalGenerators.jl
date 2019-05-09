@@ -1,5 +1,5 @@
 module InfinitesimalGenerators
-using LinearAlgebra, KrylovKit, Roots
+using LinearAlgebra, Arpack, Roots
 
 include("operators.jl")
 include("feynman_kac.jl")
@@ -53,20 +53,9 @@ function generator(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, �
     return 𝔸
 end
 
-
-
 # Compute Hansen Scheinkmann decomposition M_t= e^{ηt}f(x_t)\hat{M}_t
 function hansen_scheinkman(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; eigenvector = :right, symmetrize = false)
-    if symmetrize
-        𝔸 = generator(x, μx, σx, μM, σM)
-        ψ = stationary_distribution(x, μx .+ σM .* σx, σx)
-        𝔸 = SymTridiagonal(𝔸.d, 0.5 .* 𝔸.du ./ sqrt.(ψ[2:end]) .* sqrt.(ψ[1:(end-1)]) .+ 0.5 .* 𝔸.dl ./ sqrt.(ψ[1:(end-1)]) .* sqrt.(ψ[2:end]))
-        g, η, f = principal_eigenvalue(𝔸; eigenvector = :right, method = :full)
-        return clean_eigenvector_left(f .* sqrt.(ψ)), η, clean_eigenvector_right(f ./ sqrt.(ψ))
-    else
-        g, η, f = principal_eigenvalue(generator(x, μx, σx, μM, σM); eigenvector = eigenvector)
-        return g, η, f
-    end
+    principal_eigenvalue(generator(x, μx, σx, μM, σM); eigenvector = eigenvector)
 end
 
 # Compute E[M_t ψ(x_t)|x_0 = x]
@@ -74,20 +63,40 @@ function feynman_kac_forward(x::AbstractVector{<:Number}, μx::AbstractVector{<:
     feynman_kac_forward(generator(x, μx, σx, μM, σM); kwargs...)
 end
 
-#========================================================================================
 
-For a Markov Process x:
-dx = μx dt + σx dZt
-and a multiplicative functional M:
-dM/M = μM dt + σM dZt
+##############################################################################
+##
+## Tail Index
+##
+##############################################################################
 
-========================================================================================#
+
+# Compute tail index of the process M given by
+# dM/M = μ dt + σ dW_t
+# with death rate δ
+function tail_index(μ::Number, σ::Number; δ::Number = 0)
+    if σ > 0
+        (1 - 2 * μ / σ^2 + sqrt((1- 2 * μ / σ^2)^2 + 8 * δ / σ^2)) / 2
+    else
+        δ / μ
+    end
+end
+
+# Compute tail index of the process M given by
+# dM/M = μM(x) dt + σM(x) dZt
+# dx = μx dt + σx dZt
+# with death rate δ
+function tail_index(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
+    ζ = find_zero(moment_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ), (1e-3, 10.0))
+    out = moment_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ζ)
+    (abs(out) > 1e-3) && @warn "could not find zero power law"
+    return ζ
+end
 
 # Compute 𝔸 ->E[d(M_t^ξ f(x))|x_0 = x]]
 function generator_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
     ξ -> operator(x, ξ .* μM .+ 0.5 * ξ * (ξ - 1) .* σM.^2 .- δ,  μx .+ ξ .* σM .* ρ .* σx, 0.5 * σx.^2)
 end
-
 
 # Compute ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
 function moment_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
@@ -102,27 +111,6 @@ function ∂moment_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Nu
         (g' * ∂𝔸 * f) / (g' * f)
     end
 end
-
-
-
-# Compute tail index of the process M given by
-# dM/M = μ dt + σ dW_t
-# with death rate δ
-function tail_index(μ::Number, σ::Number, δ::Number = 0)
-    if σ > 0
-        (1 - 2 * μ / σ^2 + sqrt((1- 2 * μ / σ^2)^2 + 8 * δ / σ^2)) / 2
-    else
-        δ / μ
-    end
-end
-
-function tail_index(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
-    ζ = find_zero(moment_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ), (1e-3, 10.0))
-    out = moment_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ζ)
-    (abs(out) > 1e-3) && @warn "could not find zero power law"
-    return ζ
-end
-
 
 
 
