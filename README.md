@@ -24,5 +24,5 @@ In addition, the package provides the following convenience functions, obtained 
 
 
 ## Related Packages
-- [SimpleDifferentialOperators](https://github.com/QuantEcon/SimpleDifferentialOperators.jl) contains more general tools to define operators with different boundary counditions. In contrast, InfinitesimalGenerators always assumes reflecting boundaries (which is the usual one).
+- [SimpleDifferentialOperators](https://github.com/QuantEcon/SimpleDifferentialOperators.jl) contains more general tools to define operators with different boundary counditions. In contrast, InfinitesimalGenerators always assumes reflecting boundaries.
 - The principal eigenvalue of infinitesimal generators is found using [KrylovKit.jl](https://github.com/Jutho/KrylovKit.jl)
