@@ -62,7 +62,7 @@ Note that, in particular, it is the eigenvalue with largest real part, which mea
 If, moreover, B, is a M-matrix, then all its eigenvalues have positive real part. Therefore, all the eigenvalues of A have negative real part. Therefore, the eigenvalue with largest real part is also the eigenvalue with smallest magnitude.
 
 ========================================================================================#
-function principal_eigenvalue(𝔸::AbstractMatrix; which = :LR, eigenvector = :right)
+function principal_eigenvalue(𝔸::AbstractMatrix; which = :SM, eigenvector = :right)
     g, η, f = nothing, nothing, nothing
     if eigenvector ∈ (:right, :both)
         vals, vecs = Arpack.eigs(𝔸; nev = 1, which = which)
@@ -89,7 +89,8 @@ end
 
 clean_eigenvector_left(::Nothing) = nothing
 function clean_eigenvector_left(g::Vector)
-    abs.(g) ./ sum(abs.(g))
+    g = abs.(g)
+    g ./ sum(g)
 end
 
 clean_eigenvector_right(::Nothing) = nothing

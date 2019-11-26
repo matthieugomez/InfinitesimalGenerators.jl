@@ -28,7 +28,7 @@ function feynman_kac_backward(𝔸::AbstractMatrix;
             for i in (length(t)-1):(-1):1
                 dt = t[i+1] - t[i]
                 𝔹 = I + Diagonal(V) * dt - 𝔸 * dt
-                ψ = 𝔹 \  (u[:, i+1] .+ f .* dt)
+                ψ = 𝔹 \ (u[:, i+1] .+ f .* dt)
                 u[:, i] .= ψ
             end
         end
