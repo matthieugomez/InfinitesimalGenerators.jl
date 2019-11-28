@@ -58,7 +58,7 @@ x = range(- 3 * sqrt(σ^2 /(2 * κx)), stop = 3 * sqrt(σ^2 /(2 * κx)), length 
 σM = 0.1 .* ones(length(x))
 ρ = 1.0
 ζ = tail_index(x, μx, σx, μM, σM; ρ = ρ)
-g, η, f = principal_eigenvalue(generator_longrun(x, μx, σx, μM, σM; ρ = ρ)(ζ); which = :SM, eigenvector = :both)
+g, η, f = principal_eigenvalue(generator_mgf(x, μx, σx, μM, σM; ρ = ρ)(ζ); which = :SM, eigenvector = :both)
 @test η ≈ 0.0 atol = 1e-5
 ψ = stationary_distribution(x, μx .+ ζ .* ρ .* σM .* σx, σx)
 @test (f .* ψ) ./ sum(f .* ψ) ≈ g atol = 1e-3
