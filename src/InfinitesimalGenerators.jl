@@ -122,7 +122,7 @@ principal_eigenvalue,
 feynman_kac_backward,
 feynman_kac_forward,
 stationary_distribution,
-generator_cgf,
+generator_mgf,
 hansen_scheinkman,
 cgf_longrun,
 tail_index
