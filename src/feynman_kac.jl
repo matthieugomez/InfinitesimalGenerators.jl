@@ -19,7 +19,7 @@ function feynman_kac_backward(𝔸::AbstractMatrix;
     if isa(f, AbstractVector) && isa(V, AbstractVector)
         if isa(t, AbstractRange)
             dt = step(t)
-            𝔹 = factorize(I + Diagonal(V) * dt - 𝔸 * dt)
+            𝔹 = factorize(I + (Diagonal(V) - 𝔸) * dt)
             for i in (length(t)-1):(-1):1
                 ψ = ldiv!(𝔹, u[:, i+1] .+ f .* dt)
                 u[:, i] .= ψ
@@ -27,7 +27,7 @@ function feynman_kac_backward(𝔸::AbstractMatrix;
         else
             for i in (length(t)-1):(-1):1
                 dt = t[i+1] - t[i]
-                𝔹 = I + Diagonal(V) * dt - 𝔸 * dt
+                𝔹 = I + (Diagonal(V) - 𝔸) * dt
                 ψ = 𝔹 \ (u[:, i+1] .+ f .* dt)
                 u[:, i] .= ψ
             end
@@ -35,7 +35,7 @@ function feynman_kac_backward(𝔸::AbstractMatrix;
     elseif isa(f, AbstractMatrix) && isa(V, AbstractMatrix)
         for i in (length(t)-1):(-1):1
             dt = t[i+1] - t[i]
-            𝔹 = I + Diagonal(V[:, i]) * dt - 𝔸 * dt
+            𝔹 = I + (Diagonal(view(V, :, i)) - 𝔸) * dt
             ψ = 𝔹 \ (u[:, i+1] .+ f[:, i] .* dt)
             u[:, i] .= ψ
         end

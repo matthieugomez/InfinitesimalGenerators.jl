@@ -77,8 +77,6 @@ function principal_eigenvalue(𝔸::AbstractMatrix; which = :SM, eigenvector = :
     return clean_eigenvector_left(g), clean_eigenvalue(η), clean_eigenvector_right(f)
 end
 
-
-
 clean_eigenvalue(η::Union{Nothing, Real}) = η
 function clean_eigenvalue(η::Complex)
     if abs(imag(η) .>= eps())

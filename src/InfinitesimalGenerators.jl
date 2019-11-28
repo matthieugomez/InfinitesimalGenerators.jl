@@ -69,7 +69,6 @@ end
 ##
 ##############################################################################
 
-
 # Compute tail index of the process M given by
 # dM/M = μ dt + σ dW_t
 # with death rate δ
@@ -93,26 +92,23 @@ function tail_index(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, 
 end
 
 # Compute 𝔸 ->E[d(M_t^ξ f(x))|x_0 = x]]
-function generator_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
+function generator_cgf(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
     ξ -> operator(x, ξ .* μM .+ 0.5 * ξ * (ξ - 1) .* σM.^2 .- δ,  μx .+ ξ .* σM .* ρ .* σx, 0.5 * σx.^2)
 end
 
 # Compute ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
 function moment_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
-    ξ -> principal_eigenvalue(generator_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ); which = :SM, eigenvector = :right)[2]
+    ξ -> principal_eigenvalue(generator_cgf(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ); which = :SM, eigenvector = :right)[2]
 end
 
 # Compute first derivative of ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
 function ∂moment_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
     return ξ -> begin
-        g, η, f = principal_eigenvalue(generator_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ); which = :SM, eigenvector = :both)
+        g, η, f = principal_eigenvalue(generator(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ); which = :SM, eigenvector = :both)
         ∂𝔸 = operator(x, μM .+ (η - 1/2) .* σM.^2, σM .* ρ .* σx, zeros(length(x)))
         (g' * ∂𝔸 * f) / (g' * f)
     end
 end
-
-
-
 
 ##############################################################################
 ##
@@ -126,8 +122,8 @@ principal_eigenvalue,
 feynman_kac_backward,
 feynman_kac_forward,
 stationary_distribution,
+generator_cgf,
 hansen_scheinkman,
-generator_longrun,
 cgf_longrun,
 tail_index
 end
