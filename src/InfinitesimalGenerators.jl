@@ -1,8 +1,8 @@
 module InfinitesimalGenerators
-using LinearAlgebra, Arpack, KrylovKit, Roots
+using LinearAlgebra, Arpack, KrylovKit, Roots, Distributions, DiffEqDiffTools, FillArrays
 
 include("operators.jl")
-include("feynman_kac.jl")
+
 
 #========================================================================================
 
@@ -11,109 +11,124 @@ dx = μx dt + σx dZ_t
 
 ========================================================================================#
 
+mutable struct MarkovProcess
+    x::AbstractVector{<:Real}
+    μx::AbstractVector{<:Real}
+    σx::AbstractVector{<:Real}
+    𝔸::Tridiagonal
+    Δ::Tuple{<:AbstractVector, <:AbstractVector, <:AbstractVector, <:AbstractVector}
+end
+
+function MarkovProcess(x::AbstractVector{<:Real}, μx::AbstractVector{<:Real}, σx::AbstractVector{<:Real})
+    length(x) == length(μx) || error("Vector for grid, drift, and volatility should have the same size")
+    length(μx) == length(σx) || error("Vector for grid, drift, and volatility should have the same size")
+    n = length(x)
+    𝔸 = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
+    Δ = make_Δ(x)
+    MarkovProcess(x, μx, σx, 𝔸, Δ)
+end
+
+Base.length(x::MarkovProcess) = length(x.x)
+
+function make_Δ(x)
+    n = length(x)
+    Δxm = zero(x)
+    Δxm[1] = x[2] - x[1]
+    for i in 2:n
+        Δxm[i] = x[i] - x[i-1]
+    end
+    Δxp = zero(x)
+    for i in 1:(n-1)
+        Δxp[i] = x[i+1] - x[i]
+    end
+    Δxp[end] = x[n] - x[n-1]
+    Δx = (Δxm .+ Δxp) / 2
+    return x, 1 ./ Δx, 1 ./ Δxm, 1 ./ Δxp
+end
+
+# it's important to take 1e-6 to have the right tail index of multiplicative functional (see tests)
+function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, 
+    xmin = quantile(Normal(xbar, σ / sqrt(2 * κ)), p), xmax = quantile(Normal(xbar, σ / sqrt(2 * κ)), 1 - p))
+    x = range(xmin, stop = xmax, length = length)
+    μx = κ .* (xbar .- x)
+    σx = σ .* Ones(Base.length(x))
+    MarkovProcess(x, μx, σx)
+end
+
+function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, α = 2 * κ * xbar / σ^2, β = σ^2 / (2 * κ), xmin = quantile(Gamma(α, β), p), xmax = quantile(Gamma(α, β), 1 - p))
+    x = range(xmin, stop = xmax, length = length)
+    μx = κ .* (xbar .- x)
+    σx = σ .* sqrt.(x)
+    MarkovProcess(x, μx, σx)
+end
+
 # Compute generator 𝔸f = E[df(x)]
-function generator(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number})
-    operator(x, zeros(length(x)), μx, 0.5 * σx.^2)
+function generator!(x::MarkovProcess)
+    operator!(x.𝔸, x.Δ, Zeros(length(x.x)), x.μx, 0.5 * x.σx.^2)
+end
+
+function generator(x::MarkovProcess)
+    deepcopy(generator!(x))
 end
 
 # Stationary Distribution of x
-function stationary_distribution(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number})
-    g, η, _ = principal_eigenvalue(generator(x, μx, σx); which = :SM, eigenvector = :left)
-    abs(η) >= 1e-5 && @warn "Principal Eigenvalue does not seem to be zero"
+function stationary_distribution(x::MarkovProcess)
+    g, η, _ = principal_eigenvalue(generator!(x); which = :SM, eigenvector = :left)
+    abs(η) <= 1e-5 || @warn "Principal Eigenvalue does not seem to be zero"
     return g
 end
 
 # Stationary Distribution of x with death rate δ and reinjection ψ
-function stationary_distribution(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, δ::Number, ψ::AbstractVector{<:Number})
-    clean_eigenvector_left((δ * I - adjoint(generator(x, μx, σx))) \ (δ * ψ))
+function stationary_distribution(x::MarkovProcess, δ::Number, ψ::AbstractVector{<:Number})
+    clean_eigenvector_left((δ * I - generator!(x)') \ (δ * ψ))
 end
 
-# Compute u(x_t, t) = E[∫t^T e^{-∫ts V(x_τ, τ)dτ}f(x_s, s)ds + e^{-∫tT V(x_τ, τ)dτ}ψ(x_T)|x_t = x]
-function feynman_kac_backward(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}; kwargs...)
-    feynman_kac_backward(generator(x, μx, σx); kwargs...)
-end
-
-# Compute u(x, t)= E[∫0^t e^{-∫0^s V(x_τ)dτ}f(x_s)ds + e^{-∫0^tV(x_τ)dτ} ψ(x_t)|x_0 = x]
-function feynman_kac_forward(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}; kwargs...)
-    feynman_kac_forward(generator(x, μx, σx); kwargs...)
+function ∂(x::MarkovProcess, f::AbstractVector)
+	operator!(x.𝔸, x.Δ, Zeros(length(x.x)), Ones(length(x.x)), Zeros(length(x.x))) * f
 end
 
 #========================================================================================
 
-For a Markov Process x:
-dx = μx dt + σx dZt
-and a multiplicative functional M:
-dM/M = μM dt + σM dZt
+For a multiplicative functional M:
+dM/M = μM(x) dt + σM(x) dZt
 
 ========================================================================================#
 
-
-
-##############################################################################
-##
-## MultiiplicativeFunctionals
-##
-##############################################################################
-struct MultiplicativeFunctional
-    𝔸::Tridiagonal
-    Δ::Tuple{<:AbstractVector, <:AbstractVector, <:AbstractVector, <:AbstractVector}
-    μx::AbstractVector{<:Number}
-    σx::AbstractVector{<:Number}
+mutable struct MultiplicativeFunctional
+    x::MarkovProcess
     μM::AbstractVector{<:Number}
     σM::AbstractVector{<:Number}
-    δ::Number
     ρ::Number
+    δ::Number
 end
 
-function MultiplicativeFunctional(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
-    n = length(x)
-    𝔸 = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
-    Δ = make_Δ(x)
-    MultiplicativeFunctional(𝔸, Δ, μx, σx, μM, σM, δ, ρ)
+
+
+
+function MultiplicativeFunctional(x::MarkovProcess, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; ρ::Number = 0.0, δ::Number = 0.0)
+    length(x.x) == length(μM) || error("Vector for grid and μM should have the same size")
+    length(x.x) == length(σM) || error("Vector for grid and σM should have the same size")
+    MultiplicativeFunctional(x, μM, σM, ρ, δ)
 end
 
-# ξ -> 𝔸(ξ)
-function generator(M::MultiplicativeFunctional)
-    operator!(M.𝔸, M.Δ, M.μM .- M.δ,  M.μx .+ M.σM .* M.ρ .* M.σx, 0.5 * M.σx.^2)
+MarkovProcess(M::MultiplicativeFunctional) = M.x
+Base.length(M::MultiplicativeFunctional) = length(M.x)
+# Generator for long run CGF
+function generator!(M::MultiplicativeFunctional, ξ = 1.0)
+    operator!(M.x.𝔸, M.x.Δ, ξ .* M.μM .+ 0.5 * ξ * (ξ - 1) .* M.σM.^2 .- M.δ,  M.x.μx .+ ξ .* M.σM .* M.ρ .* M.x.σx, 0.5 * M.x.σx.^2)
+end
+function generator(M::MultiplicativeFunctional, ξ = 1.0)
+    deepcopy(generator!(M, ξ))
+end
+
+# ξ -> lim log(E[M^\xi]) / t
+function cgf_longrun(M::MultiplicativeFunctional; which = :LR, eigenvector = :right, r0 = Ones(length(M.x)))
+    ξ -> principal_eigenvalue(generator!(M, ξ), which = which, eigenvector = eigenvector, r0 = r0)
 end
 
 # Compute Hansen Scheinkmann decomposition M_t= e^{ηt}f(x_t)\hat{M}_t
-function hansen_scheinkman(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0, eigenvector = :right)
-    hansen_scheinkman(MultiplicativeFunctional(x, μx, σx, μM, σM; δ = δ, ρ = ρ), eigenvector = eigenvector)
-end
-function hansen_scheinkman(M::MultiplicativeFunctional; eigenvector = :right)
-    principal_eigenvalue(generator(M); which = :LR, eigenvector = eigenvector)
-end
-
-# Compute E[M_t ψ(x_t)|x_0 = x]
-function feynman_kac_forward(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0, kwargs...)
-    feynman_kac_forward(MultiplicativeFunctional(x, μx, σx, μM, σM; δ = δ, ρ = ρ); kwargs...)
-end
-
-function feynman_kac_forward(M::MultiplicativeFunctional; kwargs...)
-    feynman_kac_forward(generator(M); kwargs...)
-end
-
-##############################################################################
-##
-## CGF
-##
-##############################################################################
-
-function generator(M::MultiplicativeFunctional, ξ)
-    operator!(M.𝔸, M.Δ, ξ .* M.μM .+ 0.5 * ξ * (ξ - 1) .* M.σM.^2 .- M.δ,  M.μx .+ ξ .* M.σM .* M.ρ .* M.σx, 0.5 * M.σx.^2)
-end
-
-# ξ -> \lim log(E[M^\xi]) / t
-function cgf_longrun(M::MultiplicativeFunctional, ξ; eigenvector = :right)
-    principal_eigenvalue(generator(M, ξ), which = :LR, eigenvector = eigenvector)
-end
-
-# Compute first derivative of ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
-function ∂cgf_longrun(M::MultiplicativeFunctional, ξ::Number)
-    g, η, f = principal_eigenvalue(generator(M, ξ); which = :LR, eigenvector = :both)
-    ∂𝔸 = operator(x, μM .+ (η - 1/2) .* σM.^2, σM .* ρ .* σx, zeros(length(x)))
-    return (g' * ∂𝔸 * f) / (g' * f)
+function hansen_scheinkman(M::MultiplicativeFunctional; which = :LR, eigenvector = :right)
+    cgf_longrun(M, eigenvector = eigenvector)(1.0)
 end
 
 ##############################################################################
@@ -137,11 +152,51 @@ end
 # dM/M = μM(x) dt + σM(x) dZt
 # dx = μx dt + σx dZt
 # with death rate δ
-function tail_index(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
-    M = MultiplicativeFunctional(x, μx, σx, μM, σM; δ = δ, ρ = ρ)
-    find_zero(ξ -> cgf_longrun(M, ξ)[2], (1e-3, 40.0))
+function tail_index(M::MultiplicativeFunctional; which = :SM, xatol = 1e-2, kwargs...)
+    out = 0.0
+    r0 = ones(length(M.x))
+    if which == :SM
+        try
+            # SM is so much faster. So try if it works.
+            f = ξ -> begin
+                out = cgf_longrun(M; which = :SM, r0 = r0)(ξ)
+                eltype(out[3]) <: Float64 && copyto!(r0, out[3])
+                return out[2]
+            end
+            D = ξ -> DiffEqDiffTools.finite_difference_derivative(f, ξ)
+            out = find_zero((f, D), 1.0, Roots.Newton(); xatol = xatol, kwargs...)
+            abs(cgf_longrun(M; which = :LR, r0 = r0)(out)[2]) <= 1e-2 || throw("there is an error")
+        catch
+            which = :LR
+        end
+    end
+    if which == :LR
+        f = ξ -> begin
+            out = cgf_longrun(M; which = :LR, r0 = r0)(ξ)
+            eltype(out[3]) <: Float64 && copyto!(r0, out[3])
+            return out[2]
+        end
+        D = ξ -> DiffEqDiffTools.finite_difference_derivative(f, ξ)
+        out = find_zero((f, D), 1.0, Roots.Newton(); xatol = xatol, kwargs...)
+    end
+    return out
 end
 
+##############################################################################
+##
+## Feynman Kac
+##
+##############################################################################
+
+include("feynman_kac.jl")
+
+@deprecate stationary_distribution(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, args...) stationary_distribution(MarkovProcess(x, μx, σx))
+
+@deprecate cgf_longrun(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector; ρ = 0.0, δ = 0.0, kwargs...) cgf_longrun(MultiplicativeFunctional(MarkovProcess(x, μx, σx), μM, σM, ρ, δ); kwargs...)
+
+@deprecate hansen_scheinkman(x::AbstractVector, μx::AbstractVector, σx::AbstractVector, μM::AbstractVector, σM::AbstractVector; ρ = 0.0, δ = 0.0, kwargs...) hansen_scheinkman(MultiplicativeFunctional(MarkovProcess(x, μx, σx), μM, σM, ρ, δ); kwargs...)
+
+@deprecate tail_index(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; ρ::Number = 0.0, δ::Number = 0.0,  kwargs...) tail_index(MultiplicativeFunctional(MarkovProcess(x, μx, σx), μM, σM, ρ, δ); kwargs...)
 
 ##############################################################################
 ##
@@ -150,14 +205,14 @@ end
 ##############################################################################
 
 export 
-generator,
-principal_eigenvalue,
-feynman_kac_backward,
-feynman_kac_forward,
-stationary_distribution,
+MarkovProcess,
+OrnsteinUhlenbeck,
+CoxIngersollRoss,
 MultiplicativeFunctional,
+generator,
+stationary_distribution,
+feynman_kac,
 hansen_scheinkman,
 cgf_longrun,
-∂cgf_longrun,
 tail_index
 end
