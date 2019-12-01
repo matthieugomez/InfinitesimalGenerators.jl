@@ -47,25 +47,78 @@ dM/M = μM dt + σM dZt
 
 ========================================================================================#
 
-# Compute generator 𝔸f = E[d(Mf(x))]
-function generator(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number})
-    operator(x, μM, μx .+ σM .* σx, 0.5 * σx.^2)
-end
-
-# Compute Hansen Scheinkmann decomposition M_t= e^{ηt}f(x_t)\hat{M}_t
-function hansen_scheinkman(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; eigenvector = :right, symmetrize = false)
-    principal_eigenvalue(generator(x, μx, σx, μM, σM); which = :LR, eigenvector = eigenvector)
-end
-
-# Compute E[M_t ψ(x_t)|x_0 = x]
-function feynman_kac_forward(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number},  μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; kwargs...)
-    feynman_kac_forward(generator(x, μx, σx, μM, σM); kwargs...)
-end
 
 
 ##############################################################################
 ##
-## Tail Index
+## MultiiplicativeFunctionals
+##
+##############################################################################
+struct MultiplicativeFunctional
+    𝔸::Tridiagonal
+    Δ::Tuple{<:AbstractVector, <:AbstractVector, <:AbstractVector, <:AbstractVector}
+    μx::AbstractVector{<:Number}
+    σx::AbstractVector{<:Number}
+    μM::AbstractVector{<:Number}
+    σM::AbstractVector{<:Number}
+    δ::Number
+    ρ::Number
+end
+
+function MultiplicativeFunctional(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
+    n = length(x)
+    𝔸 = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
+    Δ = make_Δ(x)
+    MultiplicativeFunctional(𝔸, Δ, μx, σx, μM, σM, δ, ρ)
+end
+
+# ξ -> 𝔸(ξ)
+function generator(M::MultiplicativeFunctional)
+    operator!(M.𝔸, M.Δ, M.μM .- M.δ,  M.μx .+ M.σM .* M.ρ .* M.σx, 0.5 * M.σx.^2)
+end
+
+# Compute Hansen Scheinkmann decomposition M_t= e^{ηt}f(x_t)\hat{M}_t
+function hansen_scheinkman(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0, eigenvector = :right)
+    hansen_scheinkman(MultiplicativeFunctional(x, μx, σx, μM, σM; δ = δ, ρ = ρ), eigenvector = eigenvector)
+end
+function hansen_scheinkman(M::MultiplicativeFunctional; eigenvector = :right)
+    principal_eigenvalue(generator(M); which = :LR, eigenvector = eigenvector)
+end
+
+# Compute E[M_t ψ(x_t)|x_0 = x]
+function feynman_kac_forward(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0, kwargs...)
+    feynman_kac_forward(MultiplicativeFunctional(x, μx, σx, μM, σM; δ = δ, ρ = ρ); kwargs...)
+end
+
+function feynman_kac_forward(M::MultiplicativeFunctional; kwargs...)
+    feynman_kac_forward(generator(M); kwargs...)
+end
+
+##############################################################################
+##
+## CGF
+##
+##############################################################################
+
+function generator(M::MultiplicativeFunctional, ξ)
+    operator!(M.𝔸, M.Δ, ξ .* M.μM .+ 0.5 * ξ * (ξ - 1) .* M.σM.^2 .- M.δ,  M.μx .+ ξ .* M.σM .* M.ρ .* M.σx, 0.5 * M.σx.^2)
+end
+
+# ξ -> \lim log(E[M^\xi]) / t
+function cgf_longrun(M::MultiplicativeFunctional, ξ; eigenvector = :right)
+    principal_eigenvalue(generator(M, ξ), which = :LR, eigenvector = eigenvector)
+end
+
+# Compute first derivative of ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
+function ∂cgf_longrun(M::MultiplicativeFunctional, ξ::Number)
+    g, η, f = principal_eigenvalue(generator(M, ξ); which = :LR, eigenvector = :both)
+    ∂𝔸 = operator(x, μM .+ (η - 1/2) .* σM.^2, σM .* ρ .* σx, zeros(length(x)))
+    return (g' * ∂𝔸 * f) / (g' * f)
+end
+
+##############################################################################
+##
+## Tail Indices
 ##
 ##############################################################################
 
@@ -85,49 +138,10 @@ end
 # dx = μx dt + σx dZt
 # with death rate δ
 function tail_index(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
-    ζ = find_zero(cgf_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ), (1e-3, 40.0))
-    return ζ
+    M = MultiplicativeFunctional(x, μx, σx, μM, σM; δ = δ, ρ = ρ)
+    find_zero(ξ -> cgf_longrun(M, ξ)[2], (1e-3, 40.0))
 end
 
-# ξ -> 𝔸(ξ)
-function mgf_generator(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
-    ξ -> operator(x, ξ .* μM .+ 0.5 * ξ * (ξ - 1) .* σM.^2 .- δ,  μx .+ ξ .* σM .* ρ .* σx, 0.5 * σx.^2)
-end
-
-# ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
-function cgf_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
-    ξ -> begin
-        M = mgf_generator(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ)
-        out = nothing
-        try 
-            out = principal_eigenvalue(M; which = :LR, eigenvector = :right)[2]
-        catch
-            # LR fails when the LR eigenvalue is very close to zero, i.e. around the solution I'm interested in it. 
-            # in this case, the SM eigenvalue is the LR eigenvalue, so I can just use SM
-            # however, i cannot do SM everywhere: for large value of ξ, we have LR > 0 and there may be one close to zero.
-            # This fix does not work if LR fails in a region where LR ≠ SM
-            # in this case i should just restart LR until it works
-            out = principal_eigenvalue(M; which = :SM, eigenvector = :right)[2]
-        end
-        return out
-    end
-end
-
-# Compute first derivative of ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
-function ∂cgf_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
-    ξ -> begin
-        M = mgf_generator(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ)
-        g, η, f = nothing, nothing, nothing
-        try
-            g, η, f = principal_eigenvalue(M; which = :LR, eigenvector = :both)
-        catch
-            @warn "LR failed, SM used"
-            g, η, f = principal_eigenvalue(M; which = :SM, eigenvector = :both)
-        end
-        ∂𝔸 = operator(x, μM .+ (η - 1/2) .* σM.^2, σM .* ρ .* σx, zeros(length(x)))
-        return (g' * ∂𝔸 * f) / (g' * f)
-    end
-end
 
 ##############################################################################
 ##
@@ -141,9 +155,9 @@ principal_eigenvalue,
 feynman_kac_backward,
 feynman_kac_forward,
 stationary_distribution,
-mgf_generator,
+MultiplicativeFunctional,
+hansen_scheinkman,
 cgf_longrun,
 ∂cgf_longrun,
-hansen_scheinkman,
 tail_index
 end

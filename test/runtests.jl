@@ -56,7 +56,7 @@ x = range(- 6 * sqrt(σ^2 /(2 * κx)), stop = 6 * sqrt(σ^2 /(2 * κx)), length 
 ζ = tail_index(x, μx, σx, μM, σM)
 ζ_analytic = 2 * (0.01 + 0.1^2/2) / (0.1^2 + (σ / κx)^2)
 @test ζ ≈ ζ_analytic atol = 1e-2
-g, η, f = principal_eigenvalue(mgf_generator(x, μx, σx, μM, σM)(ζ); which = :SM, eigenvector = :both)
+g, η, f = cgf_longrun(MultiplicativeFunctional(x, μx, σx, μM, σM; ρ = ρ), ζ; eigenvector = :both)
 @test η ≈ 0.0 atol = 1e-5
 ψ = stationary_distribution(x, μx, σx)
 @test (f .* ψ) ./ sum(f .* ψ) ≈ g atol = 1e-3
@@ -65,7 +65,7 @@ g, η, f = principal_eigenvalue(mgf_generator(x, μx, σx, μM, σM)(ζ); which 
 
 ρ = 1.0
 ζ = tail_index(x, μx, σx, μM, σM, ρ = ρ)
-g, η, f = principal_eigenvalue(mgf_generator(x, μx, σx, μM, σM; ρ = ρ)(ζ); which = :SM, eigenvector = :both)
+g, η, f = cgf_longrun(MultiplicativeFunctional(x, μx, σx, μM, σM; ρ = ρ), ζ; eigenvector = :both)
 @test η ≈ 0.0 atol = 1e-5
 ψ = stationary_distribution(x, μx .+ ρ .* ζ .* σM .* σx, σx)
 @test (f .* ψ) ./ sum(f .* ψ) ≈ g atol = 1e-3
