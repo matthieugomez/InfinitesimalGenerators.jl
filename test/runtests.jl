@@ -39,9 +39,9 @@ u = feynman_kac_forward(x, μx, σx, μM, σM; t = t)
 ## test left and right eigenvector
 μM = x
 σM = 0.01 * ones(length(x))
-g, η, f = hansen_scheinkman(x, μx, σx, μM, σM; eigenvector = :both)
+g, η, f = hansen_scheinkman(x, μx, σx, μM, σM; ρ = 1, eigenvector = :both)
 ψ = stationary_distribution(x, μx .+ σM .* σx, σx)
-@test (f .* ψ) ./sum(f .* ψ) ≈ g
+@test (f .* ψ) ./sum(f .* ψ) ≈ g rtol = 1e-3
 
 
 
@@ -56,10 +56,10 @@ x = range(- 6 * sqrt(σ^2 /(2 * κx)), stop = 6 * sqrt(σ^2 /(2 * κx)), length 
 ζ = tail_index(x, μx, σx, μM, σM)
 ζ_analytic = 2 * (0.01 + 0.1^2/2) / (0.1^2 + (σ / κx)^2)
 @test ζ ≈ ζ_analytic atol = 1e-2
-g, η, f = cgf_longrun(MultiplicativeFunctional(x, μx, σx, μM, σM; ρ = ρ), ζ; eigenvector = :both)
+g, η, f = cgf_longrun(MultiplicativeFunctional(x, μx, σx, μM, σM), ζ; eigenvector = :both)
 @test η ≈ 0.0 atol = 1e-5
 ψ = stationary_distribution(x, μx, σx)
-@test (f .* ψ) ./ sum(f .* ψ) ≈ g atol = 1e-3
+@test (f .* ψ) ./ sum(f .* ψ) ≈ g rtol = 1e-3
 
 
 
@@ -68,7 +68,7 @@ g, η, f = cgf_longrun(MultiplicativeFunctional(x, μx, σx, μM, σM; ρ = ρ),
 g, η, f = cgf_longrun(MultiplicativeFunctional(x, μx, σx, μM, σM; ρ = ρ), ζ; eigenvector = :both)
 @test η ≈ 0.0 atol = 1e-5
 ψ = stationary_distribution(x, μx .+ ρ .* ζ .* σM .* σx, σx)
-@test (f .* ψ) ./ sum(f .* ψ) ≈ g atol = 1e-3
+@test (f .* ψ) ./ sum(f .* ψ) ≈ g rtol = 1e-3
 
 
 
