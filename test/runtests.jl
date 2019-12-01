@@ -63,4 +63,13 @@ g, η, f = principal_eigenvalue(mgf_generator(x, μx, σx, μM, σM)(ζ); which 
 
 
 
+ρ = 1.0
+ζ = tail_index(x, μx, σx, μM, σM, ρ = ρ)
+g, η, f = principal_eigenvalue(mgf_generator(x, μx, σx, μM, σM; ρ = ρ)(ζ); which = :SM, eigenvector = :both)
+@test η ≈ 0.0 atol = 1e-5
+ψ = stationary_distribution(x, μx .+ ρ .* ζ .* σM .* σx, σx)
+@test (f .* ψ) ./ sum(f .* ψ) ≈ g atol = 1e-3
+
+
+
 
