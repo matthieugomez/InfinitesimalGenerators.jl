@@ -85,7 +85,7 @@ end
 # dx = μx dt + σx dZt
 # with death rate δ
 function tail_index(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
-    ζ = find_zero(moment_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ), (1e-3, 10.0))
+    ζ = find_zero(moment_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ), (1e-3, 100.0))
     out = moment_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ζ)
     (abs(out) > 1e-3) && @warn "could not find zero power law"
     return ζ
@@ -98,7 +98,7 @@ end
 
 # Compute ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
 function moment_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
-    ξ -> principal_eigenvalue(generator_cgf(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ); which = :SM, eigenvector = :right)[2]
+    ξ -> principal_eigenvalue(generator_mgf(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ); which = :SM, eigenvector = :right)[2]
 end
 
 # Compute first derivative of ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
