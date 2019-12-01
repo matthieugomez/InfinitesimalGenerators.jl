@@ -7,30 +7,6 @@ Note that
 𝔸'g = v_0 * g - ∂(v1 * g) + ∂∂(v2 * g)
 
 ========================================================================================#
-
-function operator(x::AbstractVector, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
-    n = length(x)
-    𝔸 = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
-    Δ = make_Δ(x)
-    operator!(𝔸, Δ, v0, v1, v2)
-end
-
-function make_Δ(x)
-    n = length(x)
-    Δxm = zero(x)
-    Δxm[1] = x[2] - x[1]
-    for i in 2:n
-        Δxm[i] = x[i] - x[i-1]
-    end
-    Δxp = zero(x)
-    for i in 1:(n-1)
-        Δxp[i] = x[i+1] - x[i]
-    end
-    Δxp[end] = x[n] - x[n-1]
-    Δx = (Δxm .+ Δxp) / 2
-    return x, 1 ./ Δx, 1 ./ Δxm, 1 ./ Δxp
-end
-
 function operator!(𝔸, Δ, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
     # The key is that sum of each column = 0.0 and off diagonals are positive (singular M-matrix)
     x, invΔx, invΔxm, invΔxp = Δ
@@ -52,10 +28,8 @@ function operator!(𝔸, Δ, v0::AbstractVector, v1::AbstractVector, v2::Abstrac
     for i in 1:n
         𝔸[i, i] += v0[i] - c[i]
     end
-    return adjoint(𝔸)
+    adjoint(𝔸)
 end
-
-
 
 #========================================================================================
 
@@ -71,11 +45,11 @@ Note that, in particular, it is the eigenvalue with largest real part, which mea
 If, moreover, B, is a M-matrix, then all its eigenvalues have positive real part. Therefore, all the eigenvalues of A have negative real part. Therefore, the eigenvalue with largest real part is also the eigenvalue with smallest magnitude.
 
 ========================================================================================#
-function principal_eigenvalue(𝔸::AbstractMatrix; which = :SM, eigenvector = :right)
+function principal_eigenvalue(𝔸::AbstractMatrix; which = :SM, eigenvector = :right, r0 = ones(size(𝔸, 1)))
     f, η, g = nothing, nothing, nothing
     if which == :SM
         if eigenvector ∈ (:right, :both)
-            vals, vecs = Arpack.eigs(𝔸; nev = 1, which = :SM)
+            vals, vecs = Arpack.eigs(𝔸; v0 = r0, nev = 1, which = :SM)
                 η = vals[1]
                 f = vecs[:, 1]
         end
@@ -85,20 +59,20 @@ function principal_eigenvalue(𝔸::AbstractMatrix; which = :SM, eigenvector = :
             g = vecs[:, 1]
         end 
     elseif which == :LR
-        # While Arpack accepts SM, it often fails. Moreover it does not give the "right" eigenvector in term of multiplicity.
+        # Arpack LR tends to fail if the LR is close to zero, which is the typical case if we want to compute tail index
+        # Arpack SM is much faster, but it does not always give the right eigenvector (either because LR ≠ SM (happens when the eigenvalue is very positive)
+        # Even when it gives the right eigenvalue, it can return a complex eigenvector
         if eigenvector ∈ (:right, :both)
-            vals, vecs, info = KrylovKit.eigsolve(𝔸, 1, :LR, maxiter = size(𝔸, 1))
-            if info.converged > 0
-                η = vals[1]
-                f = vecs[1]
-            end
+            vals, vecs, info = KrylovKit.eigsolve(𝔸, r0, 1, :LR, maxiter = size(𝔸, 1))
+            info.converged == 0 &&  @warn "KrylovKit did not converge"
+            η = vals[1]
+            f = vecs[1]
         end
         if eigenvector ∈ (:left, :both)
             vals, vecs, info = KrylovKit.eigsolve(adjoint(𝔸), 1, :LR, maxiter = size(𝔸, 1))
-            if info.converged > 0
-                η = vals[1]
-                g = vecs[1]
-            end
+            info.converged == 0 &&  @warn "KrylovKit did not converge"
+            η = vals[1]
+            g = vecs[1]
         end
     end
     return clean_eigenvector_left(g), clean_eigenvalue(η), clean_eigenvector_right(f)
