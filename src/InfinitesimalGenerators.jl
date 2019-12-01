@@ -1,5 +1,5 @@
 module InfinitesimalGenerators
-using LinearAlgebra, Arpack, Roots
+using LinearAlgebra, Arpack, KrylovKit, Roots
 
 include("operators.jl")
 include("feynman_kac.jl")

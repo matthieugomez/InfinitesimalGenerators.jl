@@ -63,17 +63,34 @@ If, moreover, B, is a M-matrix, then all its eigenvalues have positive real part
 
 ========================================================================================#
 function principal_eigenvalue(𝔸::AbstractMatrix; which = :SM, eigenvector = :right)
-    g, η, f = nothing, nothing, nothing
-    if eigenvector ∈ (:right, :both)
-        vals, vecs = Arpack.eigs(𝔸; nev = 1, which = which)
+    f, η, g = nothing, nothing, nothing
+    if which == :SM
+        if eigenvector ∈ (:right, :both)
+            vals, vecs = Arpack.eigs(𝔸; nev = 1, which = which)
+                η = vals[1]
+                f = vecs[:, 1]
+        end
+        if eigenvector ∈ (:left, :both)
+            vals, vecs = Arpack.eigs(adjoint(𝔸); nev = 1, which = which)
             η = vals[1]
-            f = vecs[:, 1]
+            g = vecs[:, 1]
+        end 
+    elseif which == :LR
+        if eigenvector ∈ (:right, :both)
+            vals, vecs, info = KrylovKit.eigsolve(𝔸, 1, :LR, maxiter = size(𝔸, 1))
+            if info.converged > 0
+                η = vals[1]
+                f = vecs[1]
+            end
+        end
+        if eigenvector ∈ (:left, :both)
+            vals, vecs, info = KrylovKit.eigsolve(adjoint(𝔸), 1, :LR, maxiter = size(𝔸, 1))
+            if info.converged > 0
+                η = vals[1]
+                g = vecs[1]
+            end
+        end 
     end
-    if eigenvector ∈ (:left, :both)
-        vals, vecs = Arpack.eigs(adjoint(𝔸); nev = 1, which = which)
-        η = vals[1]
-        g = vecs[:, 1]
-    end 
     return clean_eigenvector_left(g), clean_eigenvalue(η), clean_eigenvector_right(f)
 end
 
