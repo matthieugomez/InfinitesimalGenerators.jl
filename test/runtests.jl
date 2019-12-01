@@ -9,9 +9,6 @@ x = range(- 10 * sqrt(σ^2 /(2 * κx)), stop = 10 * sqrt(σ^2 /(2 * κx)), lengt
 σx = σ .* ones(length(x))
 
 
-
-
-
 ## stationnary distribution
 g = stationary_distribution(x, μx, σx)
 
@@ -51,16 +48,17 @@ g, η, f = hansen_scheinkman(x, μx, σx, μM, σM; eigenvector = :both)
 ## test left and right eigenvector
 κx = 0.1
 σ = 0.02
-x = range(- 3 * sqrt(σ^2 /(2 * κx)), stop = 3 * sqrt(σ^2 /(2 * κx)), length = 500)
+x = range(- 6 * sqrt(σ^2 /(2 * κx)), stop = 6 * sqrt(σ^2 /(2 * κx)), length = 400)
 μx = -κx .* x
 σx = σ .* ones(length(x))
 μM = -0.01 .+ x
 σM = 0.1 .* ones(length(x))
-ρ = 1.0
-ζ = tail_index(x, μx, σx, μM, σM; ρ = ρ)
-g, η, f = principal_eigenvalue(generator_mgf(x, μx, σx, μM, σM; ρ = ρ)(ζ); which = :SM, eigenvector = :both)
+ζ = tail_index(x, μx, σx, μM, σM)
+ζ_analytic = 2 * (0.01 + 0.1^2/2) / (0.1^2 + (σ / κx)^2)
+@test ζ ≈ ζ_analytic atol = 1e-2
+g, η, f = principal_eigenvalue(mgf_generator(x, μx, σx, μM, σM)(ζ); which = :SM, eigenvector = :both)
 @test η ≈ 0.0 atol = 1e-5
-ψ = stationary_distribution(x, μx .+ ζ .* ρ .* σM .* σx, σx)
+ψ = stationary_distribution(x, μx, σx)
 @test (f .* ψ) ./ sum(f .* ψ) ≈ g atol = 1e-3
 
 

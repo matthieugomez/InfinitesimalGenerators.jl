@@ -85,26 +85,40 @@ end
 # dx = μx dt + σx dZt
 # with death rate δ
 function tail_index(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
-    ζ = find_zero(moment_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ), (1e-3, 100.0))
-    out = moment_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ζ)
-    (abs(out) > 1e-3) && @warn "could not find zero power law"
+    ζ = find_zero(mgf_longrun(x, μx, σx, μM, σM; δ = δ, ρ = ρ), (1e-3, 40.0))
     return ζ
 end
 
-# Compute 𝔸 ->E[d(M_t^ξ f(x))|x_0 = x]]
-function generator_mgf(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
+# ξ -> 𝔸(ξ)
+function mgf_generator(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
     ξ -> operator(x, ξ .* μM .+ 0.5 * ξ * (ξ - 1) .* σM.^2 .- δ,  μx .+ ξ .* σM .* ρ .* σx, 0.5 * σx.^2)
 end
 
-# Compute ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
-function moment_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
-    ξ -> principal_eigenvalue(generator_mgf(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ); which = :SM, eigenvector = :right)[2]
+# ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
+function mgf_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
+    ξ -> begin
+        M = mgf_generator(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ)
+        out = nothing
+        while out === nothing
+            try 
+                out = principal_eigenvalue(M; which = :LR, eigenvector = :right)[2]
+            catch
+                # LR fails when the LR eigenvalue is very close to zero, i.e. around the solution I'm interested in it. 
+                # in this case, the SM eigenvalue is the LR eigenvalue, so I can just use SM
+                # however, i cannot do SM everywhere: for large value of ξ, we have LR > 0 and there may be one close to zero.
+                # This fix does not work if LR fails in a region where LR ≠ SM
+                # in this case i should just restart LR until it works
+                out = principal_eigenvalue(M; which = :SM, eigenvector = :right)[2]
+            end
+        end
+        return out
+    end
 end
 
 # Compute first derivative of ξ -> lim(log(E[M_t^ξ|x_0 = x])/t)
-function ∂moment_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
+function ∂mgf_longrun(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; δ::Number = 0.0,  ρ::Number = 0.0)
     return ξ -> begin
-        g, η, f = principal_eigenvalue(generator(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ); which = :SM, eigenvector = :both)
+        g, η, f = principal_eigenvalue(mgf_generator(x, μx, σx, μM, σM; δ = δ, ρ = ρ)(ξ); which = :LR, eigenvector = :both)
         ∂𝔸 = operator(x, μM .+ (η - 1/2) .* σM.^2, σM .* ρ .* σx, zeros(length(x)))
         (g' * ∂𝔸 * f) / (g' * f)
     end
@@ -122,8 +136,8 @@ principal_eigenvalue,
 feynman_kac_backward,
 feynman_kac_forward,
 stationary_distribution,
-generator_mgf,
+mgf_generator,
+mgf_longrun,
 hansen_scheinkman,
-cgf_longrun,
 tail_index
 end
