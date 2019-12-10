@@ -3,10 +3,13 @@
 
 # General Tools
 
+- `X = MarkovProcess(x, μx, σx)` creates a Markov Process
+- `MultiplicativeFunctional(X, μM, σM)` creates an associated Multiplicative Functional
+
 ### Create Infinitesimal Generators
-- `generator(x, μx, σx)` returns the infinitesimal generator 𝔸 associated with a Markov process: <br>
+- `generator(MarkovProcess(X)` returns the infinitesimal generator 𝔸 associated with a Markov process `X`: <br>
 	<img src="img/dx.png" height ="25%" width = "25%">: <br> <img src="img/generator.png" height ="44%" width = "44%"> <br clear="all" />
--  `generator(x, μx, σx, μM, σM)` returns the tilted infinitesimal generator 𝔸 associated with a multiplicative functional: <br>
+-  `generator(M)` returns the tilted infinitesimal generator 𝔸 associated with the multiplicative functional `M`: <br>
 	<img src="img/dM.png" height ="33%" width = "33%">: <br> <img src="img/generator_tilted.png" height ="60%" width = "60%"> <br clear="all" />
 
 ### Work with Infinitesimal Generators
@@ -16,11 +19,11 @@ For an infinitesimal generator 𝔸:
 
 # Convenience Functions
 In addition, the package provides the following convenience functions, obtained by applying the functions above to particular generators:
-- `stationary_distribution(x, μx, σx)` returns the stationary distribution of `x`
-- `hansen_scheinkman_decomposition(x, μx, σx, μM, σM)` returns the [Hansen-Scheinkman decomposition](https://www.nber.org/papers/w12650) of `M`
-- `feynman_kac_forward(x, μx, σx; t, ψ, f, V)`	returns <img src="img/feynman_kac.png" height ="45%" width = "45%">
-- `feynman_kac_forward(x, μx, σx, μM, σM; t, ψ)` returns  <img src="img/feynman_kac_tilded.png" height ="22%" width = "15%">
-- `tail_index(x, μx, σx, μM, σM)` returns the tail index of the process `M`.
+- `stationary_distribution(X)` returns the stationary distribution of `x`
+- `hansen_scheinkman_decomposition(M)` returns the [Hansen-Scheinkman decomposition](https://www.nber.org/papers/w12650) of `M`
+- `feynman_kac(X; t, ψ, f, V, direction = :forward)`	returns <img src="img/feynman_kac.png" height ="45%" width = "45%">
+- `feynman_kac_forward(M; t, ψ, direction = :forward)` returns  <img src="img/feynman_kac_tilded.png" height ="22%" width = "15%">
+- `tail_index(M)` returns the tail index of the process `M`.
 
 
 ## Related Packages
