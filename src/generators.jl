@@ -143,7 +143,7 @@ end
 # dM/M = μM(x) dt + σM(x) dZt
 # dx = μx dt + σx dZt
 # with death rate δ
-function tail_index(M::MultiplicativeFunctional; which = :SM, xatol = 1e-2, kwargs...)
+function tail_index(M::MultiplicativeFunctional; which = :SM, xatol = 1e-2, verbose = false, kwargs...)
     out = 0.0
     r0 = ones(length(M.x))
     if which == :SM
@@ -152,11 +152,16 @@ function tail_index(M::MultiplicativeFunctional; which = :SM, xatol = 1e-2, kwar
             f = ξ -> begin
                 out = cgf_longrun(M; which = :SM, r0 = r0)(ξ)
                 eltype(out[3]) <: Float64 && copyto!(r0, out[3])
+                verbose && @show (:SM, ξ, out[2])
                 return out[2]
             end
             D = ξ -> DiffEqDiffTools.finite_difference_derivative(f, ξ)
             out = find_zero((f, D), 1.0, Roots.Newton(); xatol = xatol, kwargs...)
-            abs(cgf_longrun(M; which = :LR, r0 = r0)(out)[2]) <= 1e-2 || throw("there is an error")
+            out2 = cgf_longrun(M; which = :LR, r0 = r0)(out)[2]
+            if abs(out2) > 1e-2 
+                @warn "Algorithm looking for SM eigenvalue = 0 converged to ζ = $out. However, the :LR eigenvalue for this ζ is  $out2"
+                throw("there is an error")
+            end
         catch
             which = :LR
         end
@@ -165,10 +170,15 @@ function tail_index(M::MultiplicativeFunctional; which = :SM, xatol = 1e-2, kwar
         f = ξ -> begin
             out = cgf_longrun(M; which = :LR, r0 = r0)(ξ)
             eltype(out[3]) <: Float64 && copyto!(r0, out[3])
+            verbose && @show (:LR, ξ, out[2])
             return out[2]
         end
         D = ξ -> DiffEqDiffTools.finite_difference_derivative(f, ξ)
-        out = find_zero((f, D), 1.0, Roots.Newton(); xatol = xatol, kwargs...)
+        try
+            out = find_zero((f, D), 1.0, Roots.Newton(); xatol = xatol, kwargs...)
+        catch
+            out = find_zero((f, D), (1e-2, 10.0); xatol = xatol, kwargs...)
+        end
     end
     return out
 end
