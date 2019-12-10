@@ -2,7 +2,7 @@ module InfinitesimalGenerators
 
 using LinearAlgebra, Arpack, KrylovKit, Roots, Distributions, DiffEqDiffTools, FillArrays
 
-include("operators.jl")
+include("utils.jl")
 include("generators.jl")
 include("feynman_kac.jl")
 
