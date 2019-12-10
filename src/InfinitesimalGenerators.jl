@@ -102,9 +102,6 @@ mutable struct MultiplicativeFunctional
     δ::Number
 end
 
-
-
-
 function MultiplicativeFunctional(x::MarkovProcess, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; ρ::Number = 0.0, δ::Number = 0.0)
     length(x.x) == length(μM) || error("Vector for grid and μM should have the same size")
     length(x.x) == length(σM) || error("Vector for grid and σM should have the same size")
