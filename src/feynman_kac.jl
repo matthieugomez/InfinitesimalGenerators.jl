@@ -62,9 +62,6 @@ function feynman_kac(x::MarkovProcess; kwargs...)
     feynman_kac(generator!(x); kwargs...)
 end
 
-function feynman_kac(x::AbstractVector, μx::AbstractVector, σx::AbstractVector; kwargs...)
-    feynman_kac(MarkovProcess(x, μx, σx); kwargs...)
-end
 
 
 """ 
@@ -74,6 +71,4 @@ compute `E[M_t ψ(x_t)|x_0 = x]`
 function feynman_kac(M::MultiplicativeFunctional; kwargs...)
     feynman_kac(generator!(M); kwargs...)
 end
-function feynman_kac(x::AbstractVector{<:Number}, μx::AbstractVector{<:Number}, σx::AbstractVector{<:Number}, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; ρ::Number = 0.0, δ::Number = 0.0, kwargs...)
-    feynman_kac(MultiplicativeFunctional(MarkovProcess(x, μx, σx), μM, σM; ρ = ρ, δ = δ); kwargs...)
-end
+

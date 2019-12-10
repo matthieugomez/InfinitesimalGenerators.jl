@@ -1,6 +1,6 @@
 name = "InfinitesimalGenerators"
 uuid = "2fce0c6f-5f0b-5c85-85c9-2ffe1d5ee30d"
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
