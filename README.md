@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.org/matthieugomez/InfinitesimalGenerators.jl.svg?branch=master)](https://travis-ci.org/matthieugomez/InfinitesimalGenerators.jl)
 
 - `X = MarkovProcess(x, μx, σx)` creates a `MarkovProcess` for a diffusion with drift `μx` and volatility `σx`
-- `M = MultiplicativeFunctional(X, μM, σM)` creates a `MultiplicativeFunctional` for a Multiplicative Functional with geometric drift `μM` and geometric volatility `σx`
+- `M = MultiplicativeFunctional(X, μM, σM)` creates a `MultiplicativeFunctional` with geometric drift `μM` and geometric volatility `σM`
 
 For a MarkovProcess `X`:
 - `stationary_distribution(X)` returns its stationary distribution
