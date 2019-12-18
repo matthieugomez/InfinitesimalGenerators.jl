@@ -1,4 +1,4 @@
-using InfinitesimalGenerators, Test, Statistics, LinearAlgebra,  Expokit
+using InfinitesimalGenerators
 
 # all these examples are generators with only real eigenvalues so I should choose better ones
 
@@ -22,7 +22,7 @@ x = range(- 10 * sqrt(σ^2 /(2 * κx)), stop = 10 * sqrt(σ^2 /(2 * κx)), lengt
 t = range(0, stop = 1000, step = 1/10)
 @time u = feynman_kac(MarkovProcess(x, μx, σx); t = t, ψ = ψ)[:, end]
 #   0.019786 seconds (3.09 k allocations: 31.120 MiB, 14.88% gc time)
-@test g'u ≈ g'ψ
+g'u ≈ g'ψ
 
 
 ## test left and right eigenvector

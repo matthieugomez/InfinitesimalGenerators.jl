@@ -1,9 +1,9 @@
 using InfinitesimalGenerators, Test, Statistics, LinearAlgebra,  Expokit
 
-
+xbar = 0.0
 κ = 0.1
 σ = 0.02
-X = OrnsteinUhlenbeck(;κ =κ, σ = σ, length = 1000)
+X = OrnsteinUhlenbeck(; xbar = xbar, κ =κ, σ = σ, length = 1000)
 
 
 ## Feynman-Kac
@@ -19,7 +19,7 @@ u = feynman_kac(X; t = t, ψ = ψ, direction = :forward)
 ## Multiplicative Functional dM/M = x dt
 M = MultiplicativeFunctional(X, X.x, zeros(length(X.x)))
 l, η, r = hansen_scheinkman(M)
-@test η ≈ 0.5 * σ^2 / κ^2 atol = 1e-2
+@test η ≈ xbar + 0.5 * σ^2 / κ^2 atol = 1e-2
 r_analytic = exp.(X.x ./ κ) 
 @test norm(r ./ sum(r) .- r_analytic ./ sum(r_analytic)) <= 2 * 1e-3
 t = range(0, stop = 200, step = 1/10)
@@ -70,7 +70,7 @@ l, η, r = cgf_longrun(M; eigenvector = :both)(ζ)
 gbar = 0.03
 σ = 0.01
 X = CoxIngersollRoss(xbar = gbar, κ = κ, σ = σ)
-M = MultiplicativeFunctional(X, X.x, zeros(length(X)))
+M = MultiplicativeFunctional(X, X.x, zeros(length(X.x)))
 η_analytic = gbar * κ^2 / σ^2 * (1 - sqrt(1 - 2 * σ^2 / κ^2))
 @test cgf_longrun(M)(1.0)[2] ≈ η_analytic rtol = 1e-2
 

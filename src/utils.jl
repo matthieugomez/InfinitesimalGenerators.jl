@@ -1,38 +1,6 @@
 
 #========================================================================================
 
-Compute the operator
-𝔸f = v_0 * f + v1 * ∂(f) + v2 * ∂∂(f)
-Note that
-𝔸'g = v_0 * g - ∂(v1 * g) + ∂∂(v2 * g)
-
-========================================================================================#
-function operator!(𝔸, Δ, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
-    # The key is that sum of each column = 0.0 and off diagonals are positive (singular M-matrix)
-    x, invΔx, invΔxm, invΔxp = Δ
-    n = length(x)
-    fill!(𝔸, 0)
-    @inbounds for i in 1:n
-        if v1[i] >= 0
-            𝔸[min(i + 1, n), i] += v1[i] * invΔxp[i]
-            𝔸[i, i] -= v1[i] * invΔxp[i]
-        else
-            𝔸[i, i] += v1[i] * invΔxm[i]
-            𝔸[max(i - 1, 1), i] -= v1[i] * invΔxm[i]
-        end
-        𝔸[max(i - 1, 1), i] += v2[i] * invΔxm[i] * invΔx[i]
-        𝔸[i, i] -= v2[i] * 2 * invΔxm[i] * invΔxp[i]
-        𝔸[min(i + 1, n), i] += v2[i] * invΔxp[i] * invΔx[i]
-    end
-    c = sum(𝔸, dims = 1)
-    for i in 1:n
-        𝔸[i, i] += v0[i] - c[i]
-    end
-    adjoint(𝔸)
-end
-
-#========================================================================================
-
 Compute the principal eigenvector and eigenvalue of 𝔸
 By definition, it is the one associated with a positive eigenvector.
 In particular, it must be real.
@@ -46,36 +14,33 @@ If, moreover, B, is a M-matrix, then all its eigenvalues have positive real part
 
 ========================================================================================#
 function principal_eigenvalue(𝔸::AbstractMatrix; which = :SM, eigenvector = :right, r0 = ones(size(𝔸, 1)))
-    f, η, g = nothing, nothing, nothing
+    l, η, r = nothing, nothing, nothing
     if which == :SM
+        vals, vecs = Arpack.eigs(adjoint(𝔸); nev = 1, which = :SM)
+        η = vals[1]
+        l = vecs[:, 1]
         if eigenvector ∈ (:right, :both)
-            vals, vecs = Arpack.eigs(𝔸; v0 = r0, nev = 1, which = :SM)
+                vals, vecs = Arpack.eigs(𝔸; v0 = r0, nev = 1, which = :SM)
                 η = vals[1]
-                f = vecs[:, 1]
+                r = vecs[:, 1]
         end
-        if eigenvector ∈ (:left, :both)
-            vals, vecs = Arpack.eigs(adjoint(𝔸); nev = 1, which = :SM)
-            η = vals[1]
-            g = vecs[:, 1]
-        end 
     elseif which == :LR
         # Arpack LR tends to fail if the LR is close to zero, which is the typical case if we want to compute tail index
         # Arpack SM is much faster, but it does not always give the right eigenvector (either because LR ≠ SM (happens when the eigenvalue is very positive)
         # Even when it gives the right eigenvalue, it can return a complex eigenvector
+        vals, vecs, info = KrylovKit.eigsolve(adjoint(𝔸), r0, 1, :LR, maxiter = size(𝔸, 1))
+        info.converged == 0 &&  @warn "KrylovKit did not converge"
+        η = vals[1]
+        l = vecs[1]
         if eigenvector ∈ (:right, :both)
-            vals, vecs, info = KrylovKit.eigsolve(𝔸, r0, 1, :LR, maxiter = size(𝔸, 1))
+            vals, vecs, info = KrylovKit.eigsolve(𝔸, 1, :LR, maxiter = size(𝔸, 1))
             info.converged == 0 &&  @warn "KrylovKit did not converge"
             η = vals[1]
-            f = vecs[1]
-        end
-        if eigenvector ∈ (:left, :both)
-            vals, vecs, info = KrylovKit.eigsolve(adjoint(𝔸), 1, :LR, maxiter = size(𝔸, 1))
-            info.converged == 0 &&  @warn "KrylovKit did not converge"
-            η = vals[1]
-            g = vecs[1]
+            r = vecs[1]
         end
     end
-    return clean_eigenvector_left(g), clean_eigenvalue(η), clean_eigenvector_right(f)
+    l = clean_eigenvector_left(l)
+    return l, clean_eigenvalue(η), clean_eigenvector_right(l, r)
 end
 
 clean_eigenvalue(η::Union{Nothing, Real}) = η
@@ -87,10 +52,71 @@ function clean_eigenvalue(η::Complex)
 end
 
 clean_eigenvector_left(::Nothing) = nothing
-function clean_eigenvector_left(g::Vector)
-    g = abs.(g)
-    g ./ sum(g)
+clean_eigenvector_left(l::AbstractVector) = abs.(l) ./ sum(abs.(l))
+
+
+# correct normalization is \int r l = 1
+clean_eigenvector_right(l, ::Nothing) = nothing
+clean_eigenvector_right(l, r::AbstractVector) = abs.(r) ./ sum(l .* abs.(r))
+
+
+##############################################################################
+##
+## Feynman Kac
+##
+##############################################################################
+
+"""
+With direction = :backward
+Solve the PDE backward in time
+u(x, T) = ψ(x)
+0 = u_t + 𝔸u_t - V(x, t)u +  f(x, t)
+
+
+With direction = :forward
+Solve the PDE forward in time
+u(x, 0) = ψ(x)
+u_t = 𝔸u - V(x)u + f(x)
+"""
+function feynman_kac(𝔸::AbstractMatrix; 
+    t::AbstractVector = range(0, 100, step = 1/12), 
+    ψ::AbstractVector = ones(size(𝔸, 1)), 
+    f::Union{AbstractVector, AbstractMatrix} = zeros(size(𝔸, 1)), 
+    V::Union{AbstractVector, AbstractMatrix} = zeros(size(𝔸, 1)),
+    direction= :backward)
+    if direction == :backward
+        u = zeros(size(𝔸, 1), length(t))
+        u[:, end] = ψ
+        if isa(f, AbstractVector) && isa(V, AbstractVector)
+            if isa(t, AbstractRange)
+                dt = step(t)
+                𝔹 = factorize(I + (Diagonal(V) - 𝔸) * dt)
+                for i in (length(t)-1):(-1):1
+                    ψ = ldiv!(𝔹, u[:, i+1] .+ f .* dt)
+                    u[:, i] = ψ
+                end
+            else
+                for i in (length(t)-1):(-1):1
+                    dt = t[i+1] - t[i]
+                    𝔹 = I + (Diagonal(V) - 𝔸) * dt
+                    u[:, i] = 𝔹 \ (u[:, i+1] .+ f .* dt)
+                end
+            end
+        elseif isa(f, AbstractMatrix) && isa(V, AbstractMatrix)
+            for i in (length(t)-1):(-1):1
+                dt = t[i+1] - t[i]
+                𝔹 = I + (Diagonal(view(V, :, i)) - 𝔸) * dt
+                u[:, i] = 𝔹 \ (u[:, i+1] .+ f[:, i] .* dt)
+            end
+        else
+            error("f and V must be Vectors or Matrices")
+        end
+        return u
+    elseif direction == :forward
+        u = feynman_kac(𝔸; t = - reverse(t), ψ = ψ, f = f, V = V, direction = :backward)
+        return u[:,end:-1:1]
+    else
+        error("Direction must be :backward or :forward")
+    end
 end
 
-clean_eigenvector_right(::Nothing) = nothing
-clean_eigenvector_right(f::Vector) = abs.(f) / sum(abs.(f)) .* length(f)
