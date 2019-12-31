@@ -3,7 +3,7 @@ using InfinitesimalGenerators, Test, Statistics, LinearAlgebra,  Expokit
 xbar = 0.0
 κ = 0.1
 σ = 0.02
-X = OrnsteinUhlenbeck(; xbar = xbar, κ =κ, σ = σ, length = 1000)
+X = OrnsteinUhlenbeck(; xbar = xbar, κ = κ, σ = σ, length = 1000)
 
 
 ## Feynman-Kac
@@ -26,6 +26,14 @@ t = range(0, stop = 200, step = 1/10)
 u = feynman_kac(M; t = t, direction = :forward)
 @test log.(stationary_distribution(X)' * u[:, end]) ./ t[end] ≈ η atol = 1e-2
 
+
+# test speed
+g̅ = η - 0.01
+M = MultiplicativeFunctional(X, X.x .- g̅ , zeros(length(X.x)), δ = 0.01)
+ζ = tail_index(M)
+l = cgf_longrun(M; eigenvector = :left)(ζ)[1]
+# test averagr growth at the top
+@assert isapprox(l' * (X.x .- g̅), (xbar .- g̅) +  0.5 * ζ * σ^2 / κ^2, rtol = 1e-1)
 
 ## test left and right eigenvector with correlation
 M = MultiplicativeFunctional(X, X.x, 0.01 * ones(length(X.x)); ρ = 1)
