@@ -3,22 +3,22 @@ uuid = "2fce0c6f-5f0b-5c85-85c9-2ffe1d5ee30d"
 version = "0.1.1"
 
 [deps]
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
-KrylovKit = "0b1a1467-8014-51b9-945f-bf0ae24f4b77"
-Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
-Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 DiffEqDiffTools = "01453d9d-ee7c-5054-8395-0335cb756afa"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
+KrylovKit = "0b1a1467-8014-51b9-945f-bf0ae24f4b77"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 
 [compat]
-julia = "1"
 Arpack = "0"
+DiffEqDiffTools = "1"
+Distributions = "0.21, 0.22"
+FillArrays = "0"
 KrylovKit = "0.4"
 Roots = "0.8"
-Distributions = "0.21"
-DiffEqDiffTools = "1"
-FillArrays = "0"
+julia = "1"
 
 [extras]
 Expokit = "a1e7a1ef-7a5d-5822-a38c-be74e1bb89f4"
