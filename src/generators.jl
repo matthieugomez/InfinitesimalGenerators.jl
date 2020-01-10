@@ -88,7 +88,7 @@ function tail_index(M::MultiplicativeFunctional; which = :SM, xatol = 1e-2, verb
                 verbose && @show (:SM, ξ, out[2])
                 return out[2]
             end
-            D = ξ -> DiffEqDiffTools.finite_difference_derivative(f, ξ)
+            D = ξ -> FiniteDiff.finite_difference_derivative(f, ξ)
             out = find_zero((f, D), 1.0, Roots.Newton(); xatol = xatol, kwargs...)
             out2 = cgf_longrun(M; which = :LR, r0 = r0)(out)[2]
             if abs(out2) > 1e-2 
@@ -106,7 +106,7 @@ function tail_index(M::MultiplicativeFunctional; which = :SM, xatol = 1e-2, verb
             verbose && @show (:LR, ξ, out[2])
             return out[2]
         end
-        D = ξ -> DiffEqDiffTools.finite_difference_derivative(f, ξ)
+        D = ξ -> FiniteDiff.finite_difference_derivative(f, ξ)
         try
             out = find_zero((f, D), 1.0, Roots.Newton(); xatol = xatol, kwargs...)
         catch

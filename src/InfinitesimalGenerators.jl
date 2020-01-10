@@ -1,6 +1,6 @@
 module InfinitesimalGenerators
 
-using LinearAlgebra, Arpack, KrylovKit, Roots, Distributions, DiffEqDiffTools, FillArrays
+using LinearAlgebra, Arpack, KrylovKit, Roots, Distributions, FiniteDiff, FillArrays
 
 include("utils.jl")
 include("generators.jl")
