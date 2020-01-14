@@ -1,4 +1,6 @@
 
+
+
 #========================================================================================
 
 Compute the principal eigenvector and eigenvalue of 𝔸
@@ -64,21 +66,21 @@ clean_eigenvector_right(l, r::AbstractVector) = abs.(r) ./ sum(l .* abs.(r))
 
 
 
-# f is a function that for each ξ gives an AbstractMatrix
+# f is a function that for each ξ gives the generator matrix
 # find_root return ζ such that the principal eigenvalue of f(ζ) is zero
 function find_root(f::Function; which = :SM, xatol = 1e-2, verbose = false, r0 = ones(size(f(1.0), 1)), kwargs...)
     out = 0.0
     if which == :SM
         try
             # SM is so much faster. So try if it works.
-            g = ξ -> begin
+            f = ξ -> begin
                 out = principal_eigenvalue(f(ξ); which = :SM, r0 = r0)
                 eltype(out[3]) <: Float64 && copyto!(r0, out[3])
                 verbose && @show (:SM, ξ, out[2])
                 return out[2]
             end
-            D = ξ -> FiniteDiff.finite_difference_derivative(g, ξ)
-            out = find_zero((g, D), 1.0, Roots.Newton(); xatol = xatol, kwargs...)
+            D = ξ -> FiniteDiff.finite_difference_derivative(f, ξ)
+            out = find_zero((f, D), 1.0, Roots.Newton(); xatol = xatol, kwargs...)
             out2 = principal_eigenvalue(f(out); which = :LR, r0 = r0)[2]
             if abs(out2) > 1e-2 
                 @warn "Algorithm looking for SM eigenvalue = 0 converged to ζ = $out. However, the :LR eigenvalue for this ζ is  $out2"
@@ -89,17 +91,17 @@ function find_root(f::Function; which = :SM, xatol = 1e-2, verbose = false, r0 =
         end
     end
     if which == :LR
-        g = ξ -> begin
+        f = ξ -> begin
             out = principal_eigenvalue(f(ξ); which = :LR, r0 = r0)
             eltype(out[3]) <: Float64 && copyto!(r0, out[3])
             verbose && @show (:LR, ξ, out[2])
             return out[2]
         end
-        D = ξ -> FiniteDiff.finite_difference_derivative(g, ξ)
+        D = ξ -> FiniteDiff.finite_difference_derivative(f, ξ)
         try
-            out = find_zero((g, D), 1.0, Roots.Newton(); xatol = xatol, kwargs...)
+            out = find_zero((f, D), 1.0, Roots.Newton(); xatol = xatol, kwargs...)
         catch
-            out = find_zero((g, D), (1e-2, 10.0); xatol = xatol, kwargs...)
+            out = find_zero((f, D), (1e-2, 10.0); xatol = xatol, kwargs...)
         end
     end
     return out
