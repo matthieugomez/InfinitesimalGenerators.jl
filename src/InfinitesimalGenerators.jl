@@ -22,10 +22,7 @@ feynman_kac,
 cgf_longrun,
 hansen_scheinkman,
 tail_index,
-
 MarkovDiffusion,
-OrnsteinUhlenbeck,
-CoxIngersollRoss,
 MultiplicativeFunctionalDiffusion
 
 end

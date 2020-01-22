@@ -71,9 +71,8 @@ function make_Δ(x)
     return x, 1 ./ Δx, 1 ./ Δxm, 1 ./ Δxp
 end
 
-function generator!(X::MarkovDiffusion)
-    operator!(X.𝔸, X.Δ, Zeros(length(X.x)), X.μx, 0.5 * X.σx.^2)
-end
+generator!(X::MarkovDiffusion) = operator!(X.𝔸, X.Δ, Zeros(length(X.x)), X.μx, 0.5 * X.σx.^2)
+
 Base.length(X::MarkovDiffusion) = length(X.x)
 
 
@@ -84,7 +83,11 @@ end
 # it's important to take 1e-6 to have the right tail index of multiplicative functional (see tests)
 function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, 
     xmin = quantile(Normal(xbar, σ / sqrt(2 * κ)), p), xmax = quantile(Normal(xbar, σ / sqrt(2 * κ)), 1 - p))
-    x = range(xmin, stop = xmax, length = length)
+    if xmin > 0
+        x = range(xmin^(1/pow), stop = xmax^(1/pow), length = length).^pow
+    else
+        x = range(xmin, stop = xmax, length = length)
+    end
     μx = κ .* (xbar .- x)
     σx = σ .* Ones(Base.length(x))
     MarkovProcess(x, μx, σx)

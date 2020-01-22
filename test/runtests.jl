@@ -3,7 +3,7 @@ using InfinitesimalGenerators, Test, Statistics, LinearAlgebra,  Expokit
 xbar = 0.0
 κ = 0.1
 σ = 0.02
-X = OrnsteinUhlenbeck(; xbar = xbar, κ = κ, σ = σ, length = 1000)
+X = InfinitesimalGenerators.OrnsteinUhlenbeck(; xbar = xbar, κ = κ, σ = σ, length = 1000)
 
 
 ## Feynman-Kac
@@ -28,12 +28,18 @@ u = feynman_kac(M; t = t, direction = :forward)
 
 
 # test speed
-g̅ = η - 0.01
-M = MultiplicativeFunctional(X, X.x .- g̅ , zeros(length(X.x)), δ = 0.01)
+μM = - 0.06
+δ = 0.0
+M = MultiplicativeFunctional(X, X.x .+ μM, zeros(length(X.x)), δ = δ)
 ζ = tail_index(M)
-l = cgf_longrun(M; eigenvector = :left)(ζ)[1]
-# test averagr growth at the top
-@assert isapprox(l' * (X.x .- g̅), (xbar .- g̅) +  0.5 * ζ * σ^2 / κ^2, rtol = 1e-1)
+@test μM * ζ + 0.5 * ζ^2 * (σ^2 / κ^2) - δ ≈ 0.0 atol = 1e-2
+l, _, r = cgf_longrun(M; eigenvector = :both)(ζ)
+f =  exp.(ζ .* X.x ./ κ)
+norm(f ./ sum(f) .- r ./ sum(r)) <= 1e-2
+ψ_reaching = r.* l ./ sum(r .* l)
+speed = sum(ψ_reaching .* M.μM) 
+@test speed  ≈ μM  +  ζ * (σ^2 / κ^2) atol = 1e-2
+
 
 ## test left and right eigenvector with correlation
 M = MultiplicativeFunctional(X, X.x, 0.01 * ones(length(X.x)); ρ = 1)
@@ -50,14 +56,14 @@ M = MultiplicativeFunctional(X, μM .+ X.x, σM .* ones(length(X.x)))
 ζ_analytic = 2 * (-μM + σM^2/2) / (σM^2 + (σ / κ)^2)
 @test ζ ≈ ζ_analytic atol = 1e-2
 l, η, r = cgf_longrun(M; eigenvector = :both)(ζ)
-@test η ≈ 0.0 atol = 1e-5
+@test η ≈ 0.0 atol = 1e-4
 ψ = stationary_distribution(X)
 @test (r .* ψ) ./ sum(r .* ψ) ≈ l rtol = 1e-3
 
 
 
 # Test that the modified process μ + σ^2 ∂ ln(r) has a stationary distribution given by $r^2ψ$
-X = OrnsteinUhlenbeck(;κ =κ, σ = σ, length = 1000)
+X = InfinitesimalGenerators.OrnsteinUhlenbeck(;κ =κ, σ = σ, length = 1000)
 M = MultiplicativeFunctional(X, μM .+ X.x .- 0.02, σM .* ones(length(X.x)))
 ψ = stationary_distribution(X)
 ζ = tail_index(M)
@@ -70,14 +76,14 @@ l, η, r = cgf_longrun(M; eigenvector = :both)(ζ)
 M = MultiplicativeFunctional(X, M.μM, M.σM; ρ = 1.0)
 ζ = tail_index(M)
 l, η, r = cgf_longrun(M; eigenvector = :both)(ζ)
-@test η ≈ 0.0 atol = 1e-5
+@test η ≈ 0.0 atol = 1e-3
 ψ_tilde = stationary_distribution(MarkovProcess(X.x, X.μx .+ ζ .* M.σM .* M.ρ .* X.σx , X.σx))
 @test (r .* ψ_tilde) ./ sum(r .* ψ_tilde) ≈ l rtol = 1e-3
 
 # Test CIR
 gbar = 0.03
 σ = 0.01
-X = CoxIngersollRoss(xbar = gbar, κ = κ, σ = σ)
+X = InfinitesimalGenerators.CoxIngersollRoss(xbar = gbar, κ = κ, σ = σ)
 M = MultiplicativeFunctional(X, X.x, zeros(length(X.x)))
 η_analytic = gbar * κ^2 / σ^2 * (1 - sqrt(1 - 2 * σ^2 / κ^2))
 @test cgf_longrun(M)(1.0)[2] ≈ η_analytic rtol = 1e-2

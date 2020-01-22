@@ -13,25 +13,72 @@ Note that, in particular, it is the eigenvalue with largest real part, which mea
 If, moreover, B, is a M-matrix, then all its eigenvalues have positive real part. Therefore, all the eigenvalues of A have negative real part. Therefore, the eigenvalue with largest real part is also the eigenvalue with smallest magnitude.
 
 ========================================================================================#
+function principal_eigenvalue(𝔸::Matrix; which = :SM, eigenvector = :right, r0 = ones(size(𝔸, 1)))
+    l, η, r = nothing, nothing, nothing
+    if eigenvector ∈ (:left, :both)
+        e = eigen(𝔸')
+        λs = e.values
+        vs = e.vectors
+        if which == :SM
+            i0 = argmin(abs.(λs))
+        elseif which == :LR
+            i0 = argmax(real.(λs))
+        end
+        η = λs[i0]
+        l = vs[:, i0]
+        for i in 1:length(λs)
+            if λs[i] ≈ λs[i0]
+                if all(real.(vs[:, i]) .>= - eps()) & all(abs.(imag.(vs[:, i])) .<= eps())
+                    l = vs[:, i]
+                end
+            end
+        end
+    end
+   if eigenvector ∈ (:right, :both)
+        e = eigen(𝔸)
+        λs = e.values
+        vs = e.vectors
+        if which == :SM
+            i0 = argmin(abs.(λs))
+        elseif which == :LR
+            i0 = argmax(real.(λs))
+        end
+        η = λs[i0]
+        r = vs[:, i0]
+        for i in 1:length(λs)
+            if λs[i] ≈ λs[i0]
+                if all(real.(vs[:, i]) .>= - eps()) & all(abs.(imag.(vs[:, i])) .<= eps())
+                    r = vs[:, i]
+                end
+            end
+        end
+    end
+    return clean_eigenvector_left(l), clean_eigenvalue(η), clean_eigenvector_right(r)
+end
+
+
 function principal_eigenvalue(𝔸::AbstractMatrix; which = :SM, eigenvector = :right, r0 = ones(size(𝔸, 1)))
     l, η, r = nothing, nothing, nothing
     if which == :SM
-        vals, vecs = Arpack.eigs(adjoint(𝔸); nev = 1, which = :SM)
-        η = vals[1]
-        l = vecs[:, 1]
+        if eigenvector ∈ (:left, :both)
+            vals, vecs = Arpack.eigs(adjoint(𝔸); nev = 1, which = :SM)
+            η = vals[1]
+            l = vecs[:, 1]
+        end
         if eigenvector ∈ (:right, :both)
-                vals, vecs = Arpack.eigs(𝔸; v0 = r0, nev = 1, which = :SM)
-                η = vals[1]
-                r = vecs[:, 1]
+            vals, vecs = Arpack.eigs(𝔸; v0 = r0, nev = 1, which = :SM)
+            η = vals[1]
+            r = vecs[:, 1]
         end
     elseif which == :LR
-        # Arpack LR tends to fail if the LR is close to zero, which is the typical case if we want to compute tail index
-        # Arpack SM is much faster, but it does not always give the right eigenvector (either because LR ≠ SM (happens when the eigenvalue is very positive)
-        # Even when it gives the right eigenvalue, it can return a complex eigenvector
-        vals, vecs, info = KrylovKit.eigsolve(adjoint(𝔸), r0, 1, :LR, maxiter = size(𝔸, 1))
-        info.converged == 0 &&  @warn "KrylovKit did not converge"
-        η = vals[1]
-        l = vecs[1]
+        # Arpack LR tends to fail if the LR is close to zero, which is the typical case when computing tail index
+        # Arpack SM is much faster, but (i) it does not always give the right eigenvector (either because LR ≠ SM (happens when the eigenvalue is very positive) (ii) even when it gives the right eigenvalue, it can return a complex eigenvector
+        if eigenvector ∈ (:left, :both)
+            vals, vecs, info = KrylovKit.eigsolve(adjoint(𝔸), r0, 1, :LR, maxiter = size(𝔸, 1))
+            info.converged == 0 &&  @warn "KrylovKit did not converge"
+            η = vals[1]
+            l = vecs[1]
+        end
         if eigenvector ∈ (:right, :both)
             vals, vecs, info = KrylovKit.eigsolve(𝔸, 1, :LR, maxiter = size(𝔸, 1))
             info.converged == 0 &&  @warn "KrylovKit did not converge"
@@ -39,8 +86,7 @@ function principal_eigenvalue(𝔸::AbstractMatrix; which = :SM, eigenvector = :
             r = vecs[1]
         end
     end
-    l = clean_eigenvector_left(l)
-    return l, clean_eigenvalue(η), clean_eigenvector_right(l, r)
+    return clean_eigenvector_left(l), clean_eigenvalue(η), clean_eigenvector_right(r)
 end
 
 clean_eigenvalue(η::Union{Nothing, Real}) = η
@@ -56,8 +102,8 @@ clean_eigenvector_left(l::AbstractVector) = abs.(l) ./ sum(abs.(l))
 
 
 # correct normalization is \int r l = 1
-clean_eigenvector_right(l, ::Nothing) = nothing
-clean_eigenvector_right(l, r::AbstractVector) = abs.(r) ./ sum(l .* abs.(r))
+clean_eigenvector_right(::Nothing) = nothing
+clean_eigenvector_right(r::AbstractVector) = abs.(r)
 
 
 
@@ -66,43 +112,16 @@ clean_eigenvector_right(l, r::AbstractVector) = abs.(r) ./ sum(l .* abs.(r))
 
 # f is a function that for each ξ gives an AbstractMatrix
 # find_root return ζ such that the principal eigenvalue of f(ζ) is zero
-function find_root(f::Function; which = :SM, xatol = 1e-2, verbose = false, r0 = ones(size(f(1.0), 1)), kwargs...)
-    out = 0.0
-    if which == :SM
-        try
-            # SM is so much faster. So try if it works.
-            g = ξ -> begin
-                out = principal_eigenvalue(f(ξ); which = :SM, r0 = r0)
-                eltype(out[3]) <: Float64 && copyto!(r0, out[3])
-                verbose && @show (:SM, ξ, out[2])
-                return out[2]
-            end
-            D = ξ -> FiniteDiff.finite_difference_derivative(g, ξ)
-            out = find_zero((g, D), 1.0, Roots.Newton(); xatol = xatol, kwargs...)
-            out2 = principal_eigenvalue(f(out); which = :LR, r0 = r0)[2]
-            if abs(out2) > 1e-2 
-                @warn "Algorithm looking for SM eigenvalue = 0 converged to ζ = $out. However, the :LR eigenvalue for this ζ is  $out2"
-                throw("there is an error")
-            end
-        catch
-            which = :LR
-        end
+function find_root(@nospecialize(f::Function); xatol = 1e-2, verbose = false, r0 = ones(size(f(1.0), 1)), kwargs...)
+    ζ, r = nothing, nothing
+    g = ξ -> begin
+       out = principal_eigenvalue(f(ξ); which = :LR, r0 = r0)
+       copyto!(r0, out[3])
+       verbose && @show (:LR, ξ, out[2])
+       return out[2]
     end
-    if which == :LR
-        g = ξ -> begin
-            out = principal_eigenvalue(f(ξ); which = :LR, r0 = r0)
-            eltype(out[3]) <: Float64 && copyto!(r0, out[3])
-            verbose && @show (:LR, ξ, out[2])
-            return out[2]
-        end
-        D = ξ -> FiniteDiff.finite_difference_derivative(g, ξ)
-        try
-            out = find_zero((g, D), 1.0, Roots.Newton(); xatol = xatol, kwargs...)
-        catch
-            out = find_zero((g, D), (1e-2, 10.0); xatol = xatol, kwargs...)
-        end
-    end
-    return out
+    ζ = fzero(g, (1e-2, 10.0); xatol = xatol, kwargs...)
+    return ζ
 end
 
 ##############################################################################
