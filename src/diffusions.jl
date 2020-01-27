@@ -46,7 +46,7 @@ mutable struct MarkovDiffusion <: MarkovProcess
     Δ::Tuple{<:AbstractVector, <:AbstractVector, <:AbstractVector, <:AbstractVector}
 end
 
-function MarkovProcess(x::AbstractVector{<:Real}, μx::AbstractVector{<:Real}, σx::AbstractVector{<:Real})
+function MarkovDiffusion(x::AbstractVector{<:Real}, μx::AbstractVector{<:Real}, σx::AbstractVector{<:Real})
     length(x) == length(μx) || error("Vector for grid, drift, and volatility should have the same size")
     length(μx) == length(σx) || error("Vector for grid, drift, and volatility should have the same size")
     n = length(x)
@@ -90,14 +90,14 @@ function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length =
     end
     μx = κ .* (xbar .- x)
     σx = σ .* Ones(Base.length(x))
-    MarkovProcess(x, μx, σx)
+    MarkovDiffusion(x, μx, σx)
 end
 
 function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, α = 2 * κ * xbar / σ^2, β = σ^2 / (2 * κ), xmin = quantile(Gamma(α, β), p), xmax = quantile(Gamma(α, β), 1 - p), pow = 2)
     x = range(xmin^(1/pow), stop = xmax^(1/pow), length = length).^pow
     μx = κ .* (xbar .- x)
     σx = σ .* sqrt.(x)
-    MarkovProcess(x, μx, σx)
+    MarkovDiffusion(x, μx, σx)
 end
 #========================================================================================
 
@@ -115,13 +115,13 @@ mutable struct MultiplicativeFunctionalDiffusion <: MultiplicativeFunctional
     δ::Number
 end
 
-function MultiplicativeFunctional(X::MarkovDiffusion, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; ρ::Number = 0.0, δ::Number = 0.0)
+function MultiplicativeFunctionalDiffusion(X::MarkovDiffusion, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; ρ::Number = 0.0, δ::Number = 0.0)
     length(X.x) == length(μM) || error("Vector for grid and μM should have the same size")
     length(X.x) == length(σM) || error("Vector for grid and σM should have the same size")
     MultiplicativeFunctionalDiffusion(X, μM, σM, ρ, δ)
 end
 
-function generator!(M::MultiplicativeFunctionalDiffusion, ξ = 1.0)
-    operator!(M.X.𝔸, M.X.Δ, ξ .* M.μM .+ 0.5 * ξ * (ξ - 1) .* M.σM.^2 .- M.δ,  M.X.μx .+ ξ .* M.σM .* M.ρ .* M.X.σx, 0.5 * M.X.σx.^2)
+function generator!(M::MultiplicativeFunctionalDiffusion)
+    ξ -> operator!(M.X.𝔸, M.X.Δ, ξ .* M.μM .+ 0.5 * ξ * (ξ - 1) .* M.σM.^2 .- M.δ,  M.X.μx .+ ξ .* M.σM .* M.ρ .* M.X.σx, 0.5 * M.X.σx.^2)
 end
 Base.length(M::MultiplicativeFunctionalDiffusion) = length(M.X)

@@ -48,19 +48,19 @@ end
 
 abstract type MultiplicativeFunctional end
  
-function generator(M::MultiplicativeFunctional, ξ = 1.0)
-    deepcopy(generator!(M, ξ))
+function generator(M::MultiplicativeFunctional)
+    ξ -> deepcopy(generator!(M)(ξ))
 end
 
 # ξ -> lim log(E[M^\xi]) / t
 function cgf_longrun(M::MultiplicativeFunctional; which = :LR, eigenvector = :right, r0 = Ones(length(M)))
-    ξ -> principal_eigenvalue(generator!(M, ξ); which = which, eigenvector = eigenvector, r0 = r0)
+    ξ -> principal_eigenvalue(generator!(M)(ξ); which = which, eigenvector = eigenvector, r0 = r0)
 end
 
 # Compute Hansen Scheinkmann decomposition M_t= e^{ηt}f(x_t)\hat{M}_t
-function hansen_scheinkman(M::MultiplicativeFunctional; which = :LR, eigenvector = :right)
-    cgf_longrun(M, eigenvector = eigenvector)(1.0)
-end
+#function hansen_scheinkman(M::MultiplicativeFunctional; which = :LR, eigenvector = :right)
+#    cgf_longrun(M, eigenvector = eigenvector)(1.0)
+#end
 
 # Compute tail index of the process M given by
 # dM/M = μ dt + σ dW_t
@@ -78,7 +78,7 @@ end
 # dx = μx dt + σx dZt
 # with death rate δ
 function tail_index(M::MultiplicativeFunctional; kwargs...)
-    find_root(ξ -> generator!(M, ξ); kwargs...)
+    find_root(generator!(M); kwargs...)
 end
 
 """ 
@@ -86,5 +86,5 @@ If direction = :forward
 compute `E[M_t ψ(x_t)|x_0 = x]`
 """
 function feynman_kac(M::MultiplicativeFunctional; kwargs...)
-    feynman_kac(generator!(M); kwargs...)
+    feynman_kac(generator!(M)(1); kwargs...)
 end
