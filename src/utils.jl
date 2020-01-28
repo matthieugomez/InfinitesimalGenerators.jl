@@ -108,11 +108,34 @@ clean_eigenvector_right(r::AbstractVector) = abs.(r)
 
 
 
+##############################################################################
+##
+## Compute Distributions
+##
+##############################################################################
+
+function stationary_distribution(T::AbstractMatrix)
+    g, η, _ = principal_eigenvalue(T; which = :SM, eigenvector = :left)
+    abs(η) <= 1e-5 || @warn "Principal Eigenvalue does not seem to be zero"
+    return g
+end
+
+# Death rate δ and reinjection ψ
+function stationary_distribution(T::AbstractMatrix, δ::Number, ψ::AbstractVector{<:Number})
+    clean_eigenvector_left((δ * I - T') \ (δ * ψ))
+end
 
 
+function tail_index(μ::Number, σ::Number; δ::Number = 0)
+    if σ > 0
+        (1 - 2 * μ / σ^2 + sqrt((1- 2 * μ / σ^2)^2 + 8 * δ / σ^2)) / 2
+    else
+        δ / μ
+    end
+end
 # f is a function that for each ξ gives an AbstractMatrix
 # find_root return ζ such that the principal eigenvalue of f(ζ) is zero
-function find_root(@nospecialize(f::Function); xatol = 1e-2, verbose = false, r0 = ones(size(f(1.0), 1)), kwargs...)
+function tail_index(@nospecialize(f::Function); xatol = 1e-2, verbose = false, r0 = ones(size(f(1.0), 1)), kwargs...)
     ζ, r = nothing, nothing
     g = ξ -> begin
        out = principal_eigenvalue(f(ξ); which = :LR, r0 = r0)
@@ -124,6 +147,9 @@ function find_root(@nospecialize(f::Function); xatol = 1e-2, verbose = false, r0
     return ζ
 end
 
+function cgf_longrun(f::Function; which = :LR, eigenvector = :right, r0 = Ones(size(f(1), 1)))
+    ξ -> principal_eigenvalue(f(ξ); which = which, eigenvector = eigenvector, r0 = r0)
+end
 ##############################################################################
 ##
 ## Feynman Kac
@@ -133,15 +159,16 @@ end
 """
 With direction = :backward
 Solve the PDE backward in time
-u(x, T) = ψ(x)
+u(x, t[end]) = ψ(x)
 0 = u_t + 𝔸u_t - V(x, t)u +  f(x, t)
 
 
 With direction = :forward
 Solve the PDE forward in time
-u(x, 0) = ψ(x)
+u(x, t[1]) = ψ(x)
 u_t = 𝔸u - V(x)u + f(x)
 """
+
 function feynman_kac(𝔸::AbstractMatrix; 
     t::AbstractVector = range(0, 100, step = 1/12), 
     ψ::AbstractVector = ones(size(𝔸, 1)), 

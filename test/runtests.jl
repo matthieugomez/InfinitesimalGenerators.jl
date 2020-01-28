@@ -9,7 +9,7 @@ X = InfinitesimalGenerators.OrnsteinUhlenbeck(; xbar = xbar, κ = κ, σ = σ, l
 ## Feynman-Kac
 ψ = X.x.^2
 t = range(0, stop = 100, step = 1/10)
-u = feynman_kac(X; t = t, ψ = ψ, direction = :forward)
+u = feynman_kac(generator(X); t = t, ψ = ψ, direction = :forward)
 @test maximum(abs, u[:, 50] .- expmv(t[50], generator(X), ψ)) <= 1e-3
 @test maximum(abs, u[:, 200] .- expmv(t[200], generator(X), ψ)) <= 1e-3
 @test maximum(abs, u[:, end] .- expmv(t[end], generator(X), ψ)) <= 1e-5
@@ -41,6 +41,24 @@ speed = sum(ψ_reaching .* M.μM)
 @test speed  ≈ μM  +  ζ * (σ^2 / κ^2) atol = 1e-2
 
 
+# test transformation with a funciton # M2 = p * M. 
+# This does not work very well. Note that it works only if the distribution of p has a thinner tail than the distirbuiton of M
+M = MultiplicativeFunctionalDiffusion(X, X.x .- 0.06, zeros(length(X.x)))
+ζ = tail_index(M)
+l, η, r = cgf_longrun(M; eigenvector = :both)(ζ)
+p =  exp.(5 .* X.x)
+M2 = MultiplicativeFunctionalDiffusion(X, M.μM .+ (generator(M.X) * log.(p)),  (InfinitesimalGenerators.∂(X) * log.(p)) .* X.σx, ρ = 1)
+l2, η2, r2 = cgf_longrun(M2; eigenvector = :both)(ζ)
+r3 = (r ./ p.^ζ) ./ sum(r ./ p.^ζ)
+r2 = r2 ./ sum(r2)
+#@test r2 ≈ r3 rtol = 1e-2
+l3 = (l .* p.^ζ) ./ sum(l .* p.^ζ)
+#@test l2 ≈ l3 rtol = 1e-1
+
+l' * (generator(M.X) * log.(p))
+ψ_reaching = l.*r ./ sum(l.* r)
+ψ_reaching' * (generator(M.X) * log.(p))
+
 ## test left and right eigenvector with correlation
 M = MultiplicativeFunctionalDiffusion(X, X.x, 0.01 * ones(length(X.x)); ρ = 1)
 l, η, r = cgf_longrun(M; eigenvector = :both)(1)
@@ -68,7 +86,7 @@ M = MultiplicativeFunctionalDiffusion(X, μM .+ X.x .- 0.02, σM .* ones(length(
 ψ = stationary_distribution(X)
 ζ = tail_index(M)
 l, η, r = cgf_longrun(M; eigenvector = :both)(ζ)
-ψ_cond = stationary_distribution(MarkovDiffusion(X.x, X.μx .+ X.σx.^2 .* InfinitesimalGenerators.∂(X, log.(r)), X.σx))
+ψ_cond = stationary_distribution(MarkovDiffusion(X.x, X.μx .+ X.σx.^2 .* (InfinitesimalGenerators.∂(X) * log.(r)), X.σx))
 @test (r.^2 .* ψ) ./ sum(r.^2 .* ψ) ≈ ψ_cond rtol = 1e-1
 
 
