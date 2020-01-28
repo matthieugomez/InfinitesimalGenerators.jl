@@ -91,7 +91,7 @@ function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 
     MarkovDiffusion(x, μx, σx)
 end
 
-generator(X::MarkovDiffusion) = adjoint(X.T)
+generator(X::MarkovDiffusion) = X.T'
   
 function ∂(X::MarkovDiffusion)
     build_diffusion!(deepcopy(X.T), X.Δ, Zeros(length(X.x)), Ones(length(X.x)), Zeros(length(X.x)))'
@@ -120,5 +120,5 @@ function MultiplicativeFunctionalDiffusion(X::MarkovDiffusion, μM::AbstractVect
 end
 
 function generator(M::MultiplicativeFunctionalDiffusion)
-    ξ -> adjoint(build_diffusion!(M.T, M.X.Δ, ξ .* M.μM .+ 0.5 * ξ * (ξ - 1) .* M.σM.^2 .- M.δ,  M.X.μx .+ ξ .* M.ρ .* M.σM .* M.X.σx, 0.5 * M.X.σx.^2))
+    ξ -> build_diffusion!(M.T, M.X.Δ, ξ .* M.μM .+ 0.5 * ξ * (ξ - 1) .* M.σM.^2 .- M.δ,  M.X.μx .+ ξ .* M.ρ .* M.σM .* M.X.σx, 0.5 * M.X.σx.^2)'
 end
