@@ -16,7 +16,7 @@ If, moreover, B, is a M-matrix, then all its eigenvalues have positive real part
 function principal_eigenvalue(𝔸::Matrix; which = :SM, eigenvector = :right, r0 = ones(size(𝔸, 1)))
     l, η, r = nothing, nothing, nothing
     if eigenvector ∈ (:left, :both)
-        e = eigen(𝔸')
+        e = eigen(adjoint(𝔸))
         λs = e.values
         vs = e.vectors
         if which == :SM
