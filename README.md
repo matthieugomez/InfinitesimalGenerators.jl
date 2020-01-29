@@ -10,6 +10,9 @@ For an Additive Functional `M` defined by a function `ξ -> T(ξ)` where `T` is 
 - `tail_index(f)` returns the tail index of the stationary distribution of `e^m`
 
 
+Moreover, 
+- `generator(DiffusionProcess(x, μ, σ))` creates the transition matrix of a diffusive process with drift `μ(x)` and volatility `σ(x)`
+- `generator(AdditiveFunctional(DiffusionProcess(x, μ, σ), μm, σm)` creates the function ``ξ -> T(ξ)` for the additive functional with drift `μm(x)` and volatility `σm(x)`
 
 ## Related Packages
 - [SimpleDifferentialOperators](https://github.com/QuantEcon/SimpleDifferentialOperators.jl) contains more general tools to define operators with different boundary counditions. In contrast, InfinitesimalGenerators always assumes reflecting boundaries.
