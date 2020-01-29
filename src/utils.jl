@@ -1,11 +1,11 @@
 
 #========================================================================================
 
-Compute the principal eigenvector and eigenvalue of 𝔸
+Compute the principal eigenvector and eigenvalue of T
 By definition, it is the one associated with a positive eigenvector.
 In particular, it must be real.
 
-B = -𝔸 is a Z matrix (all off diagonal are negative). Therefore, there exists a positive s such that sI + A has all positive entries. Applying Perron Frobenus, there a unique largest eigenvalue for sI + A, which is real, and the correspongind eigenctor is strictly positive.
+B = -T is a Z matrix (all off diagonal are negative). Therefore, there exists a positive s such that sI + A has all positive entries. Applying Perron Frobenus, there a unique largest eigenvalue for sI + A, which is real, and the correspongind eigenctor is strictly positive.
 Note that, in particular, it is the eigenvalue with largest real part, which means that I can look for the eigenvalue with largest real part 
 
 
@@ -13,10 +13,10 @@ Note that, in particular, it is the eigenvalue with largest real part, which mea
 If, moreover, B, is a M-matrix, then all its eigenvalues have positive real part. Therefore, all the eigenvalues of A have negative real part. Therefore, the eigenvalue with largest real part is also the eigenvalue with smallest magnitude.
 
 ========================================================================================#
-function principal_eigenvalue(𝔸::Matrix; which = :SM, eigenvector = :right, r0 = ones(size(𝔸, 1)))
+function principal_eigenvalue(T::Matrix; which = :SM, eigenvector = :right, r0 = ones(size(T, 1)))
     l, η, r = nothing, nothing, nothing
     if eigenvector ∈ (:left, :both)
-        e = eigen(adjoint(𝔸))
+        e = eigen(adjoint(T))
         λs = e.values
         vs = e.vectors
         if which == :SM
@@ -35,7 +35,7 @@ function principal_eigenvalue(𝔸::Matrix; which = :SM, eigenvector = :right, r
         end
     end
    if eigenvector ∈ (:right, :both)
-        e = eigen(𝔸)
+        e = eigen(T)
         λs = e.values
         vs = e.vectors
         if which == :SM
@@ -57,16 +57,16 @@ function principal_eigenvalue(𝔸::Matrix; which = :SM, eigenvector = :right, r
 end
 
 
-function principal_eigenvalue(𝔸::AbstractMatrix; which = :SM, eigenvector = :right, r0 = ones(size(𝔸, 1)))
+function principal_eigenvalue(T::AbstractMatrix; which = :SM, eigenvector = :right, r0 = ones(size(T, 1)))
     l, η, r = nothing, nothing, nothing
     if which == :SM
         if eigenvector ∈ (:left, :both)
-            vals, vecs = Arpack.eigs(adjoint(𝔸); nev = 1, which = :SM)
+            vals, vecs = Arpack.eigs(adjoint(T); nev = 1, which = :SM)
             η = vals[1]
             l = vecs[:, 1]
         end
         if eigenvector ∈ (:right, :both)
-            vals, vecs = Arpack.eigs(𝔸; v0 = r0, nev = 1, which = :SM)
+            vals, vecs = Arpack.eigs(T; v0 = r0, nev = 1, which = :SM)
             η = vals[1]
             r = vecs[:, 1]
         end
@@ -74,13 +74,13 @@ function principal_eigenvalue(𝔸::AbstractMatrix; which = :SM, eigenvector = :
         # Arpack LR tends to fail if the LR is close to zero, which is the typical case when computing tail index
         # Arpack SM is much faster, but (i) it does not always give the right eigenvector (either because LR ≠ SM (happens when the eigenvalue is very positive) (ii) even when it gives the right eigenvalue, it can return a complex eigenvector
         if eigenvector ∈ (:left, :both)
-            vals, vecs, info = KrylovKit.eigsolve(adjoint(𝔸), r0, 1, :LR, maxiter = size(𝔸, 1))
+            vals, vecs, info = KrylovKit.eigsolve(adjoint(T), r0, 1, :LR, maxiter = size(T, 1))
             info.converged == 0 &&  @warn "KrylovKit did not converge"
             η = vals[1]
             l = vecs[1]
         end
         if eigenvector ∈ (:right, :both)
-            vals, vecs, info = KrylovKit.eigsolve(𝔸, 1, :LR, maxiter = size(𝔸, 1))
+            vals, vecs, info = KrylovKit.eigsolve(T, 1, :LR, maxiter = size(T, 1))
             info.converged == 0 &&  @warn "KrylovKit did not converge"
             η = vals[1]
             r = vecs[1]
@@ -171,51 +171,51 @@ end
 With direction = :backward
 Solve the PDE backward in time
 u(x, t[end]) = ψ(x)
-0 = u_t + 𝔸u_t - V(x, t)u +  f(x, t)
+0 = u_t + Tu_t - V(x, t)u +  f(x, t)
 
 
 With direction = :forward
 Solve the PDE forward in time
 u(x, t[1]) = ψ(x)
-u_t = 𝔸u - V(x)u + f(x)
+u_t = Tu - V(x)u + f(x)
 """
 
-function feynman_kac(𝔸::AbstractMatrix; 
+function feynman_kac(T::AbstractMatrix; 
     t::AbstractVector = range(0, 100, step = 1/12), 
-    ψ::AbstractVector = ones(size(𝔸, 1)), 
-    f::Union{AbstractVector, AbstractMatrix} = zeros(size(𝔸, 1)), 
-    V::Union{AbstractVector, AbstractMatrix} = zeros(size(𝔸, 1)),
+    f::Union{AbstractVector, AbstractMatrix} = zeros(size(T, 1)), 
+    ψ::AbstractVector = ones(size(T, 1)),
+    V::Union{AbstractVector, AbstractMatrix} = zeros(size(T, 1)),
     direction= :backward)
     if direction == :backward
-        u = zeros(size(𝔸, 1), length(t))
+        u = zeros(size(T, 1), length(t))
         u[:, end] = ψ
         if isa(f, AbstractVector) && isa(V, AbstractVector)
             if isa(t, AbstractRange)
                 dt = step(t)
-                𝔹 = factorize(I + (Diagonal(V) - 𝔸) * dt)
+                B = factorize(I + (Diagonal(V) - T) * dt)
                 for i in (length(t)-1):(-1):1
-                    ψ = ldiv!(𝔹, u[:, i+1] .+ f .* dt)
+                    ψ = ldiv!(B, u[:, i+1] .+ f .* dt)
                     u[:, i] = ψ
                 end
             else
                 for i in (length(t)-1):(-1):1
                     dt = t[i+1] - t[i]
-                    𝔹 = I + (Diagonal(V) - 𝔸) * dt
-                    u[:, i] = 𝔹 \ (u[:, i+1] .+ f .* dt)
+                    B = I + (Diagonal(V) - T) * dt
+                    u[:, i] = B \ (u[:, i+1] .+ f .* dt)
                 end
             end
         elseif isa(f, AbstractMatrix) && isa(V, AbstractMatrix)
             for i in (length(t)-1):(-1):1
                 dt = t[i+1] - t[i]
-                𝔹 = I + (Diagonal(view(V, :, i)) - 𝔸) * dt
-                u[:, i] = 𝔹 \ (u[:, i+1] .+ f[:, i] .* dt)
+                B = I + (Diagonal(view(V, :, i)) - T) * dt
+                u[:, i] = B \ (u[:, i+1] .+ f[:, i] .* dt)
             end
         else
             error("f and V must be Vectors or Matrices")
         end
         return u
     elseif direction == :forward
-        u = feynman_kac(𝔸; t = - reverse(t), ψ = ψ, f = f, V = V, direction = :backward)
+        u = feynman_kac(T; t = - reverse(t), ψ = ψ, f = f, V = V, direction = :backward)
         return u[:,end:-1:1]
     else
         error("Direction must be :backward or :forward")
