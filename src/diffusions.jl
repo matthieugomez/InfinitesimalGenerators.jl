@@ -71,7 +71,7 @@ function DiffusionProcess(x::AbstractVector{<:Real}, μx::AbstractVector{<:Real}
     DiffusionProcess(x, μx, σx, T, Δ)
 end
 
-# it's important to take 1e-6 to have the right tail index of multiplicative functional (see tests)
+# it's important to take 1e-6 to have the right tail index of Additive functional (see tests)
 function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, 
     xmin = quantile(Normal(xbar, σ / sqrt(2 * κ)), p), xmax = quantile(Normal(xbar, σ / sqrt(2 * κ)), 1 - p))
     if xmin > 0
@@ -99,27 +99,27 @@ end
 
 #========================================================================================
 
-Multiplicative functional M for diffusion
-dM/M = μM(x) dt + σM(x) dZt
+Additive functional m for diffusion
+dm = μm(x) dt + σm(x) dZt
 dx = μ(x) dt + σ(x) dZt
 
 ========================================================================================#
 
-mutable struct MultiplicativeFunctionalDiffusion <: MultiplicativeFunctional
+mutable struct AdditiveFunctionalDiffusion <: AdditiveFunctional
     X::DiffusionProcess
-    μM::AbstractVector{<:Number}
-    σM::AbstractVector{<:Number}
+    μm::AbstractVector{<:Number}
+    σm::AbstractVector{<:Number}
     ρ::Number
     δ::Number
     T::Tridiagonal
 end
 
-function MultiplicativeFunctionalDiffusion(X::DiffusionProcess, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; ρ::Number = 0.0, δ::Number = 0.0)
-    length(X.x) == length(μM) || error("Vector for grid and μM should have the same size")
-    length(X.x) == length(σM) || error("Vector for grid and σM should have the same size")
-    MultiplicativeFunctionalDiffusion(X, μM, σM, ρ, δ, deepcopy(X.T))
+function AdditiveFunctionalDiffusion(X::DiffusionProcess, μm::AbstractVector{<:Number}, σm::AbstractVector{<:Number}; ρ::Number = 0.0, δ::Number = 0.0)
+    length(X.x) == length(μm) || error("Vector for grid and μm should have the same size")
+    length(X.x) == length(σm) || error("Vector for grid and σm should have the same size")
+    AdditiveFunctionalDiffusion(X, μm, σm, ρ, δ, deepcopy(X.T))
 end
 
-function generator(M::MultiplicativeFunctionalDiffusion)
-    ξ -> build_diffusion!(M.T, M.X.Δ, ξ .* M.μM .+ 0.5 * ξ * (ξ - 1) .* M.σM.^2 .- M.δ,  M.X.μx .+ ξ .* M.ρ .* M.σM .* M.X.σx, 0.5 * M.X.σx.^2)'
+function generator(M::AdditiveFunctionalDiffusion)
+    ξ -> build_diffusion!(M.T, M.X.Δ, ξ .* M.μm .+ 0.5 * ξ^2 .* M.σm.^2 .- M.δ,  M.X.μx .+ ξ .* M.ρ .* M.σm .* M.X.σx, 0.5 * M.X.σx.^2)'
 end
