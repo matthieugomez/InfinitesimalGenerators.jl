@@ -2,24 +2,47 @@ module InfinitesimalGenerators
 
 using LinearAlgebra, Arpack, KrylovKit, Roots, Distributions, FiniteDiff, FillArrays
 
+
+
 include("utils.jl")
-include("generators.jl")
+
+
+
+abstract type MarkovProcess end
+
+function stationary_distribution(X::MarkovProcess; kwargs...)
+    stationary_distribution(generator(X); kwargs...)
+end
+
+function feynman_kac(X::MarkovProcess; kwargs...)
+    feynman_kac(generator(X); kwargs...)
+end
+
+abstract type MultiplicativeFunctional end
+
+function cgf(M::MultiplicativeFunctional; kwargs...)
+    cgf(generator(M); kwargs...)
+end
+
+function tail_index(M::MultiplicativeFunctional; kwargs...)
+    tail_index(generator(M); kwargs...)
+end
+
+function feynman_kac(M::MultiplicativeFunctional; kwargs...)
+    ξ -> feynman_kac(generator(M)(ξ); kwargs...)
+end
+
 include("diffusions.jl")
 
-@deprecate stationary_distribution(x, μx, σx, args...) stationary_distribution(MarkovDiffusion(x, μx, σx))
-@deprecate cgf_longrun(x, μx, σx, μM, σM; ρ = 0.0, δ = 0.0, kwargs...) cgf_longrun(MultiplicativeFunctional(MarkovDiffusion(x, μx, σx), μM, σM; ρ = ρ, δ = δ); kwargs...)
-@deprecate tail_index(x, μx, σx, μM, σM; ρ = 0.0, δ = 0.0,  kwargs...) tail_index(MultiplicativeFunctional(MarkovDiffusion(x, μx, σx), μM, σM; ρ = ρ, δ = δ); kwargs...)
-@deprecate feynman_kac(x, μx, σx; kwargs...) feynman_kac(MarkovDiffusion(x, μx, σx); kwargs...)
-@deprecate feynman_kac(x, μx, σx, μM, σM; ρ = 0.0, δ = 0.0, kwargs...) feynman_kac(MultiplicativeFunctional(MarkovDiffusion(x, μx, σx), μM, σM; ρ = ρ, δ = δ); kwargs...)
 
 export 
 MarkovProcess,
 MultiplicativeFunctional,
-MarkovDiffusion,
+DiffusionProcess,
 MultiplicativeFunctionalDiffusion,
 generator,
 stationary_distribution,
 feynman_kac,
-cgf_longrun,
+cgf,
 tail_index
 end

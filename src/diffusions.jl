@@ -23,7 +23,7 @@ function make_Δ(x)
 end
 
 function build_diffusion!(T, Δ, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
-    # The key is that sum of each column = 0.0 and off diagonals are positive (singular M-matrix)
+    # The key is that sum of each row = 0.0 and off diagonals are positive (singular M-matrix)
     x, invΔx, invΔxm, invΔxp = Δ
     n = length(x)
     fill!(T, 0)
@@ -48,12 +48,12 @@ end
 
 #========================================================================================
 
-Markov Diffusion 
+Diffusion Process
 dx = μ(x) dt + σ(x) dZ_t
 
 ========================================================================================#
 
-mutable struct MarkovDiffusion <: MarkovProcess
+mutable struct DiffusionProcess <: MarkovProcess
     x::AbstractVector{<:Real}
     μx::AbstractVector{<:Real}
     σx::AbstractVector{<:Real}
@@ -61,14 +61,14 @@ mutable struct MarkovDiffusion <: MarkovProcess
     Δ::Tuple{<:AbstractVector, <:AbstractVector, <:AbstractVector, <:AbstractVector}
 end
 
-function MarkovDiffusion(x::AbstractVector{<:Real}, μx::AbstractVector{<:Real}, σx::AbstractVector{<:Real})
+function DiffusionProcess(x::AbstractVector{<:Real}, μx::AbstractVector{<:Real}, σx::AbstractVector{<:Real})
     length(x) == length(μx) || error("Vector for grid, drift, and volatility should have the same size")
     length(μx) == length(σx) || error("Vector for grid, drift, and volatility should have the same size")
     n = length(x)
     T = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
     Δ = make_Δ(x)
     build_diffusion!(T, Δ, Zeros(length(x)), μx, 0.5 * σx.^2)
-    MarkovDiffusion(x, μx, σx, T, Δ)
+    DiffusionProcess(x, μx, σx, T, Δ)
 end
 
 # it's important to take 1e-6 to have the right tail index of multiplicative functional (see tests)
@@ -81,21 +81,22 @@ function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length =
     end
     μx = κ .* (xbar .- x)
     σx = σ .* Ones(Base.length(x))
-    MarkovDiffusion(x, μx, σx)
+    DiffusionProcess(x, μx, σx)
 end
 
 function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, α = 2 * κ * xbar / σ^2, β = σ^2 / (2 * κ), xmin = quantile(Gamma(α, β), p), xmax = quantile(Gamma(α, β), 1 - p), pow = 2)
     x = range(xmin^(1/pow), stop = xmax^(1/pow), length = length).^pow
     μx = κ .* (xbar .- x)
     σx = σ .* sqrt.(x)
-    MarkovDiffusion(x, μx, σx)
+    DiffusionProcess(x, μx, σx)
 end
 
-generator(X::MarkovDiffusion) = X.T'
+generator(X::DiffusionProcess) = X.T'
   
-function ∂(X::MarkovDiffusion)
+function ∂(X::DiffusionProcess)
     build_diffusion!(deepcopy(X.T), X.Δ, Zeros(length(X.x)), Ones(length(X.x)), Zeros(length(X.x)))'
 end
+
 #========================================================================================
 
 Multiplicative functional M for diffusion
@@ -105,7 +106,7 @@ dx = μ(x) dt + σ(x) dZt
 ========================================================================================#
 
 mutable struct MultiplicativeFunctionalDiffusion <: MultiplicativeFunctional
-    X::MarkovDiffusion
+    X::DiffusionProcess
     μM::AbstractVector{<:Number}
     σM::AbstractVector{<:Number}
     ρ::Number
@@ -113,7 +114,7 @@ mutable struct MultiplicativeFunctionalDiffusion <: MultiplicativeFunctional
     T::Tridiagonal
 end
 
-function MultiplicativeFunctionalDiffusion(X::MarkovDiffusion, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; ρ::Number = 0.0, δ::Number = 0.0)
+function MultiplicativeFunctionalDiffusion(X::DiffusionProcess, μM::AbstractVector{<:Number}, σM::AbstractVector{<:Number}; ρ::Number = 0.0, δ::Number = 0.0)
     length(X.x) == length(μM) || error("Vector for grid and μM should have the same size")
     length(X.x) == length(σM) || error("Vector for grid and σM should have the same size")
     MultiplicativeFunctionalDiffusion(X, μM, σM, ρ, δ, deepcopy(X.T))

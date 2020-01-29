@@ -100,8 +100,6 @@ end
 clean_eigenvector_left(::Nothing) = nothing
 clean_eigenvector_left(l::AbstractVector) = abs.(l) ./ sum(abs.(l))
 
-
-# correct normalization is \int r l = 1
 clean_eigenvector_right(::Nothing) = nothing
 clean_eigenvector_right(r::AbstractVector) = abs.(r)
 
@@ -125,6 +123,21 @@ function stationary_distribution(T::AbstractMatrix, δ::Number, ψ::AbstractVect
     clean_eigenvector_left((δ * I - T') \ (δ * ψ))
 end
 
+##############################################################################
+##
+## Long-Run CGF
+##
+##############################################################################
+
+function cgf(f::Function; which = :LR, eigenvector = :right, r0 = Ones(size(f(1), 1)))
+    ξ -> principal_eigenvalue(f(ξ); which = which, eigenvector = eigenvector, r0 = r0)
+end
+
+##############################################################################
+##
+## Tail Index
+##
+##############################################################################
 
 function tail_index(μ::Number, σ::Number; δ::Number = 0)
     if σ > 0
@@ -147,9 +160,7 @@ function tail_index(@nospecialize(f::Function); xatol = 1e-2, verbose = false, r
     return ζ
 end
 
-function cgf_longrun(f::Function; which = :LR, eigenvector = :right, r0 = Ones(size(f(1), 1)))
-    ξ -> principal_eigenvalue(f(ξ); which = which, eigenvector = eigenvector, r0 = r0)
-end
+
 ##############################################################################
 ##
 ## Feynman Kac
