@@ -12,7 +12,7 @@ For an additive functional `m` defined by a function `ξ -> T(ξ)` where `T` is 
 
 The package also includes function to create transition matrices corresponding to diffusion processes:
 - `generator(DiffusionProcess(x, μ, σ))` creates the transition matrix of a diffusive process with drift `μ(x)` and volatility `σ(x)` (with reflecting boundaries)
-- `generator(AdditiveFunctional(DiffusionProcess(x, μ, σ), μm, σm)` creates the function ``ξ -> T(ξ)` for the additive functional with drift `μm(x)` and volatility `σm(x)`
+- `generator(AdditiveFunctional(DiffusionProcess(x, μ, σ), μm, σm)` creates the function `ξ -> T(ξ)` for the additive functional with drift `μm(x)` and volatility `σm(x)`
 
 ## Related Packages
 - [SimpleDifferentialOperators](https://github.com/QuantEcon/SimpleDifferentialOperators.jl) contains more general tools to define operators with different boundary counditions. In contrast, InfinitesimalGenerators always assumes reflecting boundaries.
