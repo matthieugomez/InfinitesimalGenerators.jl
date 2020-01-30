@@ -56,8 +56,8 @@ function principal_eigenvalue(T::Matrix; which = :SM, eigenvector = :right, r0 =
     return clean_eigenvector_left(l), clean_eigenvalue(η), clean_eigenvector_right(r)
 end
 
-
-function principal_eigenvalue(T::AbstractMatrix; which = :SM, eigenvector = :right, r0 = ones(size(T, 1)))
+# AbstractMatrix or LinearMap
+function principal_eigenvalue(T; which = :SM, eigenvector = :right, r0 = ones(size(T, 1)))
     l, η, r = nothing, nothing, nothing
     if which == :SM
         if eigenvector ∈ (:left, :both)
@@ -111,15 +111,15 @@ clean_eigenvector_right(r::AbstractVector) = abs.(r)
 ## Compute Distributions
 ##
 ##############################################################################
-
-function stationary_distribution(T::AbstractMatrix)
+# AbstractMatrix or LinearMap
+function stationary_distribution(T)
     g, η, _ = principal_eigenvalue(T; which = :SM, eigenvector = :left)
     abs(η) <= 1e-5 || @warn "Principal Eigenvalue does not seem to be zero"
     return g
 end
 
 # Death rate δ and reinjection ψ
-function stationary_distribution(T::AbstractMatrix, δ::Number, ψ::AbstractVector{<:Number})
+function stationary_distribution(T, δ::Number, ψ::AbstractVector{<:Number})
     clean_eigenvector_left((δ * I - T') \ (δ * ψ))
 end
 
@@ -180,7 +180,7 @@ u(x, t[1]) = ψ(x)
 u_t = Tu - V(x)u + f(x)
 """
 
-function feynman_kac(T::AbstractMatrix; 
+function feynman_kac(T; 
     t::AbstractVector = range(0, 100, step = 1/12), 
     f::Union{AbstractVector, AbstractMatrix} = zeros(size(T, 1)), 
     ψ::AbstractVector = ones(size(T, 1)),
