@@ -7,7 +7,7 @@ using LinearAlgebra, Arpack, KrylovKit, Roots, Distributions, FiniteDiff, FillAr
 include("utils.jl")
 
 
-
+# MarkovProcess should define generator() and state_space()
 abstract type MarkovProcess end
 
 function stationary_distribution(X::MarkovProcess; kwargs...)
@@ -18,6 +18,8 @@ function feynman_kac(X::MarkovProcess; kwargs...)
     feynman_kac(generator(X); kwargs...)
 end
 
+
+# AdditiveFunctional should define generator()
 abstract type AdditiveFunctional end
 
 function cgf(M::AdditiveFunctional; kwargs...)
@@ -41,6 +43,7 @@ AdditiveFunctional,
 DiffusionProcess,
 AdditiveFunctionalDiffusion,
 generator,
+state_space,
 stationary_distribution,
 feynman_kac,
 cgf,

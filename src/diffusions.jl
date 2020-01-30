@@ -91,10 +91,12 @@ function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 
     DiffusionProcess(x, μx, σx)
 end
 
-generator(X::DiffusionProcess) = X.T'
-  
+generator(X::DiffusionProcess) = adjoint(X.T)
+state_space(X::DiffusionProcess) = X.x
+
 function ∂(X::DiffusionProcess)
-    build_diffusion!(deepcopy(X.T), X.Δ, Zeros(length(X.x)), Ones(length(X.x)), Zeros(length(X.x)))'
+    T = build_diffusion!(deepcopy(X.T), X.Δ, Zeros(length(X.x)), Ones(length(X.x)), Zeros(length(X.x)))
+    adjoint(T)
 end
 
 #========================================================================================
