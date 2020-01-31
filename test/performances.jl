@@ -34,8 +34,8 @@ x = range(- 3 * sqrt(σ^2 /(2 * κx)), stop = 3 * sqrt(σ^2 /(2 * κx)), length 
 μM = -0.01 .+ x
 σM = 0.1 .* ones(length(x))
 ρ = 1.0
-M = MultiplicativeFunctionalDiffusion(DiffusionProcess(x, μx, σx), μM, σM; ρ = ρ)
+M = AdditiveFunctionalDiffusion(DiffusionProcess(x, μx, σx), μM, σM; ρ = ρ)
 @time ζ = tail_index(M)
-#  0.094506 seconds (15.21 k allocations: 24.270 MiB, 40.79% gc time)
-@time l, η, r = cgf_longrun(M, eigenvector = :both)(ζ)
-#  0.001448 seconds (437 allocations: 660.359 KiB)
+#  0.22s
+@time l, η, r = cgf(M, eigenvector = :both)(ζ)
+#  0.06s
