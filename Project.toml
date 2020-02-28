@@ -14,10 +14,10 @@ Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 [compat]
 Arpack = "0.3, 0.4"
 Distributions = "0.21, 0.22"
-FiniteDiff = "2"
 FillArrays = "0.8"
+FiniteDiff = "2"
 KrylovKit = "0.4"
-Roots = "0.8"
+Roots = "0.8, 1.0"
 julia = "1.2"
 
 [extras]
