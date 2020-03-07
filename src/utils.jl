@@ -167,7 +167,7 @@ function tail_index(μ::Number, σ::Number; δ::Number = 0)
 end
 # f is a function that for each ξ gives an AbstractMatrix
 # find_root return ζ such that the principal eigenvalue of f(ζ) is zero
-function tail_index(@nospecialize(f::Function); xatol = 1e-2, verbose = false, r0 = ones(size(f(1.0), 1)), kwargs...)
+function tail_index(@nospecialize(f::Function); xatol = 1e-4, verbose = false, r0 = ones(size(f(1.0), 1)), kwargs...)
     ζ, r = nothing, nothing
     g = ξ -> begin
        out = principal_eigenvalue(f(ξ); r0 = r0)
