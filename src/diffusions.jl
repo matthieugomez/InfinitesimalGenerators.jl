@@ -94,6 +94,8 @@ function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length =
 end
 
 function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, α = 2 * κ * xbar / σ^2, β = σ^2 / (2 * κ), xmin = quantile(Gamma(α, β), p), xmax = quantile(Gamma(α, β), 1 - p), pow = 2)
+    # check 0 is not attainable
+    @assert (2 * κ * xbar)/σ^2 > 1
     x = range(xmin^(1/pow), stop = xmax^(1/pow), length = length).^pow
     μx = κ .* (xbar .- x)
     σx = σ .* sqrt.(x)
