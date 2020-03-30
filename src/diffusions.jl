@@ -20,7 +20,7 @@ function operator_second_order!(T, x, v0::AbstractVector, v1::AbstractVector, v2
     fill!(T, 0)
     @inbounds for i in 1:n
         Δxp =x[min(i, n-1)+1] - x[min(i, n-1)]
-        Δxm=x[max(i-1, 1) + 1] - x[max(i-1, 1)]
+        Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
         Δx = (Δxm + Δxp) / 2
         # upwinding to ensure off diagonals are posititive
         if v1[i] >= 0
