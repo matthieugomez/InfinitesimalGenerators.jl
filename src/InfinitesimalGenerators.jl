@@ -47,5 +47,7 @@ state_space,
 stationary_distribution,
 feynman_kac,
 cgf,
-tail_index
+tail_index,
+OrnsteinUhlenbeck,
+CoxIngersollRoss
 end
