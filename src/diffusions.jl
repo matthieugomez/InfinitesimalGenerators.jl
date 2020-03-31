@@ -1,20 +1,20 @@
 #=======================================================================================
 
-Compute the Kolmogorov Backward operator 
+Compute the Kolmogorov Backward Infinitesimal generator
 Tf = v_0 * f + v1 * ∂(f) + v2 * ∂2(f)
 
-Mote that the adjoint is the Kolmogorov Forward Operator
+Mote that the adjoint is the Kolmogorov Forward Infinitesimal Generator
 T'g = v_0 * g - ∂(v1 * g) + ∂2(v2 * g)
 
 =======================================================================================#
 
-function operator_second_order(x::AbstractVector, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
+function generator(x::AbstractVector, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
     n = length(x)
     T = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
-    operator_second_order!(T, x, v0, v1, v2)
+    generator!(T, x, v0, v1, v2)
 end
 
-function operator_second_order!(T, x, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
+function generator!(T, x, v0::AbstractVector, v1::AbstractVector, v2::AbstractVector)
     # The key is that sum of each row = 0.0 and off diagonals are positive (singular M-matrix)
     n = length(x)
     fill!(T, 0)
@@ -61,7 +61,7 @@ function DiffusionProcess(x::AbstractVector{<:Real}, μx::AbstractVector{<:Real}
     length(μx) == length(σx) || error("Vector for grid, drift, and volatility should have the same size")
     n = length(x)
     T = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
-    operator_second_order!(T, x, Zeros(length(x)), μx, 0.5 * σx.^2)
+    generator!(T, x, Zeros(length(x)), μx, 0.5 * σx.^2)
     DiffusionProcess(x, μx, σx, T)
 end
 
@@ -91,8 +91,7 @@ generator(X::DiffusionProcess) = X.T
 state_space(X::DiffusionProcess) = X.x
 
 function ∂(X::DiffusionProcess)
-    T = deepcopy(X.T)
-    operator_second_order!(T, X.x, Zeros(length(X.x)), Ones(length(X.x)), Zeros(length(X.x)))
+    generator!(deepcopy(X.T), X.x, Zeros(length(X.x)), Ones(length(X.x)), Zeros(length(X.x)))
 end
 
 #========================================================================================
@@ -119,5 +118,5 @@ function AdditiveFunctionalDiffusion(X::DiffusionProcess, μm::AbstractVector{<:
 end
 
 function generator(M::AdditiveFunctionalDiffusion)
-    ξ -> operator_second_order!(M.T, M.X.x, ξ .* M.μm .+ 0.5 * ξ^2 .* M.σm.^2 .- M.δ,  M.X.μx .+ ξ .* M.ρ .* M.σm .* M.X.σx, 0.5 * M.X.σx.^2)
+    ξ -> generator!(M.T, M.X.x, ξ .* M.μm .+ 0.5 * ξ^2 .* M.σm.^2 .- M.δ,  M.X.μx .+ ξ .* M.ρ .* M.σm .* M.X.σx, 0.5 * M.X.σx.^2)
 end

@@ -75,39 +75,6 @@ function principal_eigenvalue(T; eigenvector = :right, r0 = ones(size(T, 1)))
 end
 
 
-## AbstractMatrix or LinearMap
-#function principal_eigenvalue_old(T; which = :SM, eigenvector = :right, r0 = ones(size(T, 1)))
-#    l, η, r = nothing, nothing, nothing
-#    if which == :SM
-#        if eigenvector ∈ (:left, :both)
-#            vals, vecs = Arpack.eigs(adjoint(T); nev = 1, which = :SM)
-#            η = vals[1]
-#            l = vecs[:, 1]
-#        end
-#        if eigenvector ∈ (:right, :both)
-#            vals, vecs = Arpack.eigs(T; v0 = r0, nev = 1, which = :SM)
-#            η = vals[1]
-#            r = vecs[:, 1]
-#        end
-#    elseif which == :LR
-#        # Arpack LR tends to fail if the LR is close to zero, which is the typical case when computing tail index
-#        # Arpack SM is much faster, but (i) it does not always give the right eigenvector (either because LR ≠ SM (happens when #the eigenvalue is very positive) (ii) even when it gives the right eigenvalue, it can return a complex eigenvector
-#        if eigenvector ∈ (:left, :both)
-#            vals, vecs, info = KrylovKit.eigsolve(adjoint(T), r0, 1, :LR, maxiter = size(T, 1))
-#            info.converged == 0 &&  @warn "KrylovKit did not converge"
-#            η = vals[1]
-#            l = vecs[1]
-#        end
-#        if eigenvector ∈ (:right, :both)
-#            vals, vecs, info = KrylovKit.eigsolve(T, 1, :LR, maxiter = size(T, 1))
-#            info.converged == 0 &&  @warn "KrylovKit did not converge"
-#            η = vals[1]
-#            r = vecs[1]
-#        end
-#    end
-#    return clean_eigenvector_left(l), clean_eigenvalue(η), clean_eigenvector_right(r)
-#end
-
 clean_eigenvalue(η::Union{Nothing, Real}) = η
 function clean_eigenvalue(η::Complex)
     if abs(imag(η) .>= eps())
@@ -121,9 +88,6 @@ clean_eigenvector_left(l::AbstractVector) = abs.(l) ./ sum(abs.(l))
 
 clean_eigenvector_right(::Nothing) = nothing
 clean_eigenvector_right(r::AbstractVector) = abs.(r)
-
-
-
 
 ##############################################################################
 ##
