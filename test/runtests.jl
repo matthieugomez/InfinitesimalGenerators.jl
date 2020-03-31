@@ -3,7 +3,7 @@ using InfinitesimalGenerators, Test, Statistics, LinearAlgebra,  Expokit
 xbar = 0.0
 κ = 0.1
 σ = 0.02
-X = InfinitesimalGenerators.OrnsteinUhlenbeck(; xbar = xbar, κ = κ, σ = σ, length = 1000)
+X = OrnsteinUhlenbeck(; xbar = xbar, κ = κ, σ = σ, length = 1000)
 
 
 ## Feynman-Kac
@@ -81,7 +81,7 @@ l, η, r = cgf(m; eigenvector = :both)(ζ)
 
 
 # Test that the modified process μ + σ^2 ∂ ln(r) has a stationary distribution given by $r^2ψ$
-X = InfinitesimalGenerators.OrnsteinUhlenbeck(;κ =κ, σ = σ, length = 1000)
+X = OrnsteinUhlenbeck(;κ =κ, σ = σ, length = 1000)
 m = AdditiveFunctionalDiffusion(X, μm .+ X.x .- 0.02, σm .* ones(length(X.x)))
 ψ = stationary_distribution(X)
 ζ = tail_index(m)
@@ -101,7 +101,7 @@ l, η, r = cgf(m; eigenvector = :both)(ζ)
 # Test CIR
 gbar = 0.03
 σ = 0.01
-X = InfinitesimalGenerators.CoxIngersollRoss(xbar = gbar, κ = κ, σ = σ)
+X = CoxIngersollRoss(xbar = gbar, κ = κ, σ = σ)
 m = AdditiveFunctionalDiffusion(X, X.x, zeros(length(X.x)))
 η_analytic = gbar * κ^2 / σ^2 * (1 - sqrt(1 - 2 * σ^2 / κ^2))
 @test cgf(m)(1.0)[2] ≈ η_analytic rtol = 1e-2
