@@ -55,7 +55,7 @@ function principal_eigenvalue(T; eigenvector = :right, r0 = ones(size(T, 1)))
             η = vals[1]
             l = vecs[:, 1]
         catch
-            vals, vecs = KrylovKit.eigsolve(adjoint(T - V * I), r0, 1, :LM, maxiter = size(T, 1))
+            vals, vecs = KrylovKit.eigsolve(adjoint(T - V * I), collect(r0), 1, :LM, maxiter = size(T, 1))
             l = vecs[1]
             η = vals[1]
         end
@@ -66,7 +66,7 @@ function principal_eigenvalue(T; eigenvector = :right, r0 = ones(size(T, 1)))
             η = vals[1]
             r = vecs[:, 1]
         catch
-            vals, vecs = KrylovKit.eigsolve(T - V * I, r0, 1, :LM, maxiter = size(T, 1))
+            vals, vecs = KrylovKit.eigsolve(T - V * I, collect(r0), 1, :LM, maxiter = size(T, 1))
             η = vals[1]
             r = vecs[1]
         end
