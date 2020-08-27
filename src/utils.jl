@@ -139,7 +139,7 @@ function tail_index(@nospecialize(f::Function); xatol = 1e-4, verbose = false, r
        verbose && @show (:LR, ξ, out[2])
        return out[2]
     end
-    ζ = fzero(g, (1e-2, 10.0); xatol = xatol, kwargs...)
+    ζ = fzero(g, (1e-5, 1e3); xatol = xatol, kwargs...)
     return ζ
 end
 
