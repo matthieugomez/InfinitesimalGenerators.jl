@@ -1,6 +1,6 @@
 name = "InfinitesimalGenerators"
 uuid = "2fce0c6f-5f0b-5c85-85c9-2ffe1d5ee30d"
-version = "0.3.4"
+version = "0.3.5"
 
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"

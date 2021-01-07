@@ -120,3 +120,13 @@ end
 function generator(M::AdditiveFunctionalDiffusion)
     ξ -> generator!(M.T, M.X.x, ξ .* M.μm .+ 0.5 * ξ^2 .* M.σm.^2 .- M.δ,  M.X.μx .+ ξ .* M.ρ .* M.σm .* M.X.σx, 0.5 * M.X.σx.^2)
 end
+
+
+# using LinearAlgebra, InfiniteLinearAlgebra, InfiniteArrays, BandedMatrices, FillArrays
+# μ = 0.02
+# δ = 0.03
+# B = BandedMatrix(0 => Fill(δ + μ, ∞), 1 => Fill(-μ, ∞), -1 => Zeros(∞))
+# ψ0 = cache(Fill(0.0, ∞))
+# ψ0[10] = δ
+# ψ = B \ ψ0
+#B = Tridiagonal(Fill(0.0, ∞), Fill(δ + μ, ∞), Fill(-μ, ∞))
