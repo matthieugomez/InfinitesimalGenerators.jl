@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/matthieugomez/InfinitesimalGenerators.jl.svg?branch=master)](https://travis-ci.org/matthieugomez/InfinitesimalGenerators.jl)
+[![Build status](https://github.com/matthieugomez/InfinitesimalGenerators.jl/workflows/CI/badge.svg)](https://github.com/matthieugomez/InfinitesimalGenerators.jl/actions)
 
 # Markov Processes
 For a Markov process defined by a matrix `T`  where `T` is the operator such that `Tf = E[df]`
