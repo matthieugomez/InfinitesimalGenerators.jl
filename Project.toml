@@ -1,6 +1,6 @@
 name = "InfinitesimalGenerators"
 uuid = "2fce0c6f-5f0b-5c85-85c9-2ffe1d5ee30d"
-version = "0.3.5"
+version = "0.3.6"
 
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
@@ -13,8 +13,8 @@ Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 
 [compat]
 Arpack = "0.3, 0.4, 0.5"
-Distributions = "0.22, 0.23, 0.24"
-FillArrays = "0.8, 0.9, 0.10, 0.11"
+Distributions = "0.22, 0.23, 0.24, 0.25"
+FillArrays = "0.8, 0.9, 0.10, 0.11, 0.12"
 FiniteDiff = "2"
 KrylovKit = "0.4, 0.5"
 Roots = "0.8, 1"
