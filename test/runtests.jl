@@ -18,7 +18,7 @@ u = feynman_kac(generator(X); t = t, ψ = ψ, direction = :forward)
 
 ## Multiplicative Functional dM/M = x dt
 m = AdditiveFunctionalDiffusion(X, X.x, zeros(length(X.x)))
-l, η, r = cgf(m; eigenvector = :right)(1)
+η, r = cgf(m)(1)
 @test η ≈ xbar + 0.5 * σ^2 / κ^2 atol = 1e-2
 r_analytic = exp.(X.x ./ κ) 
 @test norm(r ./ sum(r) .- r_analytic ./ sum(r_analytic)) <= 2 * 1e-3
@@ -32,7 +32,7 @@ u = feynman_kac(generator(m)(1); t = t, direction = :forward)
 m = AdditiveFunctionalDiffusion(X, X.x .+ μm, zeros(length(X.x)))
 ζ = tail_index(m)
 @test μm * ζ + 0.5 * ζ^2 * (σ^2 / κ^2) ≈ 0.0 atol = 1e-2
-l, _, r = cgf(m; eigenvector = :both)(ζ)
+l, η, r = cgf(m ; eigenvector = :both)(ζ)
 f =  exp.(ζ .* X.x ./ κ)
 norm(f ./ sum(f) .- r ./ sum(r)) <= 1e-2
 ψ_reaching = r.* l ./ sum(r .* l)
@@ -44,7 +44,7 @@ speed = sum(ψ_reaching .* m.μm)
 # This does not work very well. Note that it works only if the distribution of p has a thinner tail than the distirbuiton of M
 m = AdditiveFunctionalDiffusion(X, X.x .- 0.06, zeros(length(X.x)))
 ζ = tail_index(m)
-l, η, r = cgf(m; eigenvector = :both)(ζ)
+l, η, r = cgf(m ; eigenvector = :both)(ζ)
 p =  exp.(5 .* X.x)
 m2 = AdditiveFunctionalDiffusion(X, m.μm .+ (generator(m.X) * log.(p)),  (InfinitesimalGenerators.∂(X) * log.(p)) .* X.σx, ρ = 1)
 l2, η2, r2 = cgf(m2; eigenvector = :both)(ζ)
@@ -103,7 +103,7 @@ gbar = 0.03
 X = CoxIngersollRoss(xbar = gbar, κ = κ, σ = σ)
 m = AdditiveFunctionalDiffusion(X, X.x, zeros(length(X.x)))
 η_analytic = gbar * κ^2 / σ^2 * (1 - sqrt(1 - 2 * σ^2 / κ^2))
-@test cgf(m)(1.0)[2] ≈ η_analytic rtol = 1e-2
+@test cgf(m)(1.0)[1] ≈ η_analytic rtol = 1e-2
 
 
 # for CIR the speed is given by 

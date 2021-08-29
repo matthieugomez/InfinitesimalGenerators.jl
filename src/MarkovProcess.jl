@@ -11,9 +11,9 @@ function stationary_distribution(X::MarkovProcess; δ = 0.0, ψ = Zeros(length(X
     if δ > 0
         clean_eigenvector_left((δ * I - generator(X)') \ (δ * ψ))
     else
-        g, η, _ = principal_eigenvalue(generator(X); eigenvector = :left)
+        η, g = principal_eigenvalue(generator(X)')
         abs(η) <= 1e-5 || @warn "Principal Eigenvalue does not seem to be zero"
-        g
+        g ./ sum(g)
     end
 end
 
@@ -101,5 +101,5 @@ end
 
 
 function ∂(X::DiffusionProcess)
-    Diagonal(μx) \ generator!(deepcopy(X.𝕋), X.x, μx, Zeros(length(X.x)))
+    Diagonal(X.μx) \ generator!(deepcopy(X.𝕋), X.x, X.μx, Zeros(length(X.x)))
 end

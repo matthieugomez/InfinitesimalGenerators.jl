@@ -8,7 +8,15 @@ Compute the long run cgf(m), i.e. the function
 ξ ⭌ lim_{t→∞} log(E[e^{ξ * m_t}])/t
 """
 function cgf(m::AdditiveFunctional; eigenvector = :right, r0 = Ones(length(m.X.x)))
-    ξ -> principal_eigenvalue(generator(m)(ξ); eigenvector = eigenvector, r0 = r0)
+    if eigenvector == :right
+        ξ -> principal_eigenvalue(generator(m)(ξ); r0 = r0)
+    elseif eigenvector == :both
+        ξ -> begin
+            η, r = principal_eigenvalue(generator(m)(ξ); r0 = r0)
+            η, l = principal_eigenvalue(generator(m)(ξ)'; r0 = r0)
+            return l ./ sum(l), η, r
+        end
+    end
 end
 
 """
@@ -18,7 +26,7 @@ compute the tail index of the stationary distribution of e^{m}, i.e.
 function tail_index(m::AdditiveFunctional; δ = 0.0, verbose = false, r0 = ones(length(m.X.x)), xatol = 1e-4, kwargs...)
     r0 = deepcopy(r0)
     fzero((1e-5, 1e3); xatol = xatol, kwargs...) do ξ
-        _, η, f = cgf(m; r0 = r0)(ξ)
+        η, f = cgf(m; r0 = r0)(ξ)
         copyto!(r0, f)
         verbose && @show (:LR, ξ, η)
         return η - δ
