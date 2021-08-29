@@ -9,12 +9,12 @@ abstract type MarkovProcess end
 function stationary_distribution(X::MarkovProcess; δ = 0.0, ψ = Zeros(length(X.x)))
     δ >= 0 ||  throw(ArgumentError("δ needs to be positive"))
     if δ > 0
-        clean_eigenvector_left((δ * I - generator(X)') \ (δ * ψ))
+        g = abs.((δ * I - generator(X)') \ (δ * ψ))
     else
         η, g = principal_eigenvalue(generator(X)')
         abs(η) <= 1e-5 || @warn "Principal Eigenvalue does not seem to be zero"
-        g ./ sum(g)
     end
+    g ./ sum(g)
 end
 
 
