@@ -13,7 +13,7 @@ u = feynman_kac(generator(X); t = t, ψ = ψ, direction = :forward)
 @test maximum(abs, u[:, 50] .- expmv(t[50], generator(X), ψ)) <= 1e-3
 @test maximum(abs, u[:, 200] .- expmv(t[200], generator(X), ψ)) <= 1e-3
 @test maximum(abs, u[:, end] .- expmv(t[end], generator(X), ψ)) <= 1e-5
-@test maximum(abs, feynman_kac(X; t = t, ψ = ψ, direction = :forward) .- feynman_kac(X; t = collect(t), ψ = ψ, direction = :forward)) <= 1e-5
+@test maximum(abs, feynman_kac(generator(X); t = t, ψ = ψ, direction = :forward) .- feynman_kac(generator(X); t = collect(t), ψ = ψ, direction = :forward)) <= 1e-5
 
 
 ## Multiplicative Functional dM/M = x dt
@@ -23,22 +23,21 @@ l, η, r = cgf(m; eigenvector = :right)(1)
 r_analytic = exp.(X.x ./ κ) 
 @test norm(r ./ sum(r) .- r_analytic ./ sum(r_analytic)) <= 2 * 1e-3
 t = range(0, stop = 200, step = 1/10)
-u = feynman_kac(m; t = t, direction = :forward)(1)
+u = feynman_kac(generator(m)(1); t = t, direction = :forward)
 @test log.(stationary_distribution(X)' * u[:, end]) ./ t[end] ≈ η atol = 1e-2
 
 
 # test speed
 μm = - 0.06
-δ = 0.0
-m = AdditiveFunctionalDiffusion(X, X.x .+ μm, zeros(length(X.x)), δ = δ)
+m = AdditiveFunctionalDiffusion(X, X.x .+ μm, zeros(length(X.x)))
 ζ = tail_index(m)
-@test μm * ζ + 0.5 * ζ^2 * (σ^2 / κ^2) - δ ≈ 0.0 atol = 1e-2
+@test μm * ζ + 0.5 * ζ^2 * (σ^2 / κ^2) ≈ 0.0 atol = 1e-2
 l, _, r = cgf(m; eigenvector = :both)(ζ)
 f =  exp.(ζ .* X.x ./ κ)
 norm(f ./ sum(f) .- r ./ sum(r)) <= 1e-2
 ψ_reaching = r.* l ./ sum(r .* l)
 speed = sum(ψ_reaching .* m.μm) 
-@test speed  ≈ μm  +  ζ * (σ^2 / κ^2) atol = 1e-2
+@test speed ≈ μm  +  ζ * (σ^2 / κ^2) atol = 1e-2
 
 
 # test transformation with a funciton # m2 = p * M. 
