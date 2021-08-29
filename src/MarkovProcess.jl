@@ -66,7 +66,7 @@ function generator!(𝕋, x, μx::AbstractVector, σx::AbstractVector)
         𝕋[i, min(i + 1, n)] += 0.5 * σx[i]^2 / (Δxp * Δx)
     end
     # ensure machine precision
-    c = sum(adjoint(𝕋), dims = 1)
+    c = sum(𝕋, dims = 2)
     for i in 1:n
         𝕋[i, i] -= c[i]
     end

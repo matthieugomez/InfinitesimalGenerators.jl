@@ -58,5 +58,5 @@ function AdditiveFunctionalDiffusion(X::DiffusionProcess, μm::AbstractVector{<:
 end
 
 function generator(M::AdditiveFunctionalDiffusion)
-    ξ -> generator!(M.𝕋, M.X.x, M.X.μx .+ ξ .* M.ρ .* M.σm .* M.X.σx, M.X.σx) + Diagonal(ξ .* M.μm .+ 0.5 * ξ^2 .* M.σm.^2)
+    ξ -> Diagonal(ξ .* M.μm .+ 0.5 * ξ^2 .* M.σm.^2) + generator!(M.𝕋, M.X.x, M.X.μx .+ ξ .* M.ρ .* M.σm .* M.X.σx, M.X.σx)
 end
