@@ -101,5 +101,5 @@ end
 
 
 function ∂(X::DiffusionProcess)
-    generator!(deepcopy(X.𝕋), X.x, X.μx, Zeros(length(X.x))) ./ X.μx
+    generator!(deepcopy(X.𝕋), X.x, sign.(X.μx), Zeros(length(X.x)))
 end
