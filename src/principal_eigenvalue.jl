@@ -1,7 +1,7 @@
 """
 Compute the principal eigenvector and eigenvalue of a linear operator 𝕋, where 𝕋 is a Metzler matrix (i.e. off-diagonal components are nonnegative) (or, equilvalently, -𝕋 is a Z-matrix).
 
-In this case, there exists a positive a such that aI + 𝕋 has all positive entries. Applying Perron Frobenus, there a unique largest eigenvalue for aI + 𝕋, which is real, and the correspongind eigenctor is strictly positive.
+Denote a = minimum(Diagonal(V)). We have that  𝕋 - a * I has all positive entries. Applying Perron Frobenus, there a unique largest eigenvalue for aI + 𝕋, which is real, and the correspondind eigenctor is strictly positive.
 Note that, in particular, it is the eigenvalue with largest real part, which means that one can look for the eigenvalue with largest real part 
 
 If, moreover, -𝕋 is a M-matrix, then all its eigenvalues have positive real part. Therefore, all the eigenvalues of 𝕋 have negative real part. Therefore, the eigenvalue with largest real part is also the eigenvalue with smallest magnitude.
@@ -43,30 +43,30 @@ end
 
 function principal_eigenvalue(𝕋; eigenvector = :right, r0 = ones(size(𝕋, 1)))
     l, η, r = nothing, nothing, nothing
-    V = minimum(diag(𝕋))
+    a = minimum(diag(𝕋))
     if eigenvector ∈ (:left, :both)
         try
-            vals, vecs = Arpack.eigs(adjoint(𝕋 - V * I); nev = 1, which = :LM)
+            vals, vecs = Arpack.eigs(adjoint(𝕋 - a * I); v0 = collect(r0), nev = 1, which = :LM)
             η = vals[1]
             l = vecs[:, 1]
         catch
-            vals, vecs = KrylovKit.eigsolve(adjoint(𝕋 - V * I), collect(r0), 1, :LM, maxiter = size(𝕋, 1))
+            vals, vecs = KrylovKit.eigsolve(adjoint(𝕋 - a * I), collect(r0), 1, :LM, maxiter = size(𝕋, 1))
             l = vecs[1]
             η = vals[1]
         end
     end
     if eigenvector ∈ (:right, :both)
         try
-            vals, vecs = Arpack.eigs(𝕋 - V * I; v0 = r0, nev = 1, which = :LM)
+            vals, vecs = Arpack.eigs(𝕋 - a * I; v0 = collect(r0), nev = 1, which = :LM)
             η = vals[1]
             r = vecs[:, 1]
         catch
-            vals, vecs = KrylovKit.eigsolve(𝕋 - V * I, collect(r0), 1, :LM, maxiter = size(𝕋, 1))
+            vals, vecs = KrylovKit.eigsolve(𝕋 - a * I, collect(r0), 1, :LM, maxiter = size(𝕋, 1))
             η = vals[1]
             r = vecs[1]
         end
     end
-    clean_eigenvector_left(l), clean_eigenvalue(η + V), clean_eigenvector_right(r)
+    clean_eigenvector_left(l), clean_eigenvalue(η + a), clean_eigenvector_right(r)
 end
 
 
