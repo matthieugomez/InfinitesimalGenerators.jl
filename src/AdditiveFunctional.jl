@@ -23,11 +23,9 @@ end
 compute the tail index of the stationary distribution of e^{m}, i.e.
 ζ such that cgf(m)(ζ) = δ
 """
-function tail_index(m::AdditiveFunctional; δ = 0.0, verbose = false, r0 = ones(length(m.X.x)), xatol = 1e-4, kwargs...)
-    r0 = deepcopy(r0)
+function tail_index(m::AdditiveFunctional; δ = 0, verbose = false, r0 = Ones(length(m.X.x)), xatol = 1e-4, kwargs...)
     fzero((1e-5, 1e3); xatol = xatol, kwargs...) do ξ
-        η, f = cgf(m; r0 = r0)(ξ)
-        copyto!(r0, f)
+        η, r0 = cgf(m; r0 = r0)(ξ)
         verbose && @show (:LR, ξ, η)
         return η - δ
     end
@@ -58,13 +56,13 @@ mutable struct AdditiveFunctionalDiffusion <: AdditiveFunctional
     μm::AbstractVector{<:Number}
     σm::AbstractVector{<:Number}
     ρ::Number
-    𝕋::Tridiagonal
 end
 
 function AdditiveFunctionalDiffusion(X::DiffusionProcess, μm::AbstractVector{<:Number}, σm::AbstractVector{<:Number}; ρ::Number = 0.0)
-    AdditiveFunctionalDiffusion(X, μm, σm, ρ, deepcopy(X.𝕋))
+    length(X.x) == length(μm) == length(σm) || throw(ArgumentError("Vector for grid, drift, and volatility should have the same size"))
+    AdditiveFunctionalDiffusion(X, μm, σm, ρ)
 end
 
 function generator(M::AdditiveFunctionalDiffusion)
-    ξ -> Diagonal(ξ .* M.μm .+ 0.5 * ξ^2 .* M.σm.^2) + generator!(M.𝕋, M.X.x, M.X.μx .+ ξ .* M.ρ .* M.σm .* M.X.σx, M.X.σx)
+    ξ -> generator(M.X.x, ξ .* M.μm .+ 0.5 * ξ^2 .* M.σm.^2, M.X.μx .+ ξ .* M.ρ .* M.σm .* M.X.σx, M.X.σx)
 end
