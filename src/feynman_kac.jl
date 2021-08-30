@@ -1,14 +1,16 @@
 """
+    feynman_kac(𝕋 [; t, f, ψ, v]) 
+
 With direction = :backward
-Solve the PDE backward in time
+Solve the following PDE:
 u(x, t[end]) = ψ(x)
-0 = u_t + 𝕋u - v(x, t)u +  f(x, t)
+0 = u_t + 𝕋u - v(x, t)u + f(x, t)
 
 
 With direction = :forward
-Solve the PDE forward in time
+Solve the following PDE:
 u(x, t[1]) = ψ(x)
-u_t = 𝕋u - v(x)u + f(x)
+u_t = 𝕋u - v(x, t)u + f(x, t)
 """
 function feynman_kac(𝕋; 
     t::AbstractVector = range(0, 100, step = 1/12), 
