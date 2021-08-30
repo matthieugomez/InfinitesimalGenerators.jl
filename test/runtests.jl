@@ -32,7 +32,8 @@ u = feynman_kac(generator(m)(1); t = t, direction = :forward)
 m = AdditiveFunctionalDiffusion(X, X.x .+ μm, zeros(length(X.x)))
 ζ = tail_index(m)
 @test μm * ζ + 0.5 * ζ^2 * (σ^2 / κ^2) ≈ 0.0 atol = 1e-2
-l, η, r = cgf(m ; eigenvector = :both)(ζ)
+η, r = cgf(m ; eigenvector = :right)(ζ)
+η, l = cgf(m ; eigenvector = :left)(ζ)
 f =  exp.(ζ .* X.x ./ κ)
 norm(f ./ sum(f) .- r ./ sum(r)) <= 1e-2
 ψ_reaching = r.* l ./ sum(r .* l)
@@ -44,10 +45,12 @@ speed = sum(ψ_reaching .* m.μm)
 # This does not work very well. Note that it works only if the distribution of p has a thinner tail than the distirbuiton of M
 m = AdditiveFunctionalDiffusion(X, X.x .- 0.06, zeros(length(X.x)))
 ζ = tail_index(m)
-l, η, r = cgf(m ; eigenvector = :both)(ζ)
+η, r = cgf(m ; eigenvector = :right)(ζ)
+η, l = cgf(m ; eigenvector = :left)(ζ)
 p =  exp.(5 .* X.x)
 m2 = AdditiveFunctionalDiffusion(X, m.μm .+ (generator(m.X) * log.(p)),  (InfinitesimalGenerators.∂(X) * log.(p)) .* X.σx, ρ = 1)
-l2, η2, r2 = cgf(m2; eigenvector = :both)(ζ)
+η2, r2 = cgf(m2; eigenvector = :right)(ζ)
+η2, l2 = cgf(m2; eigenvector = :left)(ζ)
 r3 = (r ./ p.^ζ) ./ sum(r ./ p.^ζ)
 r2 = r2 ./ sum(r2)
 #@test r2 ≈ r3 rtol = 1e-2
@@ -60,7 +63,9 @@ l' * (generator(m.X) * log.(p))
 
 ## test left and right eigenvector with correlation
 m = AdditiveFunctionalDiffusion(X, X.x, 0.01 * ones(length(X.x)); ρ = 1)
-l, η, r = cgf(m; eigenvector = :both)(1)
+η, r = cgf(m; eigenvector = :right)(1)
+η, l = cgf(m; eigenvector = :left)(1)
+
 ψ_tilde = stationary_distribution(DiffusionProcess(X.x, X.μx .+ m.ρ .* m.σm .* X.σx, X.σx))
 @test (r .* ψ_tilde) ./ sum(r .* ψ_tilde) ≈ l rtol = 1e-3
 
@@ -72,7 +77,8 @@ m = AdditiveFunctionalDiffusion(X, μm .+ X.x, σm .* ones(length(X.x)))
 ζ = tail_index(m)
 ζ_analytic = 2 * (-μm) / (σm^2 + (σ / κ)^2)
 @test ζ ≈ ζ_analytic atol = 1e-2
-l, η, r = cgf(m; eigenvector = :both)(ζ)
+η, r = cgf(m; eigenvector = :right)(ζ)
+η, l = cgf(m; eigenvector = :left)(ζ)
 @test η ≈ 0.0 atol = 1e-4
 ψ = stationary_distribution(X)
 @test (r .* ψ) ./ sum(r .* ψ) ≈ l rtol = 1e-3
@@ -84,7 +90,8 @@ X = OrnsteinUhlenbeck(;κ =κ, σ = σ, length = 1000)
 m = AdditiveFunctionalDiffusion(X, μm .+ X.x .- 0.02, σm .* ones(length(X.x)))
 ψ = stationary_distribution(X)
 ζ = tail_index(m)
-l, η, r = cgf(m; eigenvector = :both)(ζ)
+η, r = cgf(m; eigenvector = :right)(ζ)
+η, l = cgf(m; eigenvector = :left)(ζ)
 ψ_cond = stationary_distribution(DiffusionProcess(X.x, X.μx .+ X.σx.^2 .* (InfinitesimalGenerators.∂(X) * log.(r)), X.σx))
 @test (r.^2 .* ψ) ./ sum(r.^2 .* ψ) ≈ ψ_cond rtol = 1e-1
 
@@ -92,7 +99,8 @@ l, η, r = cgf(m; eigenvector = :both)(ζ)
 # Test Multiplicative with ρ = 1.0
 m = AdditiveFunctionalDiffusion(X, m.μm, m.σm; ρ = 1.0)
 ζ = tail_index(m)
-l, η, r = cgf(m; eigenvector = :both)(ζ)
+η, r = cgf(m; eigenvector = :right)(ζ)
+η, l = cgf(m; eigenvector = :left)(ζ)
 @test η ≈ 0.0 atol = 1e-3
 ψ_tilde = stationary_distribution(DiffusionProcess(X.x, X.μx .+ ζ .* m.σm .* m.ρ .* X.σx , X.σx))
 @test (r .* ψ_tilde) ./ sum(r .* ψ_tilde) ≈ l rtol = 1e-3
@@ -108,4 +116,4 @@ m = AdditiveFunctionalDiffusion(X, X.x, zeros(length(X.x)))
 
 # for CIR the speed is given by 
 # speed_analytic = - (g .- 0.009) + xbar * κ / sqrt(κ^2 - 2 * σ^2 * ζ)
-# r, η, l = cgf(m, eigenvector = :both)(ζ)
+# η, r = cgf(m, eigenvector = :right)(ζ)

@@ -10,12 +10,13 @@ Compute the long run cgf(m), i.e. the function
 function cgf(m::AdditiveFunctional; eigenvector = :right, r0 = Ones(length(m.X.x)))
     if eigenvector == :right
         ξ -> principal_eigenvalue(generator(m)(ξ); r0 = r0)
-    elseif eigenvector == :both
+    elseif eigenvector == :left
         ξ -> begin
-            η, r = principal_eigenvalue(generator(m)(ξ); r0 = r0)
             η, l = principal_eigenvalue(generator(m)(ξ)'; r0 = r0)
-            return l ./ sum(l), η, r
+            return η, l ./ sum(l)
         end
+    else
+        throw(ArgumentError("the keyword argument eigenvector can only take the value :right or :left"))
     end
 end
 
