@@ -1,5 +1,6 @@
 
 abstract type MarkovProcess end
+
 # This type sould define generator(), which is a transition matrix 𝕋 such that
 # 𝕋f = lim_{t→0} E[f(x_t)|x_0=x]/t
 
@@ -24,7 +25,6 @@ end
         dx_t = μ(x_t) dt + σ(x_t) dZ_t
 
 """
-
 mutable struct DiffusionProcess <: MarkovProcess
     x::AbstractVector{<:Real}
     μx::AbstractVector{<:Real}
@@ -40,7 +40,8 @@ state_space(X::DiffusionProcess) = X.x
 """
     Returns the discretized version of the infinitesimal generator of the Diffusion Process
     
-        𝕋: f ⭌ v * f + μx * ∂f + 0.5 * σx^2 * ∂^2f
+        𝕋: f ⭌ lim 1/t * E[f(x_t)|x_0=x]
+                 = μx * ∂f + 0.5 * σx^2 * ∂^2f
 
     defined on the set of functions f such that 
         

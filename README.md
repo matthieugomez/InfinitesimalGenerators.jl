@@ -1,22 +1,15 @@
 [![Build status](https://github.com/matthieugomez/InfinitesimalGenerators.jl/workflows/CI/badge.svg)](https://github.com/matthieugomez/InfinitesimalGenerators.jl/actions)
 
 # Markov Processes
-For a Markov process defined by a matrix `T`  where `T` is the operator such that `Tf = E[df]`
-- `stationary_distribution(T)` returns its stationary distribution
-- `feynman_kac_backward(T,  t, ψ, f, V)` returns the solution of the PDE `u_t(x, t) + T u  - V(x, t) u + f(x, t) = 0` with `u(x, T) = ψ(x)`
-
-Moreoveor, 
-- `generator(DiffusionProcess(x, μ, σ))` creates the transition matrix of a diffusive process with drift `μ(x)` and volatility `σ(x)` with reflecting boundaries.
-
+For a Markov process `x` 
+- `generator(x)` creates the transition matrix of a diffusive process with drift `μ(x)` and volatility `σ(x)` with reflecting boundaries.
+- `stationary_distribution` returns the stationary distribution of `x`
 
 # Additive Functionals
-For an additive functional `m` defined by a function `ξ -> T(ξ)` where `T` is the operator such that `T f= E[d(e^(ξm)f)]` 
-- `cgf(f)` returns the long run scaled CGF of `m` 
-- `tail_index(f)` returns the tail index of the stationary distribution of `e^m`
-
-
-Moreover, 
-- `generator(AdditiveFunctional(DiffusionProcess(x, μ, σ), μm, σm)` creates the function `ξ -> T(ξ)` for the additive functional with drift `μm(x)` and volatility `σm(x)`
+For an additive functional `m`:
+- `generator(m)` creates the function `ξ -> T(ξ)` for the additive functional with drift `μm(x)` and volatility `σm(x)`
+- `cgf(m)` returns the long run scaled CGF of `m` 
+- `tail_index(m)` returns the tail index of the stationary distribution of `e^m`
 
 ## Related Packages
 - [SimpleDifferentialOperators](https://github.com/QuantEcon/SimpleDifferentialOperators.jl) contains more general tools to define operators with different boundary counditions. In contrast, InfinitesimalGenerators always assumes reflecting boundaries.

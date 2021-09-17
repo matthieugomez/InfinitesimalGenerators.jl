@@ -1,4 +1,5 @@
 abstract type AdditiveFunctional end
+
 # Should define generator which is a transition matrix T such that
 # Tf = lim_{t→0} E[e^{ξ * m_t} f(x_t)|x_0=x]/t
 
