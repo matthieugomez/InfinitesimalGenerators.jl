@@ -18,12 +18,12 @@ function stationary_distribution(X::MarkovProcess; δ = 0.0, ψ = Zeros(length(X
 end
 
 
-#========================================================================================
+"""
+    Returns the Diffusion Process `x_t` with SDE
+    
+        dx_t = μ(x_t) dt + σ(x_t) dZ_t
 
-Application for Diffusion Process x_t defined by:
-dx = μ(x) dt + σ(x) dZ_t
-with reflecting barriers at grid borders
-========================================================================================#
+"""
 
 mutable struct DiffusionProcess <: MarkovProcess
     x::AbstractVector{<:Real}
@@ -37,15 +37,29 @@ end
 
 state_space(X::DiffusionProcess) = X.x
 
+"""
+    Returns the discretized version of the infinitesimal generator of the Diffusion Process
+    
+        𝕋: f ⭌ v * f + μx * ∂f + 0.5 * σx^2 * ∂^2f
+
+    defined on the set of functions f such that 
+        
+        ∂f(x) = 0 
+
+    at the border of the state space
+
+    The transpose of this operator corresponds to
+        
+        𝕋': g ⭌ v * g - ∂(μx * g) + 0.5 * ∂^2(σx^2 * g)
+
+    defined on the set of functions g such that  
+        
+        -μx * g(x) + 0.5 * ∂(σx^2 * g) = 0
+
+    at the border of state space
+"""
 generator(X::DiffusionProcess) = generator(X.x, X.μx, X.σx)
 
-# create discreatized version of the infinitesimal generator of the Diffusion Process
-# 𝕋: f ⭌ v * f + μx * ∂f + 0.5 * σx^2 * ∂^2f
-# defined on the set of functions f such that ∂f(x) = 0 at the border of the state space
-
-# The transpose of this operator corresponds to
-# 𝕋': g ⭌ v * g - ∂(μx * g) + 0.5 * ∂^2(σx^2 * g)
-# defined on the set of functions g such that  -μx * g(x) + 0.5 * ∂(σx^2 * g) = 0 at the border of state space
 function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
     n = length(x)
     𝕋 = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
@@ -73,7 +87,24 @@ function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
     return 𝕋
 end
 
-# Special Diffusion Processes
+
+"""
+    Returns the discretized version of the operator ∂
+    
+        δ: f ⭌ ∂f
+
+"""
+function ∂(X::DiffusionProcess)
+    Diagonal(X.μx) \ generator(X.x, X.μx, Zeros(length(X.x)))
+end
+
+
+"""
+    Returns the Ornstein Uhlenbeck process defined by the SDE
+        
+        dx_t = -κ * (x_t - xbar) * dt + σ * dZ_t
+
+"""
 function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, 
     xmin = quantile(Normal(xbar, σ / sqrt(2 * κ)), p), xmax = quantile(Normal(xbar, σ / sqrt(2 * κ)), 1 - p))
     # it's important to take low p to have the right tail index of Additive functional
@@ -85,6 +116,12 @@ function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length =
     DiffusionProcess(x, κ .* (xbar .- x), σ * Ones(Base.length(x)))
 end
 
+"""
+    Returns the Cox Ingersoll Ross process defined by the SDE
+        
+        dx_t = -κ * (x - xbar) * dt + σ * sqrt(x) * dZ_t
+
+"""
 function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, α = 2 * κ * xbar / σ^2, β = σ^2 / (2 * κ), xmin = quantile(Gamma(α, β), p), xmax = quantile(Gamma(α, β), 1 - p), pow = 2)
     # check 0 is not attainable
     @assert (2 * κ * xbar) / σ^2 > 1
@@ -92,7 +129,3 @@ function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 
     DiffusionProcess(x, κ .* (xbar .- x), σ .* sqrt.(x))
 end
 
-# create operator associated with f ⭌ ∂f using upwinding w.r.t. μx
-function ∂(X::DiffusionProcess)
-    Diagonal(X.μx) \ generator(X.x, X.μx, Zeros(length(X.x)))
-end
