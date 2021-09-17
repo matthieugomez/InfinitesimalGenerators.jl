@@ -1,10 +1,17 @@
 """
-Compute the principal eigenvector and eigenvalue of a linear operator 𝕋, where 𝕋 is a Metzler matrix (i.e. off-diagonal components are nonnegative) (or, equilvalently, -𝕋 is a Z-matrix).
+Compute the principal eigenvector and eigenvalue of a linear operator 𝕋, where 𝕋 is a Metzler matrix (i.e. off-diagonal components are nonnegative)
 
-Denote a = minimum(Diagonal(V)). We have that  𝕋 - a * I has all positive entries. Applying Perron Frobenus, there a unique largest eigenvalue for aI + 𝕋, which is real, and the correspondind eigenctor is strictly positive.
-Note that, in particular, it is the eigenvalue with largest real part, which means that one can look for the eigenvalue with largest real part 
+Denote a = -minimum(Diagonal(V)). We have that  𝕋 + a * I has all positive entries. Applying Perron Frobenus, there a unique largest eigenvalue for aI + 𝕋, which is real, and the correspondind eigenctor is strictly positive.
+Note that, in particular, it is the eigenvalue with largest real part, and so this also correspoinds to the eigenvalue with largest real part of 𝕋
+Denote η(𝕋) the eigenvalue with largest real part of a matrix and ρ(𝕋) the eigenvalue with largest modulus. We have
 
-If, moreover, -𝕋 is a M-matrix, then all its eigenvalues have positive real part. Therefore, all the eigenvalues of 𝕋 have negative real part. Therefore, the eigenvalue with largest real part is also the eigenvalue with smallest magnitude.
+    η(𝕋) = ρ(𝕋 + a * I) - a
+
+
+Note that, when 𝕋 is generator, its rows sum to zero. This means that eigenvalue with largest real part is 0, and so all eigenvalues of 𝕋 have real part <= 0.
+(another proof is to say that, for any s, sI - 𝕋 is a non-singular M-Matrix for any s> 0, since there exists x = e such that (sI - 𝕋) * x > 0). 
+
+This is useful because it means that, if x >=0, (I - 𝕋 Δt) \ x >= 0 (and so implicit time step maintains positivity)
 """
 function principal_eigenvalue(𝕋::Matrix; r0 = ones(size(T, 1)))
     e = eigen(𝕋)

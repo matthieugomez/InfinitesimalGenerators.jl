@@ -33,7 +33,6 @@ function tail_index(m::AdditiveFunctional; δ = 0, verbose = false, r0 = Ones(le
     end
 end
 
-
 function tail_index(μ::Number, σ::Number; δ::Number = 0)
     if σ > 0
         (1 - 2 * μ / σ^2 + sqrt((1- 2 * μ / σ^2)^2 + 8 * δ / σ^2)) / 2
