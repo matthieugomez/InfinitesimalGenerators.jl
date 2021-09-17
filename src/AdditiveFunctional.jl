@@ -42,7 +42,7 @@ function tail_index(μ::Number, σ::Number; δ::Number = 0)
 end
 
 
-#========================================================================================
+#=======================================================================================
 
 Diffusion Case
 dx_t = μ(x)dt + σ(x) dZ_t
@@ -65,5 +65,5 @@ function AdditiveFunctionalDiffusion(X::DiffusionProcess, μm::AbstractVector{<:
 end
 
 function generator(M::AdditiveFunctionalDiffusion)
-    ξ -> generator(M.X.x, ξ .* M.μm .+ 0.5 * ξ^2 .* M.σm.^2, M.X.μx .+ ξ .* M.ρ .* M.σm .* M.X.σx, M.X.σx)
+    ξ -> Diagonal(ξ .* M.μm .+ 0.5 * ξ^2 .* M.σm.^2) + generator(M.X.x, M.X.μx .+ ξ .* M.ρ .* M.σm .* M.X.σx, M.X.σx)
 end

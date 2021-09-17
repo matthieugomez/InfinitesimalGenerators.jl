@@ -22,7 +22,7 @@ end
 
 Application for Diffusion Process x_t defined by:
 dx = μ(x) dt + σ(x) dZ_t
-
+with reflecting barriers at grid borders
 ========================================================================================#
 
 mutable struct DiffusionProcess <: MarkovProcess
@@ -35,20 +35,22 @@ mutable struct DiffusionProcess <: MarkovProcess
     end
 end
 
-
 state_space(X::DiffusionProcess) = X.x
 
-function generator(X::DiffusionProcess) 
-    generator(X.x, Zeros(length(X.x)), X.μx, X.σx)
-end
+generator(X::DiffusionProcess) = generator(X.x, X.μx, X.σx)
 
-# create operator associated with f ⭌ v * f + μx * ∂f + 0.5 * σx^2 * ∂^2f
-function generator(x::AbstractVector, v::AbstractVector, μx::AbstractVector, σx::AbstractVector)
-    # The key is that sum of each row = 0.0 and off diagonals are positive
+# create discreatized version of the infinitesimal generator of the Diffusion Process
+# 𝕋: f ⭌ v * f + μx * ∂f + 0.5 * σx^2 * ∂^2f
+# defined on the set of functions f such that ∂f(x) = 0 at the border of the state space
+
+# The transpose of this operator corresponds to
+# 𝕋': g ⭌ v * g - ∂(μx * g) + 0.5 * ∂^2(σx^2 * g)
+# defined on the set of functions g such that  -μx * g(x) + 0.5 * ∂(σx^2 * g) = 0 at the border of state space
+function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
     n = length(x)
     𝕋 = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
     @inbounds for i in 1:n
-        Δxp =x[min(i, n-1)+1] - x[min(i, n-1)]
+        Δxp = x[min(i, n-1)+1] - x[min(i, n-1)]
         Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
         Δx = (Δxm + Δxp) / 2
         # upwinding to ensure off diagonals are posititive
@@ -63,23 +65,18 @@ function generator(x::AbstractVector, v::AbstractVector, μx::AbstractVector, σ
         𝕋[i, i] -= 0.5 * σx[i]^2 * 2 / (Δxm * Δxp)
         𝕋[i, min(i + 1, n)] += 0.5 * σx[i]^2 / (Δxp * Δx)
     end
-    # ensure machine precision
+    # ensure rows sum to zero with machine precision
     c = sum(𝕋, dims = 2)
     for i in 1:n
-        𝕋[i, i] += v[i] - c[i]
+        𝕋[i, i] -= c[i]
     end
     return 𝕋
 end
 
-# create operator associated with f ⭌ ∂f using upwinding w.r.t. μx
-function ∂(X::DiffusionProcess)
-    Diagonal(X.μx) \ generator(X.x, Zeros(length(X.x)), X.μx, Zeros(length(X.x)))
-end
-
 # Special Diffusion Processes
-# it's important to take low p to have the right tail index of Additive functional (see tests)
 function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, 
     xmin = quantile(Normal(xbar, σ / sqrt(2 * κ)), p), xmax = quantile(Normal(xbar, σ / sqrt(2 * κ)), 1 - p))
+    # it's important to take low p to have the right tail index of Additive functional
     if xmin > 0
         x = range(xmin^(1/pow), stop = xmax^(1/pow), length = length).^pow
     else
@@ -93,4 +90,9 @@ function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 
     @assert (2 * κ * xbar) / σ^2 > 1
     x = range(xmin^(1/pow), stop = xmax^(1/pow), length = length).^pow
     DiffusionProcess(x, κ .* (xbar .- x), σ .* sqrt.(x))
+end
+
+# create operator associated with f ⭌ ∂f using upwinding w.r.t. μx
+function ∂(X::DiffusionProcess)
+    Diagonal(X.μx) \ generator(X.x, X.μx, Zeros(length(X.x)))
 end
