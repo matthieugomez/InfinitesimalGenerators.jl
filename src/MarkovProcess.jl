@@ -1,7 +1,7 @@
 
 abstract type MarkovProcess end
 
-# This type sould define generator(), which is a transition matrix 𝕋 such that
+# This type sould define generator(), which returns a transition matrix 𝕋 such that
 # 𝕋f = lim_{t→0} E[f(x_t)|x_0=x]/t
 
 """
