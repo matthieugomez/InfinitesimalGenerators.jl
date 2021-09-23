@@ -1,13 +1,13 @@
 [![Build status](https://github.com/matthieugomez/InfinitesimalGenerators.jl/workflows/CI/badge.svg)](https://github.com/matthieugomez/InfinitesimalGenerators.jl/actions)
 
 # Markov Processes
-For a Markov process `x` 
-- `generator(x)` creates the transition matrix of a diffusive process with drift `μ(x)` and volatility `σ(x)` with reflecting boundaries.
-- `stationary_distribution` returns the stationary distribution of `x`
+- `X = DiffusionProcess(x, μ, σ)` creates the Markov Process corresponding to a diffusive process with drift `μ(x)` and volatility `σ(x)` with reflecting boundaries.
+- `generator(X)` returns its associated transition matrix
+- `stationary_distribution(X)` returns its stationary distribution
 
 # Additive Functionals
-For an additive functional `m`:
-- `generator(m)` creates the function `ξ -> T(ξ)` for the additive functional with drift `μm(x)` and volatility `σm(x)`
+- `M = AdditiveFunctional(x, μm, σm)` creates the Additive Functional with drift  `μm(x)` and volatility `σm(x)`
+- `generator(M)` creates the function `ξ -> T(ξ)` returning the tilted transition matrix (i.e. infinitesimal generator of `f -> E[e^{ξm}f(x_t)|x_0=x]`)
 - `cgf(m)` returns the long run scaled CGF of `m` 
 - `tail_index(m)` returns the tail index of the stationary distribution of `e^m`
 
