@@ -4,6 +4,64 @@ abstract type MarkovProcess end
 # This type sould define generator(), which returns a transition matrix 𝕋 such that
 # 𝕋f = lim_{t→0} E[f(x_t)|x_0=x]/t
 
+
+abstract type AbstractGenerator <: AbstractMatrix end
+struct InfinitesimalGenerator{T} <: AbstractGenerator
+    M::T
+    function InfinitesimalGenerator(M)
+        all(x ≈ 0 for y in sum(M, dims = 2)) || throw(ArgumentError("Rows do not sum up to one"))
+        check_offdiagonal_negative(M)
+        return InfinitesimalGenerator(M)
+    end
+end
+
+function check_offdiagonal_negative(A::AbstractMatrix)
+    @inbounds for ι in CartesianIndices(A)
+        if ι[1] ≠ ι[2]
+            a = A[ι]
+            A[ι] ≥ 0 || throw(ArgumentError("Element at $(ι) is negative."))
+        end
+    end
+end
+
+function check_offdiagonal_negative(A::SparseMatrixCSC)
+    rows = rowvals(A)
+    vals = nonzeros(A)
+    m, n = size(A)
+    for j in 1:n
+        for k in nzrange(A, j)
+            i = rows[k]
+            if i ≠ j
+                vals[k] || throw(DomainError(a, "Element at $(CartesianIndex(i,j)) is negative."))
+            end
+        end
+    end
+    d
+end
+
+function check_offdiagonal_negative(A::Tridiagonal)
+    all(x <= 0 for x in A.dl) || throw(ArgumentError("off-diagonal elements are positive"))
+    all(x <= 0 for x in A.du) || throw(ArgumentError("off-diagonal elements are positive"))
+    d
+end
+
+
+
+for fun in (:conj, :copy, :real, :imag, :adjoint, :ishermitian, :issymmetric, :iszero, :isone, :istriu, :isdiag)
+    @eval function ($func)(M::AbstractGenerator)
+        $func(M.M)
+    end
+end
+
+for fun in (:getindex, :setindex!, Base.replace_in_print_matrix)
+        @eval function ($func)(M::AbstractGenerator, ...)
+            $func(M.M)
+        end
+    end
+end
+
+
+
 """
  computes the stationary distribution corresponding to the MarkovProcess X
 """
