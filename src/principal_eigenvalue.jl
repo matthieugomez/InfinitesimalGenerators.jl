@@ -20,11 +20,11 @@ function principal_eigenvalue(𝕋; r0 = ones(size(𝕋, 1)))
     η, r = 0.0, r0
     a = - minimum(diag(𝕋))
     try
-        vals, vecs = Arpack.eigs(𝕋 + a * I; v0 = collect(r0), nev = 1, which = :LM)
+        vals, vecs = eigs(𝕋 + a * I; v0 = collect(r0), nev = 1, which = :LM)
         η = vals[1]
         r = vecs[:, 1]
     catch
-        vals, vecs = KrylovKit.eigsolve(𝕋 + a * I, collect(r0), 1, :LM; maxiter = size(𝕋, 1))
+        vals, vecs = eigsolve(𝕋 + a * I, collect(r0), 1, :LM; maxiter = size(𝕋, 1))
         η = vals[1]
         r = vecs[1]
     end

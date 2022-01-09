@@ -1,12 +1,11 @@
 module InfinitesimalGenerators
 
-using Arpack
-using Distributions
-using FillArrays
-using FiniteDiff
-using KrylovKit
-using LinearAlgebra
-using Roots
+using Arpack: eigs
+using Distributions: Normal, Gamma, quantile
+using FillArrays: Ones, Zeros
+using KrylovKit: eigsolve
+using LinearAlgebra: Diagonal, Tridiagonal, I, factorize, ldiv!, diag
+using Roots: fzero
 
 
 
