@@ -1,9 +1,9 @@
 module InfinitesimalGenerators
 
-using Arpack: eigs
+using Arpack: Arpack
 using Distributions: Normal, Gamma, quantile
 using FillArrays: Ones, Zeros
-using KrylovKit: eigsolve
+using KrylovKit: KrylovKit
 using LinearAlgebra: Diagonal, Tridiagonal, I, factorize, ldiv!, diag
 using Roots: fzero
 
