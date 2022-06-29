@@ -9,15 +9,15 @@ Compute the long run cgf(m), i.e. the function
 ξ ⭌ lim_{t→∞} log(E[e^{ξ * m_t}])/t
 """
 function cgf(m::AdditiveFunctional; eigenvector = :right, r0 = Ones(length(m.X.x)))
-    if eigenvector == :right
-        ξ -> principal_eigenvalue(generator(m, ξ); r0 = r0)
-    elseif eigenvector == :left
-        ξ -> begin
-            η, l = principal_eigenvalue(generator(m, ξ)'; r0 = r0)
+    ξ -> begin
+        if eigenvector == :right
+            principal_eigenvalue(tilted_generator(m)(ξ); r0 = r0)
+        elseif eigenvector == :left
+            η, l = principal_eigenvalue(tilted_generator(m)(ξ)'; r0 = r0)
             return η, l ./ sum(l)
+        else
+            throw(ArgumentError("the keyword argument eigenvector can only take the value :right or :left"))
         end
-    else
-        throw(ArgumentError("the keyword argument eigenvector can only take the value :right or :left"))
     end
 end
 
@@ -64,8 +64,13 @@ function AdditiveFunctionalDiffusion(X::DiffusionProcess, μm::AbstractVector{<:
     AdditiveFunctionalDiffusion(X, μm, σm, ρ)
 end
 
-function generator(M::AdditiveFunctionalDiffusion, ξ = 1)
-    Diagonal(ξ .* M.μm .+ 0.5 * ξ^2 .* M.σm.^2) + generator(M.X.x, M.X.μx .+ ξ .* M.ρ .* M.σm .* M.X.σx, M.X.σx)
+function generator(M::AdditiveFunctionalDiffusion)
+    Diagonal(M.μm .+ 0.5 .* M.σm.^2) + generator(M.X.x, M.X.μx .+ M.ρ .* M.σm .* M.X.σx, M.X.σx)
 end
+
+function tilted_generator(M::AdditiveFunctionalDiffusion)
+    ξ -> generator(AdditiveFunctionalDiffusion(M.X, ξ .* M.μm, ξ .* M.σm, M.ρ))
+end
+
 
 
