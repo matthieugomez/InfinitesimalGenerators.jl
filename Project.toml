@@ -15,7 +15,7 @@ Arpack = "0.3, 0.4, 0.5"
 Distributions = "0.22, 0.23, 0.24, 0.25"
 FillArrays = "0.8, 0.9, 0.10, 0.11, 0.12, 0.13"
 KrylovKit = "0.4, 0.5"
-Roots = "0.8, 1"
+Roots = "0.8, 1, 2"
 julia = "1.4"
 
 [extras]
