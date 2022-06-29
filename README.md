@@ -1,13 +1,13 @@
 [![Build status](https://github.com/matthieugomez/InfinitesimalGenerators.jl/workflows/CI/badge.svg)](https://github.com/matthieugomez/InfinitesimalGenerators.jl/actions)
 
 # Markov Processes
-- `X = DiffusionProcess(x, μ, σ)` creates the Markov Process corresponding to a diffusive process with drift `μ(x)` and volatility `σ(x)` with reflecting boundaries.
-- `generator(X)` returns its associated transition matrix
-- `stationary_distribution(X)` returns its stationary distribution
+- `X = DiffusionProcess(x::AbstractVector, μ::AbstractVector, σ::AbstractVector)` creates the discretized Markov Process with drift `μ` and volatility `σ`, on a grid `x` with reflecting boundaries.
+- `generator(X)` returns its associated generator (i.e. the operator `f -> ∂_tE[f(x_t)|x_0=x]`)
+- `stationary_distribution(X)` returns its stationary distribution (i.e. the positive vector `g` such that `g * generator(X) = 0`)
 
 # Additive Functionals
-- `M = AdditiveFunctional(x, μm, σm)` creates the Additive Functional with drift  `μm(x)` and volatility `σm(x)`
-- `generator(M)` creates the function `ξ -> T(ξ)` returning the tilted transition matrix (i.e. infinitesimal generator of `f -> E[e^{ξm}f(x_t)|x_0=x]`)
+- `M = AdditiveFunctional(X, μm, σm)` creates, given a discretized Markov Process, the Additive Functional with drift  `μm` and volatility `σm`
+- `generator(M)` creates the function `ξ -> T(ξ)` returning its associated tilted generator (i.e. the operator `f -> ∂_tE[e^{ξm}f(x_t)|x_0=x]`)
 - `cgf(m)` returns the long run scaled CGF of `m` 
 - `tail_index(m)` returns the tail index of the stationary distribution of `e^m`
 
