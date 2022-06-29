@@ -7,7 +7,7 @@
 
 # Additive Functionals
 - `M = AdditiveFunctional(X, μm, σm)` creates, given a discretized Markov Process, the Additive Functional with drift  `μm` and volatility `σm`
-- `generator(M)` creates the function `ξ -> T(ξ)` returning its associated tilted generator (i.e. the operator `f -> ∂_tE[e^{ξm}f(x_t)|x_0=x]`)
+- `generator(M)` creates the function `ξ -> T(ξ)`, where `T(ξ)` returns the operator `f -> ∂_tE[e^{ξm}f(x_t)|x_0=x]`)
 - `cgf(m)` returns the long run scaled CGF of `m` 
 - `tail_index(m)` returns the tail index of the stationary distribution of `e^m`
 
