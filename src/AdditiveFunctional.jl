@@ -10,10 +10,10 @@ Compute the long run cgf(m), i.e. the function
 """
 function cgf(m::AdditiveFunctional; eigenvector = :right, r0 = Ones(length(m.X.x)))
     if eigenvector == :right
-        ξ -> principal_eigenvalue(generator(m)(ξ); r0 = r0)
+        ξ -> principal_eigenvalue(generator(m, ξ); r0 = r0)
     elseif eigenvector == :left
         ξ -> begin
-            η, l = principal_eigenvalue(generator(m)(ξ)'; r0 = r0)
+            η, l = principal_eigenvalue(generator(m, ξ)'; r0 = r0)
             return η, l ./ sum(l)
         end
     else
@@ -64,6 +64,8 @@ function AdditiveFunctionalDiffusion(X::DiffusionProcess, μm::AbstractVector{<:
     AdditiveFunctionalDiffusion(X, μm, σm, ρ)
 end
 
-function generator(M::AdditiveFunctionalDiffusion)
-    ξ -> Diagonal(ξ .* M.μm .+ 0.5 * ξ^2 .* M.σm.^2) + generator(M.X.x, M.X.μx .+ ξ .* M.ρ .* M.σm .* M.X.σx, M.X.σx)
+function generator(M::AdditiveFunctionalDiffusion, ξ = 1)
+    Diagonal(ξ .* M.μm .+ 0.5 * ξ^2 .* M.σm.^2) + generator(M.X.x, M.X.μx .+ ξ .* M.ρ .* M.σm .* M.X.σx, M.X.σx)
 end
+
+

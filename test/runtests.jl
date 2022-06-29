@@ -23,7 +23,7 @@ m = AdditiveFunctionalDiffusion(X, X.x, zeros(length(X.x)))
 r_analytic = exp.(X.x ./ κ) 
 @test norm(r ./ sum(r) .- r_analytic ./ sum(r_analytic)) <= 2 * 1e-3
 t = range(0, stop = 200, step = 1/10)
-u = feynman_kac(generator(m)(1); t = t, direction = :forward)
+u = feynman_kac(generator(m); t = t, direction = :forward)
 @test log.(stationary_distribution(X)' * u[:, end]) ./ t[end] ≈ η atol = 1e-2
 
 
