@@ -1,5 +1,5 @@
 """
-Compute the principal eigenvector and eigenvalue of a linear operator 𝕋, where 𝕋 is a Metzler matrix (i.e. off-diagonal components are nonnegative)
+Compute the principal eigenvector and eigenvalue of a linear operator 𝕋, where 𝕋 is a Metzler matrix (i.e. off-diagonal components are nonnegative), or M-matrix
 
 Denote a = -minimum(Diagonal(V)), which implies 𝕋 + a * I has all positive entries. Applying Perron Frobenus, there a unique largest eigenvalue for aI + 𝕋, which is real, and the correspondind eigenctor is strictly positive.
 Note that, in particular, it is the eigenvalue with largest real part, and so this also correspoinds to the eigenvalue with largest real part of 𝕋, which happens to be real.
@@ -18,18 +18,27 @@ In other words, all eigenvalues of 𝕋 have real part <= 0. This means that �
 """
 function principal_eigenvalue(𝕋; r0 = ones(size(𝕋, 1)))
     η, r = 0.0, r0
-    a = - minimum(diag(𝕋))
-    try
-        vals, vecs = Arpack.eigs(𝕋 + a * I; v0 = collect(r0), nev = 1, which = :LM)
+    # faster in certain cases
+    if maximum(abs.(sum(𝕋, dims = 1))) < 1e-9
+        a = 0.0
+        vals, vecs = Arpack.eigs(𝕋 + a * I; v0 = collect(r0), nev = 1, which = :SM)
         η = vals[1]
         r = vecs[:, 1]
-    catch
-        vals, vecs = KrylovKit.eigsolve(𝕋 + a * I, collect(r0), 1, :LM; maxiter = size(𝕋, 1))
-        η = vals[1]
-        r = vecs[1]
+    else
+        a = - minimum(diag(𝕋))
+        try
+            vals, vecs = Arpack.eigs(𝕋 + a * I; v0 = collect(r0), nev = 1, which = :LM)
+            η = vals[1]
+            r = vecs[:, 1]
+        catch
+            vals, vecs = KrylovKit.eigsolve(𝕋 + a * I, collect(r0), 1, :LM; maxiter = size(𝕋, 1))
+            η = vals[1]
+            r = vecs[1]
+        end
     end
     abs(imag(η)) <= eps() || @warn "Principal Eigenvalue has an imaginary part"
     maximum(abs.(imag.(r))) <= eps() || @warn "Principal Eigenvector has an imaginary part"
     real(η) - a, abs.(r)
 end
+
 
