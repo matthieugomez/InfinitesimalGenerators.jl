@@ -17,14 +17,14 @@ In other words, all eigenvalues of 𝕋 have real part <= 0. This means that �
 
 """
 function principal_eigenvalue(𝕋; r0 = ones(size(𝕋, 1)))
-    η, r = 0.0, r0
-    # faster in certain cases
-    if maximum(abs.(sum(𝕋, dims = 1))) < 1e-9
-        a = 0.0
-        vals, vecs = Arpack.eigs(𝕋 + a * I; v0 = collect(r0), nev = 1, which = :SM)
+    a, η, r = 0.0, 0.0, r0
+    # faster in certain cases. Check that all sum up to zero
+    try
+        @assert maximum(abs.(sum(𝕋, dims = 1))) < 1e-9
+        vals, vecs = Arpack.eigs(𝕋; v0 = collect(r0), nev = 1, which = :SM)
         η = vals[1]
         r = vecs[:, 1]
-    else
+    catch
         a = - minimum(diag(𝕋))
         try
             vals, vecs = Arpack.eigs(𝕋 + a * I; v0 = collect(r0), nev = 1, which = :LM)
