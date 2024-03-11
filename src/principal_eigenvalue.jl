@@ -18,14 +18,19 @@ In other words, all eigenvalues of 𝕋 have real part <= 0. This means that �
 """
 function principal_eigenvalue(𝕋; r0 = ones(size(𝕋, 1)))
     a, η, r = 0.0, 0.0, r0
-    try
-        # faster in certain cases. Check that all sum up to zero
-        @assert maximum(abs.(sum(𝕋, dims = 1))) < 1e-9
-        # standard way of solving Ax = 0 is to do inverse iteration https://stackoverflow.com/questions/33563401/lapack-routines-for-solving-a-x-0
-        vals, vecs = Arpack.eigs(𝕋; v0 = collect(r0), nev = 1, which = :LM, sigma = 0.0)
-        η = vals[1]
-        r = vecs[:, 1]
-    catch
+    if maximum(abs.(sum(𝕋, dims = 1))) < 1e-9 
+        # if columns sum up to zero
+        # we know principal is asssociated with zero
+        if 𝕋 isa Tridiagonal
+            η = 0.0
+            r = [1.0 ; - Tridiagonal(𝕋.dl[2:end], 𝕋.d[2:end], 𝕋.du[2:end]) \ vec(𝕋[2:end, 1])]
+        else
+            # standard way of solving Ax = 0 is to do inverse iteration https://stackoverflow.com/questions/33563401/lapack-routines-for-solving-a-x-0
+            vals, vecs = Arpack.eigs(𝕋; v0 = collect(r0), nev = 1, which = :LM, sigma = 0.0)
+            η = vals[1]
+            r = vecs[:, 1]
+        end
+    else
         a = - minimum(diag(𝕋))
         try
             vals, vecs = Arpack.eigs(𝕋 + a * I; v0 = collect(r0), nev = 1, which = :LM)
