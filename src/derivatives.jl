@@ -22,7 +22,7 @@ Base.size(d::FirstDerivative) = (length(d.x), 1)
 Base.IndexStyle(d::FirstDerivative) = IndexLinear()
 
 function Base.getindex(d::FirstDerivative{T}, i::Int) where {T}
-	(; x, y, bc, direction) = d
+	x, y, bc, direction = d.x, d.y, d.bc, d.direction
 	if direction == :upward
 		if i == length(x)
 			return convert(T, bc[end])
@@ -62,7 +62,7 @@ Base.size(d::SecondDerivative) = (length(d.x), 1)
 Base.IndexStyle(d::SecondDerivative) = IndexLinear()
 
 function Base.getindex(d::SecondDerivative{T}, i::Int) where {T}
-	(; x, y, bc) = d
+	x, y, bc = d.x, d.y, d.bc
     Δxp = x[min(i, length(x)-1)+1] - x[min(i, length(x)-1)]
     Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
     Δx = (Δxm + Δxp) / 2
