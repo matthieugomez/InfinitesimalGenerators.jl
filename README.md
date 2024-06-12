@@ -36,15 +36,15 @@ feynman_kac(MX; t = range(0, 100, step = 1/12), f = zeros(length(x)),  ψ = ones
 
 
 # Derivative
-The package allows you to compute (lazyly) the first and second derivatives on a grid through finite difference schemes
+The package also allows you to compute (lazy) first and second derivatives of a function on a grid using a finite difference schemes
 
-```
+```julia
 using InfinitesimalGenerators
 x = range(-1, 1, length = 100)
 f = sin.(x)
-FirstDerivative(x, sin, direction = :upward, bc = (0, 0))
-FirstDerivative(x, sin, direction = :downward, bc = (0, 0))
-SecondDerivative(x, sin, bc = (0, 0))
+FirstDerivative(x, f, direction = :upward, bc = (0, 0))
+FirstDerivative(x, f, direction = :downward, bc = (0, 0))
+SecondDerivative(x, f, bc = (0, 0))
 ```
 The argument `bc` refers to the value of the first-derivative at the limit
 
