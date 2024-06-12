@@ -46,7 +46,7 @@ FirstDerivative(x, f, direction = :upward, bc = (0, 0))
 FirstDerivative(x, f, direction = :downward, bc = (0, 0))
 SecondDerivative(x, f, bc = (0, 0))
 ```
-The argument `bc` refers to the value of the first-derivative at the limit
+The argument `bc` refers to the value of the first-derivative at each limit of the grid.
 
 
 ## Related Packages
