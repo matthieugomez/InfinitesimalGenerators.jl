@@ -69,7 +69,7 @@ function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
         Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
         Δx = (Δxm + Δxp) / 2
         # upwinding to ensure off diagonals are posititive
-        if μx[i] >= 0
+        if (μx[i] >= 0) | (i == 1)
             𝕋[i, min(i + 1, n)] += μx[i] / Δxp
             𝕋[i, i] -= μx[i] / Δxp
         else

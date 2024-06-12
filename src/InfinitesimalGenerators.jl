@@ -10,10 +10,13 @@ using Roots: fzero
 
 
 
+
+
 include("MarkovProcess.jl")
 include("AdditiveFunctional.jl")
 include("feynman_kac.jl")
 include("principal_eigenvalue.jl")
+include("derivatives.jl")
 
 
 
@@ -29,5 +32,7 @@ CoxIngersollRoss,
 AdditiveFunctional,
 cgf,
 tail_index,
-AdditiveFunctionalDiffusion
+AdditiveFunctionalDiffusion,
+FirstDerivative,
+SecondDerivative
 end
