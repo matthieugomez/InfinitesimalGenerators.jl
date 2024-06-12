@@ -23,7 +23,7 @@ g = stationary_distribution(X)
 # Return the associated generator as a matrix (i.e. the operator `f -> ∂_tE[f(x_t)|x_0=x]`)
 MX = generator(X)
 
-# Use the generator to compute E[\int_0^T e^{-\int_0^t f(x_s)ds}f(x_s) +  e^{-\int_0^T v(x_s)ds}ψ(x_T) | x_0 = x]
+# Use the generator to compute E[∫_0^T e^{-∫_0^t v(x_s)ds}f(x_t)dt +  e^{-∫_0^T v(x_s)ds}ψ(x_T) | x_0 = x]
 feynman_kac(MX; t = range(0, 100, step = 1/12), f = zeros(length(x)),  ψ = ones(length(x)), v = zeros(length(x)))
 ```
 
