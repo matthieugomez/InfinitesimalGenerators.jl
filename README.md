@@ -24,7 +24,7 @@ g = stationary_distribution(X)
 MX = generator(X)
 
 # Use the generator to compute E[∫_0^T e^{-∫_0^t v(x_s)ds}f(x_t)dt +  e^{-∫_0^T v(x_s)ds}ψ(x_T) | x_0 = x]
-feynman_kac(MX; t = range(0, 100, step = 1/12), f = zeros(length(x)),  ψ = ones(length(x)), v = zeros(length(x)))
+feynman_kac(MX, range(0, 100, step = 1/12); f = zeros(length(x)),  ψ = ones(length(x)), v = zeros(length(x)))
 ```
 
 # Additive Functionals
