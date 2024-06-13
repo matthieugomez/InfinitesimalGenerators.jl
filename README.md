@@ -1,6 +1,6 @@
 [![Build status](https://github.com/matthieugomez/InfinitesimalGenerators.jl/workflows/CI/badge.svg)](https://github.com/matthieugomez/InfinitesimalGenerators.jl/actions)
 
-This package provides a set of tools to work with Markov Processes defined on a 1-dimensional Gri
+This package provides a set of tools to work with Markov Processes defined on a 1-dimensional grid
 
 
 
