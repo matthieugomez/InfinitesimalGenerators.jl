@@ -5,12 +5,18 @@ With direction = :backward
 Solve the following PDE:
 u(x, t[end]) = ψ(x)
 0 = u_t + 𝕋u - v(x, t)u + f(x, t)
-
+Equivalently, in integral form, 
+u(x, t) = E[∫_t^T e^{-∫_t^s v(x_u) du} f(x_s)ds + \int_t^t e^{-\int_t^T v(x_u)du} ψ(x_T)|x_t = x]
+(notations are from the wikipedia article for Feynman–Kac formula)
 
 With direction = :forward
 Solve the following PDE:
 u(x, t[1]) = ψ(x)
 u_t = 𝕋u - v(x, t)u + f(x, t)
+Equivalently, in integral form, 
+u(x, t) = E[∫_0^t e^{-∫_0^s v(x_u) du} f(x_s)ds + \int_0^t e^{-\int_0^t v(x_u)du} ψ(x_t)|x_0 = x]
+
+The function returns a matrix of size(length(f), length(t))
 """
 function feynman_kac(𝕋; 
     t::AbstractVector = range(0, 100, step = 1/12), 

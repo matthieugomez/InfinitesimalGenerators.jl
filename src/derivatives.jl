@@ -16,7 +16,6 @@ function FirstDerivative(x::AbstractVector, y::AbstractVector; bc = (0, 0), dire
 	FirstDerivative{eltype(y)}(x, y, bc, direction)
 end
 
-
 Base.size(d::FirstDerivative) = (length(d.x), 1)
 
 Base.IndexStyle(d::FirstDerivative) = IndexLinear()
@@ -55,7 +54,6 @@ end
 function SecondDerivative(x::AbstractVector, y::AbstractVector; bc = (0, 0))
 	SecondDerivative{eltype(y)}(x, y, bc)
 end
-
 
 Base.size(d::SecondDerivative) = (length(d.x), 1)
 
