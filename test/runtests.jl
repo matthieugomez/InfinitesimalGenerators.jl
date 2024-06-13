@@ -9,12 +9,12 @@ X = OrnsteinUhlenbeck(; xbar = xbar, κ = κ, σ = σ, length = 1000)
 
 ## Feynman-Kac
 ψ = X.x.^2
-t = range(0, stop = 100, step = 1/10)
-u = feynman_kac(generator(X); t = t, ψ = ψ, direction = :forward)
-@test maximum(abs, u[:, 50] .- expmv(t[50], generator(X), ψ)) <= 1e-3
-@test maximum(abs, u[:, 200] .- expmv(t[200], generator(X), ψ)) <= 1e-3
-@test maximum(abs, u[:, end] .- expmv(t[end], generator(X), ψ)) <= 1e-5
-@test maximum(abs, feynman_kac(generator(X); t = t, ψ = ψ, direction = :forward) .- feynman_kac(generator(X); t = collect(t), ψ = ψ, direction = :forward)) <= 1e-5
+ts = range(0, stop = 100, step = 1/10)
+u = feynman_kac(generator(X), ts; ψ = ψ, direction = :forward)
+@test maximum(abs, u[:, 50] .- expmv(ts[50], generator(X), ψ)) <= 1e-3
+@test maximum(abs, u[:, 200] .- expmv(ts[200], generator(X), ψ)) <= 1e-3
+@test maximum(abs, u[:, end] .- expmv(ts[end], generator(X), ψ)) <= 1e-5
+@test maximum(abs, feynman_kac(generator(X), ts; ψ = ψ, direction = :forward) .- feynman_kac(generator(X), ts; ψ = ψ, direction = :forward)) <= 1e-5
 
 
 ## Multiplicative Functional dM/M = x dt
@@ -23,9 +23,9 @@ m = AdditiveFunctionalDiffusion(X, X.x, zeros(length(X.x)))
 @test η ≈ xbar + 0.5 * σ^2 / κ^2 atol = 1e-2
 r_analytic = exp.(X.x ./ κ) 
 @test norm(r ./ sum(r) .- r_analytic ./ sum(r_analytic)) <= 2 * 1e-3
-t = range(0, stop = 200, step = 1/10)
-u = feynman_kac(generator(m); t = t, direction = :forward)
-@test log.(stationary_distribution(X)' * u[:, end]) ./ t[end] ≈ η atol = 1e-2
+ts = range(0, stop = 200, step = 1/10)
+u = feynman_kac(generator(m), ts; direction = :forward, ψ = ones(size(generator(m), 1)))
+@test log.(stationary_distribution(X)' * u[:, end]) ./ ts[end] ≈ η atol = 1e-2
 
 
 # test speed

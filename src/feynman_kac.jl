@@ -1,61 +1,75 @@
 """
-    feynman_kac(𝕋 [; t, f, ψ, v]) 
+    feynman_kac(𝕋, ts; f =  zeros(size(𝕋, 1)), ψ =  zeros(size(𝕋, 1)), v = zeros(size(𝕋, 1)), direction = :backward]) 
 
-With direction = :backward
-Solve the following PDE:
+𝕋 should be a matrix 
+ts should be a grid of time on which to solve the PDE
+
+With direction = :backward, returns the solution of the PDE:
 u(x, t[end]) = ψ(x)
 0 = u_t + 𝕋u - v(x, t)u + f(x, t)
-Equivalently, in integral form, 
-u(x, t) = E[∫_t^T e^{-∫_t^s v(x_u) du} f(x_s)ds + \int_t^t e^{-\int_t^T v(x_u)du} ψ(x_T)|x_t = x]
+Or, equivalently, in integral form, 
+u(x, t) = E[∫_t^T e^{-∫_t^s v(x_u) du} f(x_s)ds + ∫_t^t e^{-∫_t^T v(x_u)du} ψ(x_T)|x_t = x]
 (notations are from the wikipedia article for Feynman–Kac formula)
 
-With direction = :forward
-Solve the following PDE:
+With direction = :forward, , returns the solution of the PDE:
 u(x, t[1]) = ψ(x)
 u_t = 𝕋u - v(x, t)u + f(x, t)
-Equivalently, in integral form, 
-u(x, t) = E[∫_0^t e^{-∫_0^s v(x_u) du} f(x_s)ds + \int_0^t e^{-\int_0^t v(x_u)du} ψ(x_t)|x_0 = x]
+Or, equivalently, in integral form, 
+u(x, t) = E[∫_0^t e^{-∫_0^s v(x_u) du} f(x_s)ds + ∫_0^t e^{-∫_0^t v(x_u)du} ψ(x_t)|x_0 = x]
 
-The function returns a matrix of size(length(f), length(t))
+The PDE is solved using Euler method with implicit time steps
 """
-function feynman_kac(𝕋; 
-    t::AbstractVector = range(0, 100, step = 1/12), 
+function feynman_kac(𝕋, ts; 
     f::Union{AbstractVector, AbstractMatrix} = zeros(size(𝕋, 1)), 
-    ψ::AbstractVector = ones(size(𝕋, 1)),
+    ψ::AbstractVector = zeros(size(𝕋, 1)),
     v::Union{AbstractVector, AbstractMatrix} = zeros(size(𝕋, 1)),
     direction= :backward)
-    if direction == :backward
-        u = zeros(size(𝕋, 1), length(t))
+    size(𝕋, 1) == size(𝕋, 2) || throw(DimensionMismatch(), "𝕋 must be square matrix")
+    size(𝕋, 1) == size(f, 1) || throw(DimensionMismatch(), "𝕋 and f should have the same number of rows")
+    size(𝕋, 1) == length(ψ) || throw(DimensionMismatch(), "𝕋 and ψ should have the same number of rows")
+    size(𝕋, 1) == size(v, 1) || throw(DimensionMismatch(), "𝕋 and v should have the same number of rows")
+    size(f, 2) ∈ (1, length(ts)) ||  throw(DimensionMismatch(), "The number of columns in f should equal the length of ts")
+    size(v, 2) ∈ (1, length(ts)) ||  throw(DimensionMismatch(), "The number of columns in f should equal the length of ts")
+    direction ∈ (:forward, :backward) || throw(ArgumentError(), "Direction must be :backward or :forward")
+    if ndims(f) == 2 && ndims(v) == 1
+        v = hcat([v for _ in 1:size(f, 2)])
+    elseif ndims(f) == 1 && ndims(v) == 2
+        f = hcat([f for _ in 1:size(v, 2)])
+    end
+    if direction == :forward
+        # direction is forward
+        u = feynman_kac(𝕋, - reverse(ts); ψ = ψ, f = f, v = v, direction = :backward)
+        return u[:,end:-1:1]
+    else
+        # direction is backward
+        u = zeros(size(𝕋, 1), length(ts))
         u[:, end] = ψ
-        if isa(f, AbstractVector) && isa(v, AbstractVector)
-            if isa(t, AbstractRange)
-                dt = step(t)
+        if ndims(f) == 1
+            # f and v are vectors
+            if isa(ts, AbstractRange)
+                # constant time step
+                dt = step(ts)
                 B = factorize(I + (Diagonal(v) - 𝕋) * dt)
-                for i in (length(t)-1):(-1):1
+                for i in (length(ts)-1):(-1):1
                     ψ = ldiv!(B, u[:, i+1] .+ f .* dt)
                     u[:, i] = ψ
                 end
             else
-                for i in (length(t)-1):(-1):1
-                    dt = t[i+1] - t[i]
+                # non-constant time step
+                for i in (length(ts)-1):(-1):1
+                    dt = ts[i+1] - ts[i]
                     B = I + (Diagonal(v) - 𝕋) * dt
                     u[:, i] = B \ (u[:, i+1] .+ f .* dt)
                 end
             end
-        elseif isa(f, AbstractMatrix) && isa(v, AbstractMatrix)
-            for i in (length(t)-1):(-1):1
-                dt = t[i+1] - t[i]
+        else
+            # f and v are matrices
+            for i in (length(ts)-1):(-1):1
+                dt = ts[i+1] - ts[i]
                 B = I + (Diagonal(view(v, :, i)) - 𝕋) * dt
                 u[:, i] = B \ (u[:, i+1] .+ f[:, i] .* dt)
             end
-        else
-            error("f and v must be both AbstractVectors or both AbstractMatrices")
         end
         return u
-    elseif direction == :forward
-        u = feynman_kac(𝕋; t = - reverse(t), ψ = ψ, f = f, v = v, direction = :backward)
-        return u[:,end:-1:1]
-    else
-        error("Direction must be :backward or :forward")
     end
 end
