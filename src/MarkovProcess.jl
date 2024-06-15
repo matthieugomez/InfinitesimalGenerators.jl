@@ -59,11 +59,20 @@ state_space(X::DiffusionProcess) = X.x
 
     at the border of state space
 """
-generator(X::DiffusionProcess) = generator(X.x, X.μx, X.σx)
+function generator(X::DiffusionProcess)
+    n = length(X.x)
+    𝕋 = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
+    generator!(𝕋, X.x, X.μx, X.σx)
+end
 
 function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
+    generator!(T, x, μx, σx)
+end
+
+function generator!(𝕋, x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
+    # if you use this form, make sure that 𝕋 only has zero
     n = length(x)
-    𝕋 = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
+    fill!(𝕋, 0)
     @inbounds for i in 1:n
         Δxp = x[min(i, n-1)+1] - x[min(i, n-1)]
         Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]

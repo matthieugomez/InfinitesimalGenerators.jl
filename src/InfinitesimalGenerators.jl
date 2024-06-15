@@ -6,6 +6,7 @@ using FillArrays: Ones, Zeros
 using KrylovKit: KrylovKit
 using LinearAlgebra: Diagonal, Tridiagonal, I, factorize, ldiv!, diag
 using Roots: fzero
+using BlockBandedMatrices: BandedBlockBandedMatrix, Block
 
 
 
@@ -17,6 +18,8 @@ include("AdditiveFunctional.jl")
 include("feynman_kac.jl")
 include("principal_eigenvalue.jl")
 include("derivatives.jl")
+include("jointoperator.jl")
+
 
 
 
@@ -34,5 +37,6 @@ cgf,
 tail_index,
 AdditiveFunctionalDiffusion,
 FirstDerivative,
-SecondDerivative
+SecondDerivative,
+jointoperator
 end

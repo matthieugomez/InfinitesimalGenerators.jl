@@ -27,14 +27,14 @@ function Base.getindex(d::FirstDerivative{T}, i::Int) where {T}
 			return convert(T, bc[end])
 		else
 			Δxp = x[min(i, length(x)-1)+1] - x[min(i, length(x)-1)]
-			return (y[i+1] - y[i]) / Δxp
+			return convert(T, (y[i+1] - y[i]) / Δxp)
 		end
 	else
 		if i == 1
 			return convert(T, bc[1])
 		else
 			Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
-			return (y[i] - y[i-1]) / Δxm
+			return convert(T, (y[i] - y[i-1]) / Δxm)
 		end
 	end
 end
@@ -65,11 +65,11 @@ function Base.getindex(d::SecondDerivative{T}, i::Int) where {T}
     Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
     Δx = (Δxm + Δxp) / 2
     if i == 1 
-    	return y[2] / (Δxp * Δx) + (y[1] - bc[1] * Δxm) / (Δxm * Δx) - 2 * y[1] / (Δxp * Δxm)
+    	return convert(T, y[2] / (Δxp * Δx) + (y[1] - bc[1] * Δxm) / (Δxm * Δx) - 2 * y[1] / (Δxp * Δxm))
     elseif i ==  length(x)
-    	return (y[end] + bc[end] * Δxp) / (Δxp * Δx) + y[end - 1] / (Δxm * Δx) - 2 * y[end] / (Δxp * Δxm)
+    	return convert(T, (y[end] + bc[end] * Δxp) / (Δxp * Δx) + y[end - 1] / (Δxm * Δx) - 2 * y[end] / (Δxp * Δxm))
     else
-    	return y[i + 1] / (Δxp * Δx) + y[i - 1] / (Δxm * Δx) - 2 * y[i] / (Δxp * Δxm)
+    	return convert(T, y[i + 1] / (Δxp * Δx) + y[i - 1] / (Δxm * Δx) - 2 * y[i] / (Δxp * Δxm))
     end
 end
 
