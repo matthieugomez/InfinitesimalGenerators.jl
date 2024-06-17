@@ -9,11 +9,8 @@ function jointoperator(operators, Q::Array)
     @assert size(Q,1) == size(Q,2) == N
     J = BandedBlockBandedMatrix(Zeros(wn * N, wn * N), fill(wn, N) ,fill(wn, N), (N-1, N-1), (1, 1))
     for i in 1:N
-        J[Block(i,i)] = operators[i]
-    end
-    for i in 1:N
         for j in 1:N
-            J[Block(i,j)] += Tridiagonal(zeros(wn -1), fill(Q[i, j], wn), zeros(wn-1))
+            J[Block(i,j)] = Q[i, j] * I(wn) + (i == j) * operators[i]
         end
     end
     return J

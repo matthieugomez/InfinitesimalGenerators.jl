@@ -12,7 +12,6 @@ using BlockBandedMatrices: BandedBlockBandedMatrix, Block
 
 
 
-
 include("MarkovProcess.jl")
 include("AdditiveFunctional.jl")
 include("feynman_kac.jl")
