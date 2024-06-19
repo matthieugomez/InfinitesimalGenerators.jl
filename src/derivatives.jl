@@ -12,9 +12,7 @@ struct FirstDerivative{T, X <: AbstractVector{<:Real}, Y <: AbstractVector{<: Re
 	end
 end
 
-function FirstDerivative(x, y; bc = (0, 0), direction = :upward)
-	FirstDerivative(x, y, bc, direction)
-end
+FirstDerivative(x, y; bc = (0, 0), direction = :upward) = FirstDerivative(x, y, bc, direction)
 
 Base.size(d::FirstDerivative) = (length(d.x), 1)
 
@@ -51,9 +49,7 @@ struct SecondDerivative{T, X <: AbstractVector{<:Real}, Y <: AbstractVector{<: R
 	end
 end
 
-function SecondDerivative(x, y; bc = (0, 0))
-	SecondDerivative(x, y, bc)
-end
+SecondDerivative(x, y; bc = (0, 0)) = SecondDerivative(x, y, bc)
 
 Base.size(d::SecondDerivative) = (length(d.x), 1)
 
