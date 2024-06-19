@@ -57,16 +57,16 @@ Base.IndexStyle(d::SecondDerivative) = IndexLinear()
 
 function Base.getindex(d::SecondDerivative{T}, i::Int) where {T}
 	x, y, bc = d.x, d.y, d.bc
-    Δxp = x[min(i, length(x)-1)+1] - x[min(i, length(x)-1)]
-    Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
-    Δx = (Δxm + Δxp) / 2
-    if i == 1 
-    	return convert(T, y[2] / (Δxp * Δx) + (y[1] - bc[1] * Δxm) / (Δxm * Δx) - 2 * y[1] / (Δxp * Δxm))
-    elseif i ==  length(x)
-    	return convert(T, (y[end] + bc[end] * Δxp) / (Δxp * Δx) + y[end - 1] / (Δxm * Δx) - 2 * y[end] / (Δxp * Δxm))
-    else
-    	return convert(T, y[i + 1] / (Δxp * Δx) + y[i - 1] / (Δxm * Δx) - 2 * y[i] / (Δxp * Δxm))
-    end
+	Δxp = x[min(i, length(x)-1)+1] - x[min(i, length(x)-1)]
+	Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
+	Δx = (Δxm + Δxp) / 2
+	if i == 1 
+		return convert(T, y[2] / (Δxp * Δx) + (y[1] - bc[1] * Δxm) / (Δxm * Δx) - 2 * y[1] / (Δxp * Δxm))
+	elseif i ==  length(x)
+		return convert(T, (y[end] + bc[end] * Δxp) / (Δxp * Δx) + y[end - 1] / (Δxm * Δx) - 2 * y[end] / (Δxp * Δxm))
+	else
+		return convert(T, y[i + 1] / (Δxp * Δx) + y[i - 1] / (Δxm * Δx) - 2 * y[i] / (Δxp * Δxm))
+	end
 end
 
 
