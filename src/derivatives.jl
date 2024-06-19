@@ -1,19 +1,19 @@
 
-struct FirstDerivative{T} <: AbstractVector{T}
-	x::AbstractVector{<:Real}
-	y::AbstractVector{T}
+struct FirstDerivative{T, X <: AbstractVector{<:Real}, Y <: AbstractVector{<: Real}} <: AbstractVector{T}
+	x::X
+	y::Y
 	bc::NTuple{2}{T}
 	direction::Symbol
-	function FirstDerivative{T}(x, y, bc, direction) where {T}
+	function FirstDerivative(x, y, bc, direction)
 		size(x) == size(y) || throw(DimensionMismatch(
 			"cannot match grid of length $(length(x)) with vector of length $(length(y))"))
 		direction ∈ (:upward, :downward) || throw(ArgumentError("direction must be :upward or :downward"))
-		return new(x, y, bc, direction)
+		return new{float(eltype(y)), typeof(x), typeof(y)}(x, y, bc, direction)
 	end
 end
 
-function FirstDerivative(x::AbstractVector, y::AbstractVector; bc = (0, 0), direction = :upward)
-	FirstDerivative{eltype(y)}(x, y, bc, direction)
+function FirstDerivative(x, y; bc = (0, 0), direction = :upward)
+	FirstDerivative(x, y, bc, direction)
 end
 
 Base.size(d::FirstDerivative) = (length(d.x), 1)
@@ -40,19 +40,19 @@ function Base.getindex(d::FirstDerivative{T}, i::Int) where {T}
 end
 
 
-struct SecondDerivative{T} <: AbstractVector{T}
-	x::AbstractVector{<:Real}
-	y::AbstractVector{T}
+struct SecondDerivative{T, X <: AbstractVector{<:Real}, Y <: AbstractVector{<: Real}} <: AbstractVector{T}
+	x::X
+	y::Y
 	bc::NTuple{2}{T}
-	function SecondDerivative{T}(x, y, bc) where {T}
+	function SecondDerivative(x, y, bc)
 		length(x) == length(y) || throw(DimensionMismatch(
 			"cannot match grid of length $(length(x)) with vector of length $(length(y))"))
-		return new(x, y, bc)
+		return new{float(eltype(y)), typeof(x), typeof(y)}(x, y, bc)
 	end
 end
 
-function SecondDerivative(x::AbstractVector, y::AbstractVector; bc = (0, 0))
-	SecondDerivative{eltype(y)}(x, y, bc)
+function SecondDerivative(x, y; bc = (0, 0))
+	SecondDerivative(x, y, bc)
 end
 
 Base.size(d::SecondDerivative) = (length(d.x), 1)
