@@ -1,4 +1,4 @@
-
+# bc corresponds to value of first derivative outside the grid. Default to (0, 0), which corresponds to reflecting.
 struct FirstDerivative{T, X <: AbstractVector{<:Real}, Y <: AbstractVector{<: Real}} <: AbstractVector{T}
 	x::X
 	y::Y
@@ -7,12 +7,12 @@ struct FirstDerivative{T, X <: AbstractVector{<:Real}, Y <: AbstractVector{<: Re
 	function FirstDerivative(x, y, bc, direction)
 		size(x) == size(y) || throw(DimensionMismatch(
 			"cannot match grid of length $(length(x)) with vector of length $(length(y))"))
-		direction ∈ (:upward, :downward) || throw(ArgumentError("direction must be :upward or :downward"))
+		direction ∈ (:forward, :backward) || throw(ArgumentError("direction must be :forward or :backward"))
 		return new{float(eltype(y)), typeof(x), typeof(y)}(x, y, bc, direction)
 	end
 end
 
-FirstDerivative(x, y; bc = (0, 0), direction = :upward) = FirstDerivative(x, y, bc, direction)
+FirstDerivative(x, y; bc = (0, 0), direction = :forward) = FirstDerivative(x, y, bc, direction)
 
 Base.size(d::FirstDerivative) = (length(d.x), 1)
 
@@ -20,7 +20,7 @@ Base.IndexStyle(d::FirstDerivative) = IndexLinear()
 
 function Base.getindex(d::FirstDerivative{T}, i::Int) where {T}
 	x, y, bc, direction = d.x, d.y, d.bc, d.direction
-	if direction == :upward
+	if direction == :forward
 		if i == length(x)
 			return convert(T, bc[end])
 		else
