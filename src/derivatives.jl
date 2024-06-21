@@ -7,7 +7,7 @@ struct FirstDerivative{T, X <: AbstractVector{<:Real}, Y <: AbstractVector{<: Re
 	function FirstDerivative(x, y, bc, direction)
 		size(x) == size(y) || throw(DimensionMismatch(
 			"cannot match grid of length $(length(x)) with vector of length $(length(y))"))
-		direction ∈ (:forward, :backward) || throw(ArgumentError("direction must be :forward or :backward"))
+		direction ∈ (:forward, :backward, :upward, :downward) || throw(ArgumentError("direction must be :forward/:upward or :backward/:downward"))
 		return new{float(eltype(y)), typeof(x), typeof(y)}(x, y, bc, direction)
 	end
 end
@@ -20,7 +20,7 @@ Base.IndexStyle(d::FirstDerivative) = IndexLinear()
 
 function Base.getindex(d::FirstDerivative{T}, i::Int) where {T}
 	x, y, bc, direction = d.x, d.y, d.bc, d.direction
-	if direction == :forward
+	if direction ∈ (:forward, :upward)
 		if i == length(x)
 			return convert(T, bc[end])
 		else
