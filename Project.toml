@@ -1,6 +1,6 @@
 name = "InfinitesimalGenerators"
 uuid = "2fce0c6f-5f0b-5c85-85c9-2ffe1d5ee30d"
-version = "2.4.0"
+version = "2.4.1"
 
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
@@ -16,7 +16,7 @@ Arpack = "0.3, 0.4, 0.5"
 BlockBandedMatrices = "0.12, 0.13"
 Distributions = "0.22, 0.23, 0.24, 0.25"
 FillArrays = "0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 1"
-KrylovKit = "0.4, 0.5, 0.6, 0.7, 0.8"
+KrylovKit = "0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.10"
 Roots = "0.8, 1, 2"
 julia = "1.6"
 
