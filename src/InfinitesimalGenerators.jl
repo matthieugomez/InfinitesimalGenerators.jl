@@ -1,10 +1,8 @@
 module InfinitesimalGenerators
 
-using Arpack: Arpack
 using Distributions: Normal, Gamma, quantile
 using FillArrays: Ones, Zeros
-using KrylovKit: KrylovKit
-using LinearAlgebra: Diagonal, Tridiagonal, I, factorize, ldiv!, diag
+using LinearAlgebra: Diagonal, Tridiagonal, I, factorize, ldiv!
 using Roots: fzero
 using BlockBandedMatrices: BandedBlockBandedMatrix, Block
 

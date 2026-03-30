@@ -42,8 +42,8 @@ speed = sum(ψ_reaching .* m.μm)
 @test speed ≈ μm  +  ζ * (σ^2 / κ^2) atol = 1e-2
 
 
-# test transformation with a funciton # m2 = p * M. 
-# This does not work very well. Note that it works only if the distribution of p has a thinner tail than the distirbuiton of M
+# test transformation with a function # m2 = p * M.
+# Note: this works only if the distribution of p has a thinner tail than the distribution of M
 m = AdditiveFunctionalDiffusion(X, X.x .- 0.06, zeros(length(X.x)))
 ζ = tail_index(m)
 η, r = cgf(m ; eigenvector = :right)(ζ)
@@ -54,13 +54,7 @@ m2 = AdditiveFunctionalDiffusion(X, m.μm .+ (generator(m.X) * log.(p)),  (Infin
 η2, l2 = cgf(m2; eigenvector = :left)(ζ)
 r3 = (r ./ p.^ζ) ./ sum(r ./ p.^ζ)
 r2 = r2 ./ sum(r2)
-#@test r2 ≈ r3 rtol = 1e-2
 l3 = (l .* p.^ζ) ./ sum(l .* p.^ζ)
-#@test l2 ≈ l3 rtol = 1e-1
-
-l' * (generator(m.X) * log.(p))
-ψ_reaching = l.*r ./ sum(l.* r)
-ψ_reaching' * (generator(m.X) * log.(p))
 
 ## test left and right eigenvector with correlation
 m = AdditiveFunctionalDiffusion(X, X.x, 0.01 * ones(length(X.x)); ρ = 1)
@@ -115,6 +109,36 @@ m = AdditiveFunctionalDiffusion(X, X.x, zeros(length(X.x)))
 @test cgf(m)(1.0)[1] ≈ η_analytic rtol = 1e-2
 
 
-# for CIR the speed is given by 
-# speed_analytic = - (g .- 0.009) + xbar * κ / sqrt(κ^2 - 2 * σ^2 * ζ)
-# η, r = cgf(m, eigenvector = :right)(ζ)
+## FirstDerivative and SecondDerivative
+x = range(0.0, stop = 1.0, length = 1000)
+y = x.^2
+dy = FirstDerivative(x, y; direction = :forward)
+@test length(dy) == length(x)
+@test dy[500] ≈ 2 * x[500] atol = 1e-2
+dy_back = FirstDerivative(x, y; direction = :backward)
+@test dy_back[500] ≈ 2 * x[500] atol = 1e-2
+# boundary conditions: forward derivative at last point returns bc
+@test dy[end] == 0.0
+# backward derivative at first point returns bc
+@test dy_back[1] == 0.0
+
+d2y = SecondDerivative(x, y)
+@test length(d2y) == length(x)
+@test d2y[500] ≈ 2.0 atol = 1e-2
+
+
+## jointoperator
+X1 = OrnsteinUhlenbeck(; κ = 0.1, σ = 0.02, length = 50)
+X2 = OrnsteinUhlenbeck(; κ = 0.2, σ = 0.03, length = 50)
+T1 = generator(X1)
+T2 = generator(X2)
+Q = [-0.1 0.1; 0.2 -0.2]
+J = jointoperator([T1, T2], Q)
+@test size(J) == (100, 100)
+# rows should sum to zero (generator property)
+@test maximum(abs.(sum(Matrix(J), dims = 2))) < 1e-10
+# principal eigenvalue of a generator should be zero
+Jdense = Matrix(J)
+η, r = InfinitesimalGenerators.principal_eigenvalue(Jdense)
+@test η ≈ 0.0 atol = 1e-8
+@test all(r .> 0)

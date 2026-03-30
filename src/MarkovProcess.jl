@@ -1,7 +1,7 @@
 
 abstract type MarkovProcess end
 
-# This type sould define generator(), which returns a transition matrix 𝕋 such that
+# This type should define generator(), which returns a transition matrix 𝕋 such that
 # 𝕋f = lim_{t→0} E[f(x_t)|x_0=x]/t
 
 """
@@ -64,15 +64,14 @@ function generator(X::DiffusionProcess)
 end
 
 function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
-    # if you use this form, make sure that 𝕋 only has zero
     n = length(x)
     𝕋 = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
     @inbounds for i in 1:n
         Δxp = x[min(i, n-1)+1] - x[min(i, n-1)]
         Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
         Δx = (Δxm + Δxp) / 2
-        # upwinding to ensure off diagonals are posititive
-        if (μx[i] >= 0) | (i == 1)
+        # upwinding to ensure off diagonals are positive
+        if (μx[i] >= 0) || (i == 1)
             𝕋[i, min(i + 1, n)] += μx[i] / Δxp
             𝕋[i, i] -= μx[i] / Δxp
         else
@@ -109,8 +108,8 @@ end
         dx_t = -κ * (x_t - xbar) * dt + σ * dZ_t
 
 """
-function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, 
-    xmin = quantile(Normal(xbar, σ / sqrt(2 * κ)), p), xmax = quantile(Normal(xbar, σ / sqrt(2 * κ)), 1 - p))
+function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length = 100,
+    xmin = quantile(Normal(xbar, σ / sqrt(2 * κ)), p), xmax = quantile(Normal(xbar, σ / sqrt(2 * κ)), 1 - p), pow = 1)
     # it's important to take low p to have the right tail index of Additive functional
     if xmin > 0
         x = range(xmin^(1/pow), stop = xmax^(1/pow), length = length).^pow
@@ -128,7 +127,7 @@ end
 """
 function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, α = 2 * κ * xbar / σ^2, β = σ^2 / (2 * κ), xmin = quantile(Gamma(α, β), p), xmax = quantile(Gamma(α, β), 1 - p), pow = 2)
     # check 0 is not attainable
-    @assert (2 * κ * xbar) / σ^2 > 1
+    (2 * κ * xbar) / σ^2 > 1 || throw(ArgumentError("Feller condition not satisfied: 2κx̄/σ² must be > 1"))
     x = range(xmin^(1/pow), stop = xmax^(1/pow), length = length).^pow
     DiffusionProcess(x, κ .* (xbar .- x), σ .* sqrt.(x))
 end

@@ -8,12 +8,12 @@ abstract type AdditiveFunctional end
 Compute the long run cgf(m), i.e. the function
 ξ ⭌ lim_{t→∞} log(E[e^{ξ * m_t}])/t
 """
-function cgf(m::AdditiveFunctional; eigenvector = :right, r0 = Ones(length(m.X.x)))
+function cgf(m::AdditiveFunctional; eigenvector = :right, r0 = Ones(length(m.X.x)), η0 = nothing)
     ξ -> begin
         if eigenvector == :right
-            principal_eigenvalue(tilted_generator(m)(ξ); r0 = r0)
+            principal_eigenvalue(tilted_generator(m)(ξ); r0 = r0, η0 = η0)
         elseif eigenvector == :left
-            η, l = principal_eigenvalue(tilted_generator(m)(ξ)'; r0 = r0)
+            η, l = principal_eigenvalue(tilted_generator(m)(ξ)'; r0 = r0, η0 = η0)
             return η, l ./ sum(l)
         else
             throw(ArgumentError("the keyword argument eigenvector can only take the value :right or :left"))
@@ -25,9 +25,10 @@ end
 compute the tail index of the stationary distribution of e^{m}, i.e.
 ζ such that cgf(m)(ζ) = δ
 """
-function tail_index(m::AdditiveFunctional; δ = 0, verbose = false, r0 = Ones(length(m.X.x)), xatol = 1e-4, kwargs...)
+function tail_index(m::AdditiveFunctional; δ = 0, verbose = false, r0 = nothing, xatol = 1e-4, kwargs...)
+    r0 !== nothing && Base.depwarn("the `r0` keyword argument is deprecated and has no effect", :tail_index)
     fzero((1e-5, 1e3); xatol = xatol, kwargs...) do ξ
-        η, r0 = cgf(m; r0 = r0)(ξ)
+        η, _ = cgf(m)(ξ)
         verbose && @show (:LR, ξ, η)
         return η - δ
     end
@@ -47,7 +48,7 @@ end
 Diffusion Case
 dx_t = μ(x)dt + σ(x) dZ_t
 dm_t = μm(x)dt + σm(x)dZ^m_t
-with 
+with
 corr(dZ^m_t, dZ_t) = ρ
 
 ========================================================================================#
@@ -71,7 +72,3 @@ end
 function tilted_generator(M::AdditiveFunctionalDiffusion)
     ξ -> generator(AdditiveFunctionalDiffusion(M.X, ξ .* M.μm, ξ .* M.σm, M.ρ))
 end
-
-
-
-

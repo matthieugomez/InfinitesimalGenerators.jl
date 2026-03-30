@@ -1,52 +1,49 @@
 """
-Compute the principal eigenvector and eigenvalue of a linear operator 𝕋, where 𝕋 is a Metzler matrix (i.e. off-diagonal components are nonnegative), or M-matrix
+Compute the principal eigenvalue and eigenvector of a Metzler matrix 𝕋
+(i.e. a matrix with non-negative off-diagonal entries).
 
-Denote a = -minimum(Diagonal(V)), which implies 𝕋 + a * I has all positive entries. Applying Perron Frobenus, there a unique largest eigenvalue for aI + 𝕋, which is real, and the correspondind eigenctor is strictly positive.
-Note that, in particular, it is the eigenvalue with largest real part, and so this also correspoinds to the eigenvalue with largest real part of 𝕋, which happens to be real.
-Denote η(𝕋) the eigenvalue with largest real part of a matrix and ρ(𝕋) the eigenvalue with largest modulus. We have
+By Perron-Frobenius, the eigenvalue η with largest real part is real,
+and the corresponding eigenvector r is strictly positive.
 
-    η(𝕋) = ρ(𝕋 + a * I) - a
-
-Moreover, the associated eigenvector is real and strictly positive.
-
-
-Note that, when 𝕋 is generator, its rows sum to zero. This means that eigenvalue with largest real part is 
-    η(𝕋) = 0
-In other words, all eigenvalues of 𝕋 have real part <= 0. This means that 𝕋 is a singular M matrix.
-(another proof is to say that, for any s, sI - 𝕋 is a non-singular M-Matrix for any s> 0, since there exists x = e such that (sI - 𝕋) * x > 0). 
-
+Two cases:
+1. If rows or columns sum to zero (𝕋 is a generator), then η = 0.
+   The eigenvector is found by solving 𝕋r = 0 with r[1] = 1.
+2. Otherwise, η is found by inverse iteration with Rayleigh quotient updates.
+   At each step, we solve (𝕋 - σI)w = r, normalize w, and update the shift σ
+   via the Rayleigh quotient σ = r'𝕋r. This converges cubically to η.
+   The initial shift is the max row sum — a Gershgorin upper bound on η —
+   which guarantees that η is the eigenvalue closest to the shift,
+   so inverse iteration converges to the right eigenvalue.
+   For tridiagonal 𝕋, each iteration costs O(n).
 """
-function principal_eigenvalue(𝕋; r0 = ones(size(𝕋, 1)))
-    a, η, r = 0.0, 0.0, r0
-    if (maximum(abs.(sum(𝕋, dims = 1))) < 1e-9)  | (maximum(abs.(sum(𝕋, dims = 2))) < 1e-9)
-        # if columns or rows sum up to zero
-        # we know principal is asssociated with zero
+function principal_eigenvalue(𝕋; r0 = ones(size(𝕋, 1)), η0 = nothing, maxiter = 100, tol = 1e-12)
+    if (maximum(abs.(sum(𝕋, dims = 1))) < 1e-9) || (maximum(abs.(sum(𝕋, dims = 2))) < 1e-9)
+        # rows or columns sum to zero → η = 0, solve 𝕋r = 0 with r[1] = 1
         if 𝕋 isa Tridiagonal
-            η = 0.0
             r = [1.0 ; - Tridiagonal(𝕋.dl[2:end], 𝕋.d[2:end], 𝕋.du[2:end]) \ vec(𝕋[2:end, 1])]
         else
-            η = 0.0
             r = [1.0 ; - 𝕋[2:end, 2:end] \ vec(𝕋[2:end, 1])]
-            # standard way of solving Ax = 0 is to do inverse iteration https://stackoverflow.com/questions/33563401/lapack-routines-for-solving-a-x-0
-           # vals, vecs = Arpack.eigs(𝕋; v0 = collect(r0), nev = 1, which = :LM, sigma = 0.0)
-           # η = vals[1]
-           # r = vecs[:, 1]
         end
+        return 0.0, abs.(r)
     else
-        a = - minimum(diag(𝕋))
-        try
-            vals, vecs = Arpack.eigs(𝕋 + a * I; v0 = collect(r0), nev = 1, which = :LM)
-            η = vals[1]
-            r = vecs[:, 1]
-        catch
-            vals, vecs = KrylovKit.eigsolve(𝕋 + a * I, collect(r0), 1, :LM; maxiter = size(𝕋, 1))
-            η = vals[1]
-            r = vecs[1]
+        # Inverse iteration with Rayleigh quotient updates
+        r = collect(float.(r0))
+        r ./= sqrt(r' * r)
+        if η0 !== nothing
+            η = float(η0)
+        else
+            η = maximum(sum(𝕋, dims = 2))
         end
+        for _ in 1:maxiter
+            w = (𝕋 - η * I) \ r
+            r = w ./ sqrt(w' * w)
+            η_new = r' * (𝕋 * r)
+            if abs(η_new - η) < tol * (1 + abs(η_new))
+                return η_new, abs.(r)
+            end
+            η = η_new
+        end
+        @warn "Inverse iteration did not converge in $maxiter iterations"
+        return η, abs.(r)
     end
-    abs(imag(η)) <= eps() || @warn "Principal Eigenvalue has an imaginary part"
-    maximum(abs.(imag.(r))) <= eps() || @warn "Principal Eigenvector has an imaginary part"
-    real(η) - a, abs.(r)
 end
-
-

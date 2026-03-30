@@ -2,7 +2,7 @@
 struct FirstDerivative{T, X <: AbstractVector{<:Real}, Y <: AbstractVector{<: Real}} <: AbstractVector{T}
 	x::X
 	y::Y
-	bc::NTuple{2}{T}
+	bc::NTuple{2, T}
 	direction::Symbol
 	function FirstDerivative(x, y, bc, direction)
 		size(x) == size(y) || throw(DimensionMismatch(
@@ -14,7 +14,7 @@ end
 
 FirstDerivative(x, y; bc = (0, 0), direction = :forward) = FirstDerivative(x, y, bc, direction)
 
-Base.size(d::FirstDerivative) = (length(d.x), 1)
+Base.size(d::FirstDerivative) = (length(d.x),)
 
 Base.IndexStyle(d::FirstDerivative) = IndexLinear()
 
@@ -41,7 +41,7 @@ end
 struct SecondDerivative{T, X <: AbstractVector{<:Real}, Y <: AbstractVector{<: Real}} <: AbstractVector{T}
 	x::X
 	y::Y
-	bc::NTuple{2}{T}
+	bc::NTuple{2, T}
 	function SecondDerivative(x, y, bc)
 		length(x) == length(y) || throw(DimensionMismatch(
 			"cannot match grid of length $(length(x)) with vector of length $(length(y))"))
@@ -51,7 +51,7 @@ end
 
 SecondDerivative(x, y; bc = (0, 0)) = SecondDerivative(x, y, bc)
 
-Base.size(d::SecondDerivative) = (length(d.x), 1)
+Base.size(d::SecondDerivative) = (length(d.x),)
 
 Base.IndexStyle(d::SecondDerivative) = IndexLinear()
 
