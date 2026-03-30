@@ -54,7 +54,13 @@ m2 = AdditiveFunctionalDiffusion(X, m.μm .+ (generator(m.X) * log.(p)),  (Infin
 η2, l2 = cgf(m2; eigenvector = :left)(ζ)
 r3 = (r ./ p.^ζ) ./ sum(r ./ p.^ζ)
 r2 = r2 ./ sum(r2)
+#@test r2 ≈ r3 rtol = 1e-2
 l3 = (l .* p.^ζ) ./ sum(l .* p.^ζ)
+#@test l2 ≈ l3 rtol = 1e-1
+
+l' * (generator(m.X) * log.(p))
+ψ_reaching = l.*r ./ sum(l.* r)
+ψ_reaching' * (generator(m.X) * log.(p))
 
 ## test left and right eigenvector with correlation
 m = AdditiveFunctionalDiffusion(X, X.x, 0.01 * ones(length(X.x)); ρ = 1)
@@ -107,6 +113,10 @@ X = CoxIngersollRoss(xbar = gbar, κ = κ, σ = σ)
 m = AdditiveFunctionalDiffusion(X, X.x, zeros(length(X.x)))
 η_analytic = gbar * κ^2 / σ^2 * (1 - sqrt(1 - 2 * σ^2 / κ^2))
 @test cgf(m)(1.0)[1] ≈ η_analytic rtol = 1e-2
+
+# for CIR the speed is given by
+# speed_analytic = - (g .- 0.009) + xbar * κ / sqrt(κ^2 - 2 * σ^2 * ζ)
+# η, r = cgf(m, eigenvector = :right)(ζ)
 
 
 ## FirstDerivative and SecondDerivative
