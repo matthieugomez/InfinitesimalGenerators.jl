@@ -16,6 +16,29 @@ u = feynman_kac(generator(X), ts; ψ = ψ, direction = :forward)
 @test maximum(abs, u[:, end] .- expmv(ts[end], generator(X), ψ)) <= 1e-5
 @test maximum(abs, feynman_kac(generator(X), ts; ψ = ψ, direction = :forward) .- feynman_kac(generator(X), ts; ψ = ψ, direction = :forward)) <= 1e-5
 
+T_scalar = zeros(1, 1)
+ts_scalar = 0:1:2
+f_scalar = reshape([1.0, 2.0, 3.0], 1, :)
+v_scalar = reshape([0.0, 1.0, 3.0], 1, :)
+u_scalar = feynman_kac(T_scalar, ts_scalar; f = f_scalar, ψ = [1.0], v = v_scalar, direction = :forward)
+u_expected = zeros(1, length(ts_scalar))
+u_expected[:, 1] .= 1.0
+for i in 1:(length(ts_scalar) - 1)
+    dt = ts_scalar[i + 1] - ts_scalar[i]
+    B = I + Diagonal(v_scalar[:, i + 1]) * dt
+    u_expected[:, i + 1] = B \ (u_expected[:, i] .+ f_scalar[:, i + 1] .* dt)
+end
+@test u_scalar ≈ u_expected
+
+g_discounted = stationary_distribution(X; δ = 1e-2)
+@test all(isfinite, g_discounted)
+@test sum(g_discounted) ≈ 1.0 atol = 1e-12
+@test all(g_discounted .>= 0.0)
+@test_throws ArgumentError stationary_distribution(X; δ = 1e-2, ψ = zeros(length(X.x)))
+@test_throws ArgumentError DiffusionProcess([0.0], [0.0], [1.0])
+@test_throws ArgumentError DiffusionProcess([0.0, 0.0, 1.0], zeros(3), ones(3))
+@test_throws ArgumentError DiffusionProcess([0.0, 1.0, 0.5], zeros(3), ones(3))
+
 
 ## Multiplicative Functional dM/M = x dt
 m = AdditiveFunctionalDiffusion(X, X.x, zeros(length(X.x)))
@@ -152,3 +175,6 @@ Jdense = Matrix(J)
 η, r = InfinitesimalGenerators.principal_eigenvalue(Jdense)
 @test η ≈ 0.0 atol = 1e-8
 @test all(r .> 0)
+@test_throws DimensionMismatch jointoperator([T1], Q)
+@test_throws DimensionMismatch jointoperator([T1, generator(OrnsteinUhlenbeck(; κ = 0.1, σ = 0.02, length = 60))], Q)
+@test_throws DimensionMismatch jointoperator([T1, T2], [-0.1 0.1 0.0; 0.2 -0.2 0.0])

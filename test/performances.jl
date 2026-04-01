@@ -20,7 +20,7 @@ x = range(- 10 * sqrt(σ^2 /(2 * κx)), stop = 10 * sqrt(σ^2 /(2 * κx)), lengt
 ## Feynman-Kac
 ψ = x.^2
 t = range(0, stop = 1000, step = 1/10)
-@time u = feynman_kac(generator(DiffusionProcess(x, μx, σx)); t = t, ψ = ψ)[:, end]
+@time u = feynman_kac(generator(DiffusionProcess(x, μx, σx)), t; ψ = ψ)[:, end]
 #   0.019786 seconds (3.09 k allocations: 31.120 MiB, 14.88% gc time)
 g'u ≈ g'ψ
 
@@ -37,5 +37,6 @@ x = range(- 3 * sqrt(σ^2 /(2 * κx)), stop = 3 * sqrt(σ^2 /(2 * κx)), length 
 M = AdditiveFunctionalDiffusion(DiffusionProcess(x, μx, σx), μM, σM; ρ = ρ)
 @time ζ = tail_index(M)
 #  0.22s
-@time l, η, r = cgf(M, eigenvector = :both)(ζ)
-#  0.06s
+@time η, l = cgf(M, eigenvector = :left)(ζ)
+@time η, r = cgf(M, eigenvector = :right)(ζ)
+#  0.06s combined

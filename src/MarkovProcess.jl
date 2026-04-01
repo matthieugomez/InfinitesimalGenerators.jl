@@ -7,15 +7,19 @@ abstract type MarkovProcess end
 """
  computes the stationary distribution corresponding to the MarkovProcess X
 """
-function stationary_distribution(X::MarkovProcess; δ = 0.0, ψ = Zeros(length(X.x)))
-    δ >= 0 ||  throw(ArgumentError("δ needs to be positive"))
+function stationary_distribution(X::MarkovProcess; δ = 0.0, ψ = Ones(length(state_space(X))))
+    δ >= 0 || throw(ArgumentError("δ needs to be nonnegative"))
+    n = length(state_space(X))
     if δ > 0
+        length(ψ) == n || throw(DimensionMismatch("X and ψ should have the same length"))
         g = abs.((δ * I - generator(X)') \ (δ * ψ))
     else
         η, g = principal_eigenvalue(generator(X)')
         abs(η) <= 1e-5 || @warn "Principal Eigenvalue does not seem to be zero"
     end
-    g ./ sum(g)
+    total_mass = sum(g)
+    isfinite(total_mass) && total_mass > 0 || throw(ArgumentError("stationary distribution has zero or non-finite mass; pass a positive ψ when δ > 0"))
+    g ./ total_mass
 end
 
 
@@ -25,13 +29,15 @@ end
         dx_t = μ(x_t) dt + σ(x_t) dZ_t
 
 """
-mutable struct DiffusionProcess <: MarkovProcess
-    x::AbstractVector{<:Real}
-    μx::AbstractVector{<:Real}
-    σx::AbstractVector{<:Real}
-    function DiffusionProcess(x::AbstractVector{<:Real}, μx::AbstractVector{<:Real}, σx::AbstractVector{<:Real})
+mutable struct DiffusionProcess{TX <: AbstractVector{<:Real}, Tμ <: AbstractVector{<:Real}, Tσ <: AbstractVector{<:Real}} <: MarkovProcess
+    x::TX
+    μx::Tμ
+    σx::Tσ
+    function DiffusionProcess(x::TX, μx::Tμ, σx::Tσ) where {TX <: AbstractVector{<:Real}, Tμ <: AbstractVector{<:Real}, Tσ <: AbstractVector{<:Real}}
         length(x) == length(μx) == length(σx) || throw(ArgumentError("Vector for grid, drift, and volatility should have the same size"))
-        new(x, μx, σx)
+        length(x) >= 2 || throw(ArgumentError("State grid must contain at least two points"))
+        all(x[i] < x[i + 1] for i in 1:(length(x) - 1)) || throw(ArgumentError("State grid must be strictly increasing"))
+        new{TX, Tμ, Tσ}(x, μx, σx)
     end
 end
 
@@ -131,4 +137,3 @@ function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 
     x = range(xmin^(1/pow), stop = xmax^(1/pow), length = length).^pow
     DiffusionProcess(x, κ .* (xbar .- x), σ .* sqrt.(x))
 end
-

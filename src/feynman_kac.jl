@@ -38,7 +38,9 @@ function feynman_kac(𝕋, ts;
     end
     if direction == :forward
         # direction is forward
-        u = feynman_kac(𝕋, - reverse(ts); ψ = ψ, f = f, v = v, direction = :backward)
+        f_reverse = ndims(f) == 2 ? @view(f[:, end:-1:1]) : f
+        v_reverse = ndims(v) == 2 ? @view(v[:, end:-1:1]) : v
+        u = feynman_kac(𝕋, - reverse(ts); ψ = ψ, f = f_reverse, v = v_reverse, direction = :backward)
         return u[:,end:-1:1]
     else
         # direction is backward

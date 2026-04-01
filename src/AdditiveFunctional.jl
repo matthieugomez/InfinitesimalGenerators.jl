@@ -53,16 +53,16 @@ corr(dZ^m_t, dZ_t) = ρ
 
 ========================================================================================#
 
-mutable struct AdditiveFunctionalDiffusion <: AdditiveFunctional
-    X::DiffusionProcess
-    μm::AbstractVector{<:Number}
-    σm::AbstractVector{<:Number}
-    ρ::Number
+mutable struct AdditiveFunctionalDiffusion{TX <: DiffusionProcess, Tμ <: AbstractVector{<:Number}, Tσ <: AbstractVector{<:Number}, TR <: Number} <: AdditiveFunctional
+    X::TX
+    μm::Tμ
+    σm::Tσ
+    ρ::TR
 end
 
-function AdditiveFunctionalDiffusion(X::DiffusionProcess, μm::AbstractVector{<:Number}, σm::AbstractVector{<:Number}; ρ::Number = 0.0)
+function AdditiveFunctionalDiffusion(X::TX, μm::Tμ, σm::Tσ; ρ::TR = 0.0) where {TX <: DiffusionProcess, Tμ <: AbstractVector{<:Number}, Tσ <: AbstractVector{<:Number}, TR <: Number}
     length(X.x) == length(μm) == length(σm) || throw(ArgumentError("Vector for grid, drift, and volatility should have the same size"))
-    AdditiveFunctionalDiffusion(X, μm, σm, ρ)
+    AdditiveFunctionalDiffusion{TX, Tμ, Tσ, TR}(X, μm, σm, ρ)
 end
 
 function generator(M::AdditiveFunctionalDiffusion)
