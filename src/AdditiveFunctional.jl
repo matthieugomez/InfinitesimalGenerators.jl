@@ -53,7 +53,7 @@ corr(dZ^m_t, dZ_t) = ρ
 
 ========================================================================================#
 
-mutable struct AdditiveFunctionalDiffusion{TX <: DiffusionProcess, Tμ <: AbstractVector{<:Number}, Tσ <: AbstractVector{<:Number}, TR <: Number} <: AdditiveFunctional
+struct AdditiveFunctionalDiffusion{TX <: DiffusionProcess, Tμ <: AbstractVector{<:Number}, Tσ <: AbstractVector{<:Number}, TR <: Number} <: AdditiveFunctional
     X::TX
     μm::Tμ
     σm::Tσ

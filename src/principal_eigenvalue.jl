@@ -10,10 +10,13 @@ Two cases:
    The eigenvector is found by solving 𝕋r = 0 with r[1] = 1.
 2. Otherwise, η is found by inverse iteration with Rayleigh quotient updates.
    At each step, we solve (𝕋 - σI)w = r, normalize w, and update the shift σ
-   via the Rayleigh quotient σ = r'𝕋r. This converges cubically to η.
-   The initial shift is the max row sum — a Gershgorin upper bound on η —
-   which guarantees that η is the eigenvalue closest to the shift,
-   so inverse iteration converges to the right eigenvalue.
+   via the Rayleigh quotient σ = r'𝕋r. This converges cubically to a nearby
+   eigenvalue. The initial shift is the max row sum — a Gershgorin upper bound
+   on the real part of the spectrum. When 𝕋 has a real spectrum (e.g. the
+   tridiagonal generators of 1-D diffusions, which are similar to symmetric
+   matrices), the eigenvalue nearest that shift is the principal one, so the
+   iteration lands on η. For a general Metzler matrix with complex eigenvalues
+   this is not guaranteed; pass `η0` to start from a known bound if needed.
    For tridiagonal 𝕋, each iteration costs O(n).
 """
 function principal_eigenvalue(𝕋; r0 = ones(size(𝕋, 1)), η0 = nothing, maxiter = 100, tol = 1e-12)

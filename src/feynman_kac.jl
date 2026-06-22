@@ -19,10 +19,10 @@ u(x, t) = E[∫_0^t e^{-∫_0^s v(x_u) du} f(x_s)ds + e^{-∫_0^t v(x_u)du} ψ(x
 
 The PDE is solved using Euler method with implicit time steps
 """
-function feynman_kac(𝕋, ts; 
-    f::Union{AbstractVector, AbstractMatrix} = zeros(size(𝕋, 1)), 
-    ψ::AbstractVector = zeros(size(𝕋, 1)),
-    v::Union{AbstractVector, AbstractMatrix} = zeros(size(𝕋, 1)),
+function feynman_kac(𝕋, ts;
+    f::Union{AbstractVector, AbstractMatrix} = zeros(eltype(𝕋), size(𝕋, 1)),
+    ψ::AbstractVector = zeros(eltype(𝕋), size(𝕋, 1)),
+    v::Union{AbstractVector, AbstractMatrix} = zeros(eltype(𝕋), size(𝕋, 1)),
     direction= :backward)
     size(𝕋, 1) == size(𝕋, 2) || throw(DimensionMismatch("𝕋 must be square matrix"))
     size(𝕋, 1) == size(f, 1) || throw(DimensionMismatch("𝕋 and f should have the same number of rows"))
@@ -44,7 +44,8 @@ function feynman_kac(𝕋, ts;
         return u[:,end:-1:1]
     else
         # direction is backward
-        u = zeros(size(𝕋, 1), length(ts))
+        T = float(promote_type(eltype(𝕋), eltype(f), eltype(ψ), eltype(v), eltype(ts)))
+        u = zeros(T, size(𝕋, 1), length(ts))
         u[:, end] = ψ
         if ndims(f) == 1
             # f and v are vectors
