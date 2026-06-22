@@ -38,7 +38,7 @@ end
     Xf = OrnsteinUhlenbeck(; κ = 0.1, σ = 0.02, length = 50)
     M = generator(Xf)
     𝕋 = Tridiagonal(Float32.(M.dl), Float32.(M.d), Float32.(M.du))
-    ts = range(0f0, stop = 10f0, step = 0.1f0)
+    ts = Float32.(0:0.1:10)   # concrete Float32 grid (a Float32 range has Float64 eltype on Julia 1.6)
     u = feynman_kac(𝕋, ts; ψ = Float32.(Xf.x .^ 2), direction = :forward)
     @test eltype(u) == Float32
     @test all(isfinite, u)

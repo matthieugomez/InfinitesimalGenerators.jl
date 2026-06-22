@@ -1,7 +1,7 @@
 name = "InfinitesimalGenerators"
 uuid = "2fce0c6f-5f0b-5c85-85c9-2ffe1d5ee30d"
 authors = ["Matthieu Gomez <gomez.matthieu@gmail.com>"]
-version = "2.5.2"
+version = "2.6.0"
 
 [deps]
 BlockBandedMatrices = "ffab5731-97b5-5995-9138-79e8c1846df0"

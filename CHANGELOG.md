@@ -1,6 +1,12 @@
 # Changelog
 
-## 2.5.2
+## 2.6.0
+
+### Breaking
+- `DiffusionProcess` and `AdditiveFunctionalDiffusion` are now immutable
+  `struct`s (previously `mutable struct`), so the invariants checked in their
+  constructors cannot be bypassed. Code that reassigned their fields after
+  construction will no longer work.
 
 ### Fixed
 - `∂(::DiffusionProcess)` no longer produces `NaN` rows at nodes where the drift
@@ -16,8 +22,6 @@
 - `feynman_kac` allocates its output using the promoted element type of its
   inputs, so `Float32` (and other) element types are preserved instead of being
   forced to `Float64`.
-- `DiffusionProcess` and `AdditiveFunctionalDiffusion` are now immutable
-  `struct`s, so the invariants checked in their constructors cannot be bypassed.
 - The test suite is organized into `@testset`s and tightened: several
   expressions that looked like assertions but tested nothing are now real
   `@test`s, and the zero-drift `∂` path and `feynman_kac` element type are
