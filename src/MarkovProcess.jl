@@ -29,7 +29,7 @@ end
         dx_t = μ(x_t) dt + σ(x_t) dZ_t
 
 """
-mutable struct DiffusionProcess{TX <: AbstractVector{<:Real}, Tμ <: AbstractVector{<:Real}, Tσ <: AbstractVector{<:Real}} <: MarkovProcess
+struct DiffusionProcess{TX <: AbstractVector{<:Real}, Tμ <: AbstractVector{<:Real}, Tσ <: AbstractVector{<:Real}} <: MarkovProcess
     x::TX
     μx::Tμ
     σx::Tσ
@@ -99,12 +99,38 @@ end
 
 """
     Returns the discretized version of the operator ∂
-    
+
         δ: f ⭌ ∂f
 
+    The scheme is upwind with respect to the drift (forward where μx ≥ 0,
+    backward where μx < 0), matching the discretization used in `generator`.
+    At interior nodes where the drift is exactly zero — where upwinding has no
+    preferred direction — a central difference is used instead. (Building the
+    matrix directly avoids the `Diagonal(μx) \\ generator(…)` division, which
+    would produce `NaN` rows wherever μx = 0.)
 """
 function ∂(X::DiffusionProcess)
-    Diagonal(X.μx) \ generator(X.x, X.μx, Zeros(length(X.x)))
+    x, μx = X.x, X.μx
+    n = length(x)
+    D = Tridiagonal(zeros(n - 1), zeros(n), zeros(n - 1))
+    @inbounds for i in 1:n
+        Δxp = x[min(i, n - 1) + 1] - x[min(i, n - 1)]
+        Δxm = x[max(i - 1, 1) + 1] - x[max(i - 1, 1)]
+        if (μx[i] == 0) && (1 < i < n)
+            # zero drift: central difference rather than 0/0
+            D[i, i - 1] -= 1 / (Δxm + Δxp)
+            D[i, i + 1] += 1 / (Δxm + Δxp)
+        elseif (μx[i] >= 0) || (i == 1)
+            # forward (upwind)
+            D[i, min(i + 1, n)] += 1 / Δxp
+            D[i, i]             -= 1 / Δxp
+        else
+            # backward (upwind)
+            D[i, i]             += 1 / Δxm
+            D[i, max(i - 1, 1)] -= 1 / Δxm
+        end
+    end
+    return D
 end
 
 

@@ -1,6 +1,13 @@
 [![Build status](https://github.com/matthieugomez/InfinitesimalGenerators.jl/workflows/CI/badge.svg)](https://github.com/matthieugomez/InfinitesimalGenerators.jl/actions)
+[![Coverage](https://codecov.io/gh/matthieugomez/InfinitesimalGenerators.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/matthieugomez/InfinitesimalGenerators.jl)
 
 This package provides a set of tools to work with Markov Processes defined on a 1-dimensional grid.
+
+# Installation
+```julia
+using Pkg
+Pkg.add("InfinitesimalGenerators")
+```
 
 # Markov Processes
 The package allows you to compute expectations involving Markov processes.
@@ -27,7 +34,14 @@ MX = generator(X)
 
 # Use the generator to compute E[∫_0^T e^{-∫_0^t v(x_s)ds}f(x_t)dt + e^{-∫_0^T v(x_s)ds}ψ(x_T) | x_0 = x]
 feynman_kac(MX, range(0, 100, step = 1/12); f = zeros(length(x)), ψ = ones(length(x)), v = zeros(length(x)))
+
+# Return the grid the process is defined on
+state_space(X)
 ```
+
+The convenience constructors `OrnsteinUhlenbeck` and `CoxIngersollRoss` choose the grid automatically. By default it spans the `p` and `1 - p` quantiles of the stationary distribution with `length` points; pass `length`, `xmin`, `xmax`, or `pow` (grid-spacing power) to override. A small `p` is recommended when computing the tail index of an additive functional.
+
+Any subtype of `MarkovProcess` works with `generator`, `stationary_distribution`, and `feynman_kac` as long as it defines `generator(X)` (the transition matrix) and `state_space(X)` (the grid).
 
 # Additive Functionals
 Given a Markov process `X`, an additive functional `m` is defined by `dm = μm(x) dt + σm(x) dZm` with `corr(dZm, dZ) = ρ`.
