@@ -5,9 +5,10 @@
 Lazily compute first-order derivatives (using finite-difference scheme) on a grid.
 
 In one dimension, `x` is a grid vector and `f` is a vector with `length(f) == length(x)`.
-In multiple dimensions, `grid` is a `NamedTuple` such as `(; x = xs, y = ys)`,
+In multiple dimensions, `grid` is a tuple of axis vectors such as `(xs, ys)`,
 `F` is an array with size `(length(xs), length(ys))`, and `dim` is the dimension
-name to differentiate.
+number to differentiate. `NamedTuple` grids with symbolic dimensions are also
+accepted as a convenience.
 
 `bc` is the value of the first derivative at the lower and upper boundaries.
 """
@@ -58,11 +59,12 @@ end
 Lazily compute second-order derivatives (using finite-difference scheme) on a grid
 
 In one dimension, `x` is a grid vector and `f` is a vector with `length(f) == length(x)`.
-In multiple dimensions, `grid` is a `NamedTuple` such as `(; x = xs, y = ys)`,
-and `F` is an array with size `(length(xs), length(ys))`.
+In multiple dimensions, `grid` is a tuple of axis vectors such as `(xs, ys)`,
+and `F` is an array with size `(length(xs), length(ys))`. `NamedTuple` grids
+with symbolic dimensions are also accepted as a convenience.
 
-Use `SecondDerivative(grid, F, :x, :x)` for own second derivatives and
-`SecondDerivative(grid, F, :x, :y; direction = :up)` for directional cross
+Use `SecondDerivative(grid, F, 1, 1)` for own second derivatives and
+`SecondDerivative(grid, F, 1, 2; direction = :up)` for directional cross
 derivatives. The `:up` direction is the main-diagonal stencil; `:down` is the
 anti-diagonal stencil.
 """
@@ -98,7 +100,7 @@ function Base.getindex(d::SecondDerivative{T}, i::Int) where {T}
 end
 
 
-function FirstDerivative(grid::NamedTuple, y::AbstractArray, dim::Symbol; bc = (0, 0), direction = :forward)
+function FirstDerivative(grid::Tuple, y::AbstractArray, dim::Integer; bc = (0, 0), direction = :forward)
     direction ∈ (:forward, :backward, :upward, :downward) || throw(ArgumentError("direction must be :forward/:upward or :backward/:downward"))
     x, d, shape = _fd_dimension(grid, y, dim)
     dy = Array{float(eltype(y))}(undef, shape)
@@ -126,10 +128,22 @@ function FirstDerivative(grid::NamedTuple, y::AbstractArray, dim::Symbol; bc = (
     return dy
 end
 
-SecondDerivative(grid::NamedTuple, y::AbstractArray, dim::Symbol; bc = (0, 0)) =
+FirstDerivative(grid::NamedTuple, y::AbstractArray, dim::Integer; bc = (0, 0), direction = :forward) =
+    FirstDerivative(Tuple(grid), y, dim; bc = bc, direction = direction)
+
+FirstDerivative(grid::NamedTuple, y::AbstractArray, dim::Symbol; bc = (0, 0), direction = :forward) =
+    FirstDerivative(Tuple(grid), y, _fd_dimension_index(grid, dim); bc = bc, direction = direction)
+
+SecondDerivative(grid::Tuple, y::AbstractArray, dim::Integer; bc = (0, 0)) =
     SecondDerivative(grid, y, dim, dim; bc = bc)
 
-function SecondDerivative(grid::NamedTuple, y::AbstractArray, dim1::Symbol, dim2::Symbol; bc = (0, 0), direction = :up)
+SecondDerivative(grid::NamedTuple, y::AbstractArray, dim::Integer; bc = (0, 0)) =
+    SecondDerivative(Tuple(grid), y, dim; bc = bc)
+
+SecondDerivative(grid::NamedTuple, y::AbstractArray, dim::Symbol; bc = (0, 0)) =
+    SecondDerivative(Tuple(grid), y, _fd_dimension_index(grid, dim); bc = bc)
+
+function SecondDerivative(grid::Tuple, y::AbstractArray, dim1::Integer, dim2::Integer; bc = (0, 0), direction = :up)
     if dim1 != dim2
         direction ∈ (:up, :down, :upward, :downward) || throw(ArgumentError("direction must be :up/:upward or :down/:downward"))
         x1, d1, shape = _fd_dimension(grid, y, dim1)
@@ -184,18 +198,31 @@ function SecondDerivative(grid::NamedTuple, y::AbstractArray, dim1::Symbol, dim2
     return d2y
 end
 
-function _fd_dimension(grid::NamedTuple, y::AbstractArray, dim::Symbol)
+function SecondDerivative(grid::NamedTuple, y::AbstractArray, dim1::Integer, dim2::Integer; bc = (0, 0), direction = :up)
+    SecondDerivative(Tuple(grid), y, dim1, dim2; bc = bc, direction = direction)
+end
+
+function SecondDerivative(grid::NamedTuple, y::AbstractArray, dim1::Symbol, dim2::Symbol; bc = (0, 0), direction = :up)
+    SecondDerivative(Tuple(grid), y, _fd_dimension_index(grid, dim1), _fd_dimension_index(grid, dim2); bc = bc, direction = direction)
+end
+
+function _fd_dimension_index(grid::NamedTuple, dim::Symbol)
     haskey(grid, dim) || throw(ArgumentError("grid has no dimension `$dim`; valid dimensions are $(collect(keys(grid)))"))
-    for (name, x) in pairs(grid)
-        x isa AbstractVector || throw(ArgumentError("grid entry `$name` must be a vector"))
-        length(x) >= 2 || throw(ArgumentError("grid entry `$name` must contain at least two points"))
+    return findfirst(==(dim), keys(grid))
+end
+
+function _fd_dimension(grid::Tuple, y::AbstractArray, dim::Integer)
+    1 <= dim <= length(grid) || throw(ArgumentError("dimension must be between 1 and $(length(grid)); got $dim"))
+    for (d, x) in pairs(grid)
+        x isa AbstractVector || throw(ArgumentError("grid axis $d must be a vector"))
+        length(x) >= 2 || throw(ArgumentError("grid axis $d must contain at least two points"))
         all(x[i] < x[i + 1] for i in 1:(length(x) - 1)) ||
-            throw(ArgumentError("grid entry `$name` must be strictly increasing"))
+            throw(ArgumentError("grid axis $d must be strictly increasing"))
     end
     shape = ntuple(i -> length(grid[i]), length(grid))
     size(y) == shape || throw(DimensionMismatch("array has size $(size(y)) but the grid has size $shape"))
-    d = findfirst(==(dim), keys(grid))
-    x = grid[dim]
+    d = Int(dim)
+    x = grid[d]
     return x, d, shape
 end
 

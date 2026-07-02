@@ -1,31 +1,10 @@
-"""
-    feynman_kac(𝕋, ts; f =  zeros(size(𝕋, 1)), ψ =  zeros(size(𝕋, 1)), v = zeros(size(𝕋, 1)), direction = :backward)
-
-𝕋 should be a matrix
-ts should be a grid of time on which to solve the PDE
-
-With direction = :backward, returns the solution of the PDE:
-u(x, t[end]) = ψ(x)
-0 = u_t + 𝕋u - v(x, t)u + f(x, t)
-Or, equivalently, in integral form,
-u(x, t) = E[∫_t^T e^{-∫_t^s v(x_u) du} f(x_s)ds + e^{-∫_t^T v(x_u)du} ψ(x_T)|x_t = x]
-(notations are from the wikipedia article for Feynman–Kac formula)
-
-With direction = :forward, returns the solution of the PDE:
-u(x, t[1]) = ψ(x)
-u_t = 𝕋u - v(x, t)u + f(x, t)
-Or, equivalently, in integral form,
-u(x, t) = E[∫_0^t e^{-∫_0^s v(x_u) du} f(x_s)ds + e^{-∫_0^t v(x_u)du} ψ(x_t)|x_0 = x]
-
-The PDE is solved using Euler method with implicit time steps
-"""
-function _flatten_state_vector_argument(X::MarkovProcess, x, label::Symbol)
+function _flatten_state_vector_argument(X::ContinuousTimeMarkovProcess, x, label::Symbol)
     length(x) == length(X) ||
         throw(DimensionMismatch("`$label` has length $(length(x)) but process has length $(length(X))"))
     return vec(x)
 end
 
-function _flatten_state_time_argument(X::MarkovProcess, x, ts, label::Symbol)
+function _flatten_state_time_argument(X::ContinuousTimeMarkovProcess, x, ts, label::Symbol)
     state_shape = size(X)
     if x isa AbstractVector
         length(x) == length(X) ||
@@ -46,7 +25,36 @@ function _flatten_state_time_argument(X::MarkovProcess, x, ts, label::Symbol)
     end
 end
 
-function feynman_kac(X::MarkovProcess, ts; f = nothing, ψ = nothing, v = nothing, direction = :backward)
+"""
+    feynman_kac(X::ContinuousTimeMarkovProcess, ts; f = nothing, ψ = nothing, v = nothing, direction = :backward)
+    feynman_kac(𝕋::AbstractMatrix, ts; f, ψ, v, direction = :backward)
+
+Solve the Feynman–Kac PDE associated with a Markov process `X` (or directly with a generator
+matrix `𝕋`) on the time grid `ts`, using implicit Euler time steps.
+
+With `direction = :backward`, returns the solution of
+
+    u(x, ts[end]) = ψ(x)
+    0 = uₜ + 𝕋u - v(x, t)u + f(x, t)
+
+or, equivalently, in integral form,
+
+    u(x, t) = E[∫ₜᵀ e^{-∫ₜˢ v(x_u) du} f(x_s) ds + e^{-∫ₜᵀ v(x_u) du} ψ(x_T) | xₜ = x].
+
+With `direction = :forward`, returns the solution of
+
+    u(x, ts[1]) = ψ(x)
+    uₜ = 𝕋u - v(x, t)u + f(x, t)
+
+or, equivalently, in integral form,
+
+    u(x, t) = E[∫₀ᵗ e^{-∫₀ˢ v(x_u) du} f(x_s) ds + e^{-∫₀ᵗ v(x_u) du} ψ(xₜ) | x₀ = x].
+
+For the process form, `f`, `ψ`, and `v` are arrays shaped like the state space (`size(X)`);
+`f` and `v` may also carry a trailing time dimension of length `length(ts)`. The result has
+one slice per date in `ts`. For the matrix form, they are vectors of length `size(𝕋, 1)`.
+"""
+function feynman_kac(X::ContinuousTimeMarkovProcess, ts; f = nothing, ψ = nothing, v = nothing, direction = :backward)
     𝕋 = generator(X)
     f_flat = f === nothing ? zeros(eltype(𝕋), length(X)) :
         _flatten_state_time_argument(X, f, ts, :f)

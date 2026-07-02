@@ -9,7 +9,7 @@ with the same size as the tensor grid. `variance` has the same names and gives
 the diagonal entries of the instantaneous covariance matrix. Cross terms are
 optional and are passed as pair names such as `(; xy = axy)`.
 """
-struct MultivariateDiffusionProcess{G, D, V, C} <: MultivariateMarkovProcess
+struct MultivariateDiffusionProcess{N, G, D, V, C} <: ContinuousTimeMarkovProcess{N}
     grid::G
     drift::D
     variance::V
@@ -65,7 +65,7 @@ struct MultivariateDiffusionProcess{G, D, V, C} <: MultivariateMarkovProcess
             end
         end
 
-        return new{typeof(grid), typeof(drift_arrays), typeof(variance_arrays), typeof(covariance_arrays)}(
+        return new{length(grid), typeof(grid), typeof(drift_arrays), typeof(variance_arrays), typeof(covariance_arrays)}(
             grid, drift_arrays, variance_arrays, covariance_arrays)
     end
 end
@@ -78,9 +78,7 @@ function MultivariateDiffusionProcess(grid::NamedTuple; drift, variance, covaria
     MultivariateDiffusionProcess(grid, drift, variance, covariance)
 end
 
-state_space(X::MultivariateDiffusionProcess) = X.grid
-
-Base.size(X::MultivariateDiffusionProcess) = ntuple(i -> length(X.grid[i]), length(X.grid))
+state_space(X::MultivariateDiffusionProcess) = Tuple(X.grid)
 
 function _mvd_coefficient_arrays(x, names, shape, label::Symbol)
     throw(ArgumentError("`$label` must be a NamedTuple with the same names as the grid"))
@@ -203,7 +201,7 @@ end
     generator(X::MultivariateDiffusionProcess; check = :throw, check_tol = 1e-12)
 
 Assemble the sparse infinitesimal generator matrix. The matrix acts on `vec(f)`,
-where `f` is an array on `state_space(X)`.
+where `f` is an array on the tensor grid described by `state_space(X)`.
 
 By default, throws an error if the finite-difference stencil creates a negative
 off-diagonal entry. Use `check = :warn` to return the matrix with a warning, or

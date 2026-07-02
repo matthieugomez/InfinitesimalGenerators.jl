@@ -7,9 +7,9 @@ xbar = 0.0
 σ = 0.02
 X = OrnsteinUhlenbeck(; xbar = xbar, κ = κ, σ = σ, length = 1000)
 
-struct CustomMarkovProcess <: MarkovProcess end
+struct CustomMarkovProcess <: ContinuousTimeMarkovProcess{1} end
 
-InfinitesimalGenerators.state_space(::CustomMarkovProcess) = 1:2
+InfinitesimalGenerators.state_space(::CustomMarkovProcess) = (1:2,)
 InfinitesimalGenerators.generator(::CustomMarkovProcess) = [-1.0 1.0; 2.0 -2.0]
 
 
@@ -73,8 +73,8 @@ end
     @test_throws ArgumentError DiffusionProcess([0.0, 0.0, 1.0], zeros(3), ones(3))
     @test_throws ArgumentError DiffusionProcess([0.0, 1.0, 0.5], zeros(3), ones(3))
     X_positive = OrnsteinUhlenbeck(; xbar = 1.0, κ = 0.1, σ = 0.02, p = 0.01, length = 10, pow = 2)
-    @test all(state_space(X_positive) .> 0.0)
-    @test issorted(state_space(X_positive); lt = <)
+    @test all(only(state_space(X_positive)) .> 0.0)
+    @test issorted(only(state_space(X_positive)); lt = <)
 
     C = CustomMarkovProcess()
     @test size(C) == (2,)
@@ -83,33 +83,39 @@ end
 end
 
 
-@testset "MarkovChain, ProductProcess, and SwitchingProcess" begin
+@testset "ContinuousTimeMarkovChain, ProductProcess, and SwitchingProcess" begin
     Q = [-0.1 0.1; 0.2 -0.2]
-    Z = MarkovChain([:low, :high], Q)
-    @test state_space(Z) == [:low, :high]
+    Z = ContinuousTimeMarkovChain([:low, :high], Q)
+    @test Z.states == [:low, :high]
+    @test state_space(Z) == ([:low, :high],)
     @test size(Z) == (2,)
     @test length(Z) == 2
-    @test Z isa UnivariateMarkovProcess
+    @test Z isa ContinuousTimeMarkovProcess{1}
+    @test ndims(Z) == 1
+    @test Z isa ContinuousTimeMarkovChain
     @test generator(Z) == Q
     @test stationary_distribution(Z) ≈ [2 / 3, 1 / 3]
-    @test MarkovChain(Q).Q == Q
-    @test_throws ArgumentError MarkovChain([-0.1 0.2; 0.1 -0.2])
-    @test_throws ArgumentError MarkovChain([-0.1 0.1; -0.2 0.2])
+    @test ContinuousTimeMarkovChain(Q).Q == Q
+    @test_throws ArgumentError ContinuousTimeMarkovChain([-0.1 0.2; 0.1 -0.2])
+    @test_throws ArgumentError ContinuousTimeMarkovChain([-0.1 0.1; -0.2 0.2])
 
     x_small = range(-0.2, stop = 0.2, length = 40)
     Xbase = DiffusionProcess(x_small, -0.1 .* x_small, 0.02 .* ones(length(x_small)))
-    @test Xbase isa UnivariateMarkovProcess
+    @test state_space(Xbase) == (x_small,)
+    @test Xbase isa ContinuousTimeMarkovProcess{1}
+    @test ndims(Xbase) == 1
     Y = ProductProcess(Xbase, Z)
     G = generator(Y)
     @test state_space(Y) == (x_small, [:low, :high])
     @test length.(state_space(Y)) == (length(x_small), 2)
     @test size(Y) == (length(x_small), 2)
     @test length(Y) == 2 * length(x_small)
-    @test Y isa MultivariateMarkovProcess
+    @test Y isa ContinuousTimeMarkovProcess{2}
+    @test ndims(Y) == 2
     @test G isa SparseMatrixCSC
     @test size(G) == (2 * length(x_small), 2 * length(x_small))
     @test maximum(abs.(sum(Matrix(G), dims = 2))) < 1e-10
-    @test Matrix(G) ≈ Matrix(generator(SwitchingProcess(Z, fill(Xbase, length(state_space(Z))))))
+    @test Matrix(G) ≈ Matrix(generator(SwitchingProcess(Z, fill(Xbase, length(Z)))))
 
     ψx = stationary_distribution(Xbase)
     πz = stationary_distribution(Z)
@@ -124,7 +130,8 @@ end
     @test length.(state_space(Yswitch)) == (length(x_small), 2)
     @test size(Yswitch) == (length(x_small), 2)
     @test length(Yswitch) == 2 * length(x_small)
-    @test Yswitch isa MultivariateMarkovProcess
+    @test Yswitch isa ContinuousTimeMarkovProcess{2}
+    @test ndims(Yswitch) == 2
     Gswitch = generator(Yswitch)
     @test Gswitch isa BandedBlockBandedMatrix
     @test Matrix(Gswitch) ≈ Matrix(jointoperator([generator(Xlow), generator(Xhigh)], Q))
@@ -153,10 +160,11 @@ end
 
     Xxy = MultivariateDiffusionProcess(grid; drift = drift, variance = variance)
     Gxy = generator(Xxy)
-    @test state_space(Xxy) == grid
+    @test state_space(Xxy) == (xs, ys)
     @test size(Xxy) == (length(xs), length(ys))
     @test length(Xxy) == length(xs) * length(ys)
-    @test Xxy isa MultivariateMarkovProcess
+    @test Xxy isa ContinuousTimeMarkovProcess{2}
+    @test ndims(Xxy) == 2
     Gxy_expected = kron(Matrix(I, length(ys), length(ys)), Matrix(generator(Xx))) +
                    kron(Matrix(generator(Xy)), Matrix(I, length(xs), length(xs)))
     @test Matrix(Gxy) ≈ Gxy_expected
@@ -165,6 +173,13 @@ end
     @test state_space(Pxy) == (xs, ys)
     @test size(Pxy) == size(Xxy)
     @test Matrix(generator(Pxy)) ≈ Gxy_expected
+    Zxy = ContinuousTimeMarkovChain([:low, :high], [-0.1 0.1; 0.2 -0.2])
+    Pxyz = ProductProcess(Xxy, Zxy)
+    @test state_space(Pxyz) == (xs, ys, [:low, :high])
+    @test size(Pxyz) == (length(xs), length(ys), 2)
+    Sxyz = SwitchingProcess(Zxy, [Xxy, Xxy])
+    @test state_space(Sxyz) == (xs, ys, [:low, :high])
+    @test size(Sxyz) == (length(xs), length(ys), 2)
 
     ψxy = stationary_distribution(Xxy)
     ψ_expected = stationary_distribution(Xx) * stationary_distribution(Xy)'
@@ -359,26 +374,30 @@ end
 
     xs = range(-1.0, stop = 1.0, length = 31)
     ys = range(-2.0, stop = 2.0, length = 41)
-    grid = (; x = xs, y = ys)
+    grid = (xs, ys)
+    named_grid = (; x = xs, y = ys)
     f = [x^2 + y^3 + x * y for x in xs, y in ys]
 
-    fx = FirstDerivative(grid, f, :x; direction = :forward)
-    fy = FirstDerivative(grid, f, :y; direction = :backward)
+    fx = FirstDerivative(grid, f, 1; direction = :forward)
+    fy = FirstDerivative(grid, f, 2; direction = :backward)
     @test size(fx) == size(f)
     @test fx[15, 20] ≈ 2 * xs[15] + ys[20] atol = 1e-1
     @test fy[15, 20] ≈ 3 * ys[20]^2 + xs[15] atol = 2e-1
 
-    fxx = SecondDerivative(grid, f, :x, :x)
-    fyy = SecondDerivative(grid, f, :y)
-    fxy_up = SecondDerivative(grid, f, :x, :y; direction = :up)
-    fxy_down = SecondDerivative(grid, f, :x, :y; direction = :down)
+    fxx = SecondDerivative(grid, f, 1, 1)
+    fyy = SecondDerivative(grid, f, 2)
+    fxy_up = SecondDerivative(grid, f, 1, 2; direction = :up)
+    fxy_down = SecondDerivative(grid, f, 1, 2; direction = :down)
     @test fxx[15, 20] ≈ 2.0 atol = 1e-10
     @test fyy[15, 20] ≈ 6 * ys[20] atol = 1e-10
     @test fxy_up[15, 20] ≈ 1.0 atol = 1e-10
     @test fxy_down[15, 20] ≈ 1.0 atol = 1e-10
-    @test_throws ArgumentError FirstDerivative(grid, f, :z)
-    @test_throws DimensionMismatch SecondDerivative(grid, f[1:end-1, :], :x, :x)
-    @test_throws ArgumentError SecondDerivative(grid, f, :x, :y; direction = :sideways)
+    @test FirstDerivative(named_grid, f, :x; direction = :forward) ≈ fx
+    @test SecondDerivative(named_grid, f, :x, :y; direction = :up) ≈ fxy_up
+    @test_throws ArgumentError FirstDerivative(grid, f, 3)
+    @test_throws ArgumentError FirstDerivative(named_grid, f, :z)
+    @test_throws DimensionMismatch SecondDerivative(grid, f[1:end-1, :], 1, 1)
+    @test_throws ArgumentError SecondDerivative(grid, f, 1, 2; direction = :sideways)
 end
 
 
