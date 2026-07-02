@@ -1,12 +1,19 @@
 abstract type AdditiveFunctional end
 
-# Should define generator which is a transition matrix T such that
+# Should define generator which is a generator matrix T such that
 # Tf = lim_{t→0} E[e^{ξ * m_t} f(x_t)|x_0=x]/t
 
 
 """
-Compute the long run cgf(m), i.e. the function
-ξ ⭌ lim_{t→∞} log(E[e^{ξ * m_t}])/t
+    cgf(m::AdditiveFunctional; eigenvector = :right)
+
+Return the long-run scaled cumulant generating function of `m`, i.e. the function
+
+    ξ ⭌ lim_{t→∞} log(E[e^{ξ * m_t}])/t
+
+computed as the principal eigenvalue of the ξ-tilted generator (Hansen and Scheinkman 2009).
+The returned function gives a tuple `(η, x)` with the eigenvalue `η` and the associated right
+eigenvector (or, with `eigenvector = :left`, the left eigenvector normalized to sum to one).
 """
 function cgf(m::AdditiveFunctional; eigenvector = :right, r0 = Ones(length(m.X)), η0 = nothing)
     ξ -> begin
@@ -22,8 +29,10 @@ function cgf(m::AdditiveFunctional; eigenvector = :right, r0 = Ones(length(m.X))
 end
 
 """
-compute the tail index of the stationary distribution of e^{m}, i.e.
-ζ such that cgf(m)(ζ) = δ
+    tail_index(m::AdditiveFunctional; δ = 0)
+
+Compute the tail index of the stationary distribution of `e^m` when units die (are reset) at
+rate `δ`, i.e. the ζ such that `cgf(m)(ζ) = δ`.
 """
 function tail_index(m::AdditiveFunctional; δ = 0, verbose = false, r0 = nothing, xatol = 1e-4, kwargs...)
     r0 !== nothing && Base.depwarn("the `r0` keyword argument is deprecated and has no effect", :tail_index)
@@ -34,6 +43,13 @@ function tail_index(m::AdditiveFunctional; δ = 0, verbose = false, r0 = nothing
     end
 end
 
+"""
+    tail_index(μ::Number, σ::Number; δ = 0)
+
+Closed form for constant coefficients: the tail index of the stationary distribution of a
+size `w` growing as `dw/w = μ dt + σ dZ` (note that `μ` is the arithmetic growth rate of `w`
+itself, equal to the drift of `log w` plus `σ^2/2`) with death rate `δ`.
+"""
 function tail_index(μ::Number, σ::Number; δ::Number = 0)
     if σ > 0
         (1 - 2 * μ / σ^2 + sqrt((1- 2 * μ / σ^2)^2 + 8 * δ / σ^2)) / 2
@@ -53,6 +69,17 @@ corr(dZ^m_t, dZ_t) = ρ
 
 ========================================================================================#
 
+"""
+    AdditiveFunctionalDiffusion(X::DiffusionProcess, μm, σm; ρ = 0.0)
+
+An additive functional `m` of the diffusion `X`, defined by
+
+    dmₜ = μm(xₜ) dt + σm(xₜ) dZᵐₜ,        corr(dZᵐₜ, dZₜ) = ρ,
+
+where `μm` and `σm` are vectors evaluated on the grid of `X`. Typical use: `m = log w` for a
+size `w` (wealth, firm size) growing at a state-dependent rate; then `cgf` gives its long-run
+CGF and `tail_index` the Pareto exponent of its stationary distribution.
+"""
 struct AdditiveFunctionalDiffusion{TX <: DiffusionProcess, Tμ <: AbstractVector{<:Number}, Tσ <: AbstractVector{<:Number}, TR <: Number} <: AdditiveFunctional
     X::TX
     μm::Tμ

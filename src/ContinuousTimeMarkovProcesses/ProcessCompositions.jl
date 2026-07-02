@@ -1,3 +1,10 @@
+"""
+    jointoperator(operators, Q)
+
+Combine one generator matrix per regime with a regime generator (transition-rate)
+matrix `Q` into the block generator of the joint process. Most users can use
+[`SwitchingProcess`](@ref) instead.
+"""
 function jointoperator(operators::AbstractVector{<:Tridiagonal}, Q::AbstractMatrix)
     # validate operator blocks and switching matrix
     N = length(operators)
@@ -33,36 +40,14 @@ end
     SwitchingProcess(Z, Xs)
 
 Returns a Markov process whose dynamics switch across the states of Markov chain
-`Z`. In state `state_space(Z)[i]`, the process follows `Xs[i]`.
+`Z`. In state `only(state_space(Z))[i]`, the process follows `Xs[i]`.
 """
-function _state_space_axes(space::NamedTuple)
-    return values(space)
-end
-
-function _state_space_axes(space::Tuple)
-    axes = ()
-    for s in space
-        axes = (axes..., _state_space_axes(s)...)
-    end
-    return axes
-end
-
-_state_space_axes(space) = (space,)
-
-function _combined_state_space(processes)
-    axes = ()
-    for X in processes
-        axes = (axes..., _state_space_axes(state_space(X))...)
-    end
-    return axes
-end
-
-struct SwitchingProcess{TZ <: MarkovChain, TP <: AbstractVector{<:MarkovProcess}} <: MultivariateMarkovProcess
+struct SwitchingProcess{N, TZ <: ContinuousTimeMarkovChain, TP <: AbstractVector{<:ContinuousTimeMarkovProcess}} <: ContinuousTimeMarkovProcess{N}
     Z::TZ
     processes::TP
-    function SwitchingProcess(Z::TZ, processes::TP) where {TZ <: MarkovChain, TP <: AbstractVector{<:MarkovProcess}}
+    function SwitchingProcess(Z::TZ, processes::TP) where {TZ <: ContinuousTimeMarkovChain, TP <: AbstractVector{<:ContinuousTimeMarkovProcess}}
         # validate switching components
-        length(processes) == length(state_space(Z)) ||
+        length(processes) == length(Z) ||
             throw(DimensionMismatch("there should be one process per Markov-chain state"))
         length(processes) > 0 || throw(ArgumentError("processes cannot be empty"))
         shape = size(processes[1])
@@ -71,13 +56,12 @@ struct SwitchingProcess{TZ <: MarkovChain, TP <: AbstractVector{<:MarkovProcess}
         space = state_space(processes[1])
         all(state_space(X) == space for X in processes) ||
             throw(DimensionMismatch("all switching processes should use the same state space"))
-        new{TZ, TP}(Z, processes)
+        N = ndims(processes[1]) + ndims(Z)
+        new{N, TZ, TP}(Z, processes)
     end
 end
 
-state_space(X::SwitchingProcess) = _combined_state_space((X.processes[1], X.Z))
-
-Base.size(X::SwitchingProcess) = (size(X.processes[1])..., length(X.Z))
+state_space(X::SwitchingProcess) = (state_space(X.processes[1])..., state_space(X.Z)...)
 
 generator(X::SwitchingProcess) = jointoperator(generator.(X.processes), generator(X.Z))
 
@@ -86,26 +70,28 @@ generator(X::SwitchingProcess) = jointoperator(generator.(X.processes), generato
 
 Returns the independent product of Markov processes in argument order.
 """
-struct ProductProcess{TP <: Tuple} <: MultivariateMarkovProcess
+struct ProductProcess{N, TP <: Tuple} <: ContinuousTimeMarkovProcess{N}
     processes::TP
     function ProductProcess(processes::TP) where {TP <: Tuple}
         length(processes) >= 2 || throw(ArgumentError("ProductProcess needs at least two processes"))
-        all(X -> X isa MarkovProcess, processes) ||
+        all(X -> X isa ContinuousTimeMarkovProcess, processes) ||
             throw(ArgumentError("all ProductProcess arguments must be Markov processes"))
-        return new{TP}(processes)
+        N = 0
+        for process in processes
+            N += ndims(process)
+        end
+        return new{N, TP}(processes)
     end
 end
 
-ProductProcess(processes::MarkovProcess...) = ProductProcess(processes)
+ProductProcess(processes::ContinuousTimeMarkovProcess...) = ProductProcess(processes)
 
-state_space(X::ProductProcess) = _combined_state_space(X.processes)
-
-function Base.size(X::ProductProcess)
-    s = ()
+function state_space(X::ProductProcess)
+    axes = ()
     for process in X.processes
-        s = (s..., size(process)...)
+        axes = (axes..., state_space(process)...)
     end
-    return s
+    return axes
 end
 
 function generator(X::ProductProcess)

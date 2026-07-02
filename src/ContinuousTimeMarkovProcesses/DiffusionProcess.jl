@@ -4,7 +4,7 @@
         dx_t = μ(x_t) dt + σ(x_t) dZ_t
 
 """
-struct DiffusionProcess{TX <: AbstractVector{<:Real}, Tμ <: AbstractVector{<:Real}, Tσ <: AbstractVector{<:Real}} <: UnivariateMarkovProcess
+struct DiffusionProcess{TX <: AbstractVector{<:Real}, Tμ <: AbstractVector{<:Real}, Tσ <: AbstractVector{<:Real}} <: ContinuousTimeMarkovProcess{1}
     x::TX
     μx::Tμ
     σx::Tσ
@@ -16,9 +16,12 @@ struct DiffusionProcess{TX <: AbstractVector{<:Real}, Tμ <: AbstractVector{<:Re
     end
 end
 
-state_space(X::DiffusionProcess) = X.x
+"""
+    state_space(X::ContinuousTimeMarkovProcess)
 
-Base.size(X::DiffusionProcess) = (length(X.x),)
+Return the state-space axes of the Markov process as a tuple.
+"""
+state_space(X::DiffusionProcess) = (X.x,)
 
 """
     Returns the discretized version of the infinitesimal generator of the Diffusion Process
