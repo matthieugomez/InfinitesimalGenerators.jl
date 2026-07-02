@@ -23,6 +23,10 @@ InfinitesimalGenerators.generator(::CustomMarkovProcess) = [-1.0 1.0; 2.0 -2.0]
     @test maximum(abs, u[:, end] .- expmv(ts[end], generator(X), ψ)) <= 1e-5
     @test maximum(abs, feynman_kac(generator(X), ts; ψ = ψ, direction = :forward) .- feynman_kac(generator(X), ts; ψ = ψ, direction = :forward)) <= 1e-5
 
+    T_sparse = sparse([-1.0 1.0; 1.0 -1.0])
+    u_sparse = feynman_kac(T_sparse, 0.0:1.0:2.0; f = zeros(2), ψ = ones(2))
+    @test u_sparse ≈ ones(2, 3)
+
     # scalar generator with time-varying f and v
     T_scalar = zeros(1, 1)
     ts_scalar = 0:1:2
@@ -37,6 +41,11 @@ InfinitesimalGenerators.generator(::CustomMarkovProcess) = [-1.0 1.0; 2.0 -2.0]
         u_expected[:, i + 1] = B \ (u_expected[:, i] .+ f_scalar[:, i + 1] .* dt)
     end
     @test u_scalar ≈ u_expected
+
+    u_matrix_f = feynman_kac(T_scalar, ts_scalar; f = f_scalar, ψ = [0.0], v = [0.0])
+    @test u_matrix_f ≈ feynman_kac(T_scalar, ts_scalar; f = f_scalar, ψ = [0.0], v = zeros(1, length(ts_scalar)))
+    u_matrix_v = feynman_kac(T_scalar, ts_scalar; f = [1.0], ψ = [0.0], v = v_scalar)
+    @test u_matrix_v ≈ feynman_kac(T_scalar, ts_scalar; f = ones(1, length(ts_scalar)), ψ = [0.0], v = v_scalar)
 end
 
 
@@ -63,6 +72,9 @@ end
     @test_throws ArgumentError DiffusionProcess([0.0], [0.0], [1.0])
     @test_throws ArgumentError DiffusionProcess([0.0, 0.0, 1.0], zeros(3), ones(3))
     @test_throws ArgumentError DiffusionProcess([0.0, 1.0, 0.5], zeros(3), ones(3))
+    X_positive = OrnsteinUhlenbeck(; xbar = 1.0, κ = 0.1, σ = 0.02, p = 0.01, length = 10, pow = 2)
+    @test all(state_space(X_positive) .> 0.0)
+    @test issorted(state_space(X_positive); lt = <)
 
     C = CustomMarkovProcess()
     @test size(C) == (2,)
@@ -177,6 +189,11 @@ end
     Gcorr = generator(Xcorr)
     @test maximum(abs.(sum(Gcorr, dims = 2))) < 1e-10
     @test minimum([Gcorr[i, j] for i in axes(Gcorr, 1), j in axes(Gcorr, 2) if i != j]) >= -1e-12
+    Xcorr_negative = MultivariateDiffusionProcess(grid; drift = drift, variance = variance,
+        covariance = (; xy = -covxy))
+    Gcorr_negative = generator(Xcorr_negative)
+    @test maximum(abs.(sum(Gcorr_negative, dims = 2))) < 1e-10
+    @test minimum([Gcorr_negative[i, j] for i in axes(Gcorr_negative, 1), j in axes(Gcorr_negative, 2) if i != j]) >= -1e-12
 
     bad_drift = (; x = zeros(length(xs), length(ys)),
                    y = zeros(length(xs), length(ys)))
@@ -211,6 +228,11 @@ end
     @test_throws ArgumentError MultivariateDiffusionProcess(grid;
         drift = drift, variance = Dict(:x => variance.x, :y => variance.y))
     @test_throws ArgumentError MultivariateDiffusionProcess(grid, (; bad = drift.x), variance, nothing)
+    ambiguous_grid = (; a = [0.0, 1.0], bc = [0.0, 1.0], ab = [0.0, 1.0], c = [0.0, 1.0])
+    ambiguous_drift = (; a = 0.0, bc = 0.0, ab = 0.0, c = 0.0)
+    ambiguous_variance = (; a = 1.0, bc = 1.0, ab = 1.0, c = 1.0)
+    @test_throws ArgumentError MultivariateDiffusionProcess(ambiguous_grid;
+        drift = ambiguous_drift, variance = ambiguous_variance)
 
     μ_boundary = [-1.0; zeros(length(xs) - 2); 1.0]
     σ_boundary = 0.1 .* ones(length(xs))
@@ -227,6 +249,7 @@ end
     # dM/M = x dt
     m = AdditiveFunctionalDiffusion(X, X.x, zeros(length(X.x)))
     η, r = cgf(m)(1)
+    @test_throws ArgumentError cgf(m; eigenvector = :middle)(1)
     @test η ≈ xbar + 0.5 * σ^2 / κ^2 atol = 1e-2
     r_analytic = exp.(X.x ./ κ)
     @test norm(r ./ sum(r) .- r_analytic ./ sum(r_analytic)) <= 2 * 1e-3
@@ -331,6 +354,8 @@ end
     d2y = SecondDerivative(x, y)
     @test length(d2y) == length(x)
     @test d2y[500] ≈ 2.0 atol = 1e-2
+    @test d2y[1] ≈ 1.0 atol = 1e-12
+    @test d2y[end] ≈ -1997.0 atol = 1e-8
 
     xs = range(-1.0, stop = 1.0, length = 31)
     ys = range(-2.0, stop = 2.0, length = 41)
@@ -387,6 +412,10 @@ end
     η, r = InfinitesimalGenerators.principal_eigenvalue(Jdense)
     @test η ≈ 0.0 atol = 1e-8
     @test all(r .> 0)
+    A = [1.0 0.2; 0.3 0.5]
+    η_stalled, r_stalled = @test_logs (:warn, r"Inverse iteration") InfinitesimalGenerators.principal_eigenvalue(A; η0 = 1.23, maxiter = 0)
+    @test η_stalled == 1.23
+    @test norm(r_stalled) ≈ 1.0
     @test_throws DimensionMismatch jointoperator([T1], Q)
     @test_throws DimensionMismatch jointoperator([T1, generator(OrnsteinUhlenbeck(; κ = 0.1, σ = 0.02, length = 60))], Q)
     @test_throws DimensionMismatch jointoperator([T1, T2], [-0.1 0.1 0.0; 0.2 -0.2 0.0])
