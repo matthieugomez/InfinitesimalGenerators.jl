@@ -1,35 +1,10 @@
-
-abstract type MarkovProcess end
-
-# This type should define generator(), which returns a transition matrix 𝕋 such that
-# 𝕋f = lim_{t→0} E[f(x_t)|x_0=x]/t
-
-"""
- computes the stationary distribution corresponding to the MarkovProcess X
-"""
-function stationary_distribution(X::MarkovProcess; δ = 0.0, ψ = Ones(length(state_space(X))))
-    δ >= 0 || throw(ArgumentError("δ needs to be nonnegative"))
-    n = length(state_space(X))
-    if δ > 0
-        length(ψ) == n || throw(DimensionMismatch("X and ψ should have the same length"))
-        g = abs.((δ * I - generator(X)') \ (δ * ψ))
-    else
-        η, g = principal_eigenvalue(generator(X)')
-        abs(η) <= 1e-5 || @warn "Principal Eigenvalue does not seem to be zero"
-    end
-    total_mass = sum(g)
-    isfinite(total_mass) && total_mass > 0 || throw(ArgumentError("stationary distribution has zero or non-finite mass; pass a positive ψ when δ > 0"))
-    g ./ total_mass
-end
-
-
 """
     Returns the Diffusion Process `x_t` with SDE
     
         dx_t = μ(x_t) dt + σ(x_t) dZ_t
 
 """
-struct DiffusionProcess{TX <: AbstractVector{<:Real}, Tμ <: AbstractVector{<:Real}, Tσ <: AbstractVector{<:Real}} <: MarkovProcess
+struct DiffusionProcess{TX <: AbstractVector{<:Real}, Tμ <: AbstractVector{<:Real}, Tσ <: AbstractVector{<:Real}} <: UnivariateMarkovProcess
     x::TX
     μx::Tμ
     σx::Tσ
@@ -42,6 +17,8 @@ struct DiffusionProcess{TX <: AbstractVector{<:Real}, Tμ <: AbstractVector{<:Re
 end
 
 state_space(X::DiffusionProcess) = X.x
+
+Base.size(X::DiffusionProcess) = (length(X.x),)
 
 """
     Returns the discretized version of the infinitesimal generator of the Diffusion Process
@@ -76,13 +53,15 @@ function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
         Δxp = x[min(i, n-1)+1] - x[min(i, n-1)]
         Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
         Δx = (Δxm + Δxp) / 2
-        # upwinding to ensure off diagonals are positive
-        if (μx[i] >= 0) || (i == 1)
-            𝕋[i, min(i + 1, n)] += μx[i] / Δxp
-            𝕋[i, i] -= μx[i] / Δxp
-        else
+        # upwinding with reflecting boundaries: outward boundary drift is dropped
+        if μx[i] >= 0
+            if i < n
+                𝕋[i, i + 1] += μx[i] / Δxp
+                𝕋[i, i] -= μx[i] / Δxp
+            end
+        elseif i > 1
             𝕋[i, i] += μx[i] / Δxm
-            𝕋[i, max(i - 1, 1)] -= μx[i] / Δxm
+            𝕋[i, i - 1] -= μx[i] / Δxm
         end
         𝕋[i, max(i - 1, 1)] += 0.5 * σx[i]^2 / (Δxm * Δx)
         𝕋[i, i] -= 0.5 * σx[i]^2 * 2 / (Δxm * Δxp)
@@ -95,7 +74,6 @@ function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
     end
     return 𝕋
 end
-
 
 """
     Returns the discretized version of the operator ∂
@@ -120,19 +98,20 @@ function ∂(X::DiffusionProcess)
             # zero drift: central difference rather than 0/0
             D[i, i - 1] -= 1 / (Δxm + Δxp)
             D[i, i + 1] += 1 / (Δxm + Δxp)
-        elseif (μx[i] >= 0) || (i == 1)
+        elseif μx[i] >= 0
             # forward (upwind)
-            D[i, min(i + 1, n)] += 1 / Δxp
-            D[i, i]             -= 1 / Δxp
-        else
+            if i < n
+                D[i, i + 1] += 1 / Δxp
+                D[i, i]     -= 1 / Δxp
+            end
+        elseif i > 1
             # backward (upwind)
-            D[i, i]             += 1 / Δxm
-            D[i, max(i - 1, 1)] -= 1 / Δxm
+            D[i, i]     += 1 / Δxm
+            D[i, i - 1] -= 1 / Δxm
         end
     end
     return D
 end
-
 
 """
     Returns the Ornstein Uhlenbeck process defined by the SDE

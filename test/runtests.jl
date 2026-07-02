@@ -1,4 +1,5 @@
-using InfinitesimalGenerators, Test, Statistics, LinearAlgebra, Expokit
+using InfinitesimalGenerators, Test, Statistics, LinearAlgebra, SparseArrays, Expokit
+using BlockBandedMatrices: BandedBlockBandedMatrix
 
 # Shared Ornstein–Uhlenbeck process used across several test sets
 xbar = 0.0
@@ -6,11 +7,17 @@ xbar = 0.0
 σ = 0.02
 X = OrnsteinUhlenbeck(; xbar = xbar, κ = κ, σ = σ, length = 1000)
 
+struct CustomMarkovProcess <: MarkovProcess end
+
+InfinitesimalGenerators.state_space(::CustomMarkovProcess) = 1:2
+InfinitesimalGenerators.generator(::CustomMarkovProcess) = [-1.0 1.0; 2.0 -2.0]
+
 
 @testset "Feynman-Kac" begin
     ψ = X.x.^2
     ts = range(0, stop = 100, step = 1/10)
     u = feynman_kac(generator(X), ts; ψ = ψ, direction = :forward)
+    @test feynman_kac(X, ts; ψ = ψ, direction = :forward) ≈ u
     @test maximum(abs, u[:, 50] .- expmv(ts[50], generator(X), ψ)) <= 1e-3
     @test maximum(abs, u[:, 200] .- expmv(ts[200], generator(X), ψ)) <= 1e-3
     @test maximum(abs, u[:, end] .- expmv(ts[end], generator(X), ψ)) <= 1e-5
@@ -47,13 +54,172 @@ end
 
 @testset "stationary_distribution" begin
     g_discounted = stationary_distribution(X; δ = 1e-2)
+    @test size(X) == (length(X.x),)
+    @test length(X) == length(X.x)
     @test all(isfinite, g_discounted)
     @test sum(g_discounted) ≈ 1.0 atol = 1e-12
     @test all(g_discounted .>= 0.0)
-    @test_throws ArgumentError stationary_distribution(X; δ = 1e-2, ψ = zeros(length(X.x)))
+    @test_throws ArgumentError stationary_distribution(X; δ = 1e-2, ψ = zeros(length(X)))
     @test_throws ArgumentError DiffusionProcess([0.0], [0.0], [1.0])
     @test_throws ArgumentError DiffusionProcess([0.0, 0.0, 1.0], zeros(3), ones(3))
     @test_throws ArgumentError DiffusionProcess([0.0, 1.0, 0.5], zeros(3), ones(3))
+
+    C = CustomMarkovProcess()
+    @test size(C) == (2,)
+    @test length(C) == 2
+    @test stationary_distribution(C) ≈ [2 / 3, 1 / 3]
+end
+
+
+@testset "MarkovChain, ProductProcess, and SwitchingProcess" begin
+    Q = [-0.1 0.1; 0.2 -0.2]
+    Z = MarkovChain([:low, :high], Q)
+    @test state_space(Z) == [:low, :high]
+    @test size(Z) == (2,)
+    @test length(Z) == 2
+    @test Z isa UnivariateMarkovProcess
+    @test generator(Z) == Q
+    @test stationary_distribution(Z) ≈ [2 / 3, 1 / 3]
+    @test MarkovChain(Q).Q == Q
+    @test_throws ArgumentError MarkovChain([-0.1 0.2; 0.1 -0.2])
+    @test_throws ArgumentError MarkovChain([-0.1 0.1; -0.2 0.2])
+
+    x_small = range(-0.2, stop = 0.2, length = 40)
+    Xbase = DiffusionProcess(x_small, -0.1 .* x_small, 0.02 .* ones(length(x_small)))
+    @test Xbase isa UnivariateMarkovProcess
+    Y = ProductProcess(Xbase, Z)
+    G = generator(Y)
+    @test state_space(Y) == (x_small, [:low, :high])
+    @test length.(state_space(Y)) == (length(x_small), 2)
+    @test size(Y) == (length(x_small), 2)
+    @test length(Y) == 2 * length(x_small)
+    @test Y isa MultivariateMarkovProcess
+    @test G isa SparseMatrixCSC
+    @test size(G) == (2 * length(x_small), 2 * length(x_small))
+    @test maximum(abs.(sum(Matrix(G), dims = 2))) < 1e-10
+    @test Matrix(G) ≈ Matrix(generator(SwitchingProcess(Z, fill(Xbase, length(state_space(Z))))))
+
+    ψx = stationary_distribution(Xbase)
+    πz = stationary_distribution(Z)
+    ψY = stationary_distribution(Y)
+    @test size(ψY) == size(Y)
+    @test ψY ≈ ψx * πz' rtol = 1e-5
+
+    Xlow = DiffusionProcess(x_small, -0.1 .* x_small, 0.02 .* ones(length(x_small)))
+    Xhigh = DiffusionProcess(x_small, 0.03 .- 0.2 .* x_small, 0.03 .* ones(length(x_small)))
+    Yswitch = SwitchingProcess(Z, [Xlow, Xhigh])
+    @test state_space(Yswitch) == (x_small, [:low, :high])
+    @test length.(state_space(Yswitch)) == (length(x_small), 2)
+    @test size(Yswitch) == (length(x_small), 2)
+    @test length(Yswitch) == 2 * length(x_small)
+    @test Yswitch isa MultivariateMarkovProcess
+    Gswitch = generator(Yswitch)
+    @test Gswitch isa BandedBlockBandedMatrix
+    @test Matrix(Gswitch) ≈ Matrix(jointoperator([generator(Xlow), generator(Xhigh)], Q))
+    @test Matrix(jointoperator([generator(Xlow), generator(Xhigh)], Q)) ≈
+          Matrix(jointoperator(sparse.([generator(Xlow), generator(Xhigh)]), Q))
+    @test_throws DimensionMismatch SwitchingProcess(Z, [Xlow])
+    @test_throws DimensionMismatch SwitchingProcess(Z, [Xlow, DiffusionProcess(range(-0.2, stop = 0.2, length = 41), zeros(41), ones(41))])
+end
+
+@testset "MultivariateDiffusionProcess" begin
+    xs = collect(range(-1.0, 1.0, length = 8))
+    ys = collect(range(-2.0, 2.0, length = 7))
+    μx = -0.1 .* xs
+    μy = -0.2 .* ys
+    σx = 0.3 .* ones(length(xs))
+    σy = 0.4 .* ones(length(ys))
+
+    Xx = DiffusionProcess(xs, μx, σx)
+    Xy = DiffusionProcess(ys, μy, σy)
+
+    grid = (; x = xs, y = ys)
+    drift = (; x = repeat(μx, 1, length(ys)),
+               y = repeat(reshape(μy, 1, :), length(xs), 1))
+    variance = (; x = repeat(σx .^ 2, 1, length(ys)),
+                  y = repeat(reshape(σy .^ 2, 1, :), length(xs), 1))
+
+    Xxy = MultivariateDiffusionProcess(grid; drift = drift, variance = variance)
+    Gxy = generator(Xxy)
+    @test state_space(Xxy) == grid
+    @test size(Xxy) == (length(xs), length(ys))
+    @test length(Xxy) == length(xs) * length(ys)
+    @test Xxy isa MultivariateMarkovProcess
+    Gxy_expected = kron(Matrix(I, length(ys), length(ys)), Matrix(generator(Xx))) +
+                   kron(Matrix(generator(Xy)), Matrix(I, length(xs), length(xs)))
+    @test Matrix(Gxy) ≈ Gxy_expected
+
+    Pxy = ProductProcess(Xx, Xy)
+    @test state_space(Pxy) == (xs, ys)
+    @test size(Pxy) == size(Xxy)
+    @test Matrix(generator(Pxy)) ≈ Gxy_expected
+
+    ψxy = stationary_distribution(Xxy)
+    ψ_expected = stationary_distribution(Xx) * stationary_distribution(Xy)'
+    @test size(ψxy) == size(Xxy)
+    @test sum(ψxy) ≈ 1.0 atol = 1e-12
+    @test ψxy ≈ ψ_expected rtol = 1e-8 atol = 1e-10
+    @test stationary_distribution(Pxy) ≈ ψ_expected rtol = 1e-8 atol = 1e-10
+
+    ts_xy = 0.0:0.25:1.0
+    ψ_terminal = ones(size(Xxy))
+    u_xy = feynman_kac(Xxy, ts_xy; ψ = ψ_terminal, direction = :forward)
+    u_xy_flat = feynman_kac(Gxy, ts_xy; ψ = vec(ψ_terminal), direction = :forward)
+    @test size(u_xy) == (size(Xxy)..., length(ts_xy))
+    @test reshape(u_xy, length(Xxy), length(ts_xy)) ≈ u_xy_flat
+    u_xy_backward = feynman_kac(Xxy, ts_xy; ψ = ψ_terminal)
+    u_xy_backward_flat = feynman_kac(Gxy, ts_xy; ψ = vec(ψ_terminal))
+    @test reshape(u_xy_backward, length(Xxy), length(ts_xy)) ≈ u_xy_backward_flat
+
+    covxy = 0.05 .* ones(length(xs), length(ys))
+    Xcorr = MultivariateDiffusionProcess(grid; drift = drift, variance = variance,
+        covariance = (; xy = covxy))
+    Gcorr = generator(Xcorr)
+    @test maximum(abs.(sum(Gcorr, dims = 2))) < 1e-10
+    @test minimum([Gcorr[i, j] for i in axes(Gcorr, 1), j in axes(Gcorr, 2) if i != j]) >= -1e-12
+
+    bad_drift = (; x = zeros(length(xs), length(ys)),
+                   y = zeros(length(xs), length(ys)))
+    bad_variance = (; x = 0.01 .* ones(length(xs), length(ys)),
+                      y = ones(length(xs), length(ys)))
+    bad_covxy = 0.09 .* ones(length(xs), length(ys))
+    Xnonmonotone = MultivariateDiffusionProcess(grid; drift = bad_drift,
+        variance = bad_variance, covariance = (; xy = bad_covxy))
+    err = try
+        generator(Xnonmonotone)
+        nothing
+    catch err
+        err
+    end
+    @test err isa ArgumentError
+    @test occursin("negative off-diagonal", sprint(showerror, err))
+    @test occursin("Δx / Δy", sprint(showerror, err))
+    Gnonmonotone = generator(Xnonmonotone; check = false)
+    Gnonmonotone_warn = @test_logs (:warn, r"negative off-diagonal") generator(Xnonmonotone; check = :warn)
+    @test Gnonmonotone_warn == Gnonmonotone
+    @test minimum([Gnonmonotone[i, j] for i in axes(Gnonmonotone, 1), j in axes(Gnonmonotone, 2) if i != j]) < 0
+    @test_throws ArgumentError generator(Xnonmonotone; check = :invalid)
+
+    @test_throws ArgumentError MultivariateDiffusionProcess(grid; drift = drift,
+        variance = variance, covariance = (; x = ones(length(xs), length(ys))))
+    @test_throws ArgumentError MultivariateDiffusionProcess(grid; drift = drift,
+        variance = variance, covariance = (; xy = 2.0 .* ones(length(xs), length(ys))))
+    @test_throws ArgumentError MultivariateDiffusionProcess(Dict(:x => xs, :y => ys);
+        drift = drift, variance = variance)
+    @test_throws ArgumentError MultivariateDiffusionProcess(grid;
+        drift = Dict(:x => drift.x, :y => drift.y), variance = variance)
+    @test_throws ArgumentError MultivariateDiffusionProcess(grid;
+        drift = drift, variance = Dict(:x => variance.x, :y => variance.y))
+    @test_throws ArgumentError MultivariateDiffusionProcess(grid, (; bad = drift.x), variance, nothing)
+
+    μ_boundary = [-1.0; zeros(length(xs) - 2); 1.0]
+    σ_boundary = 0.1 .* ones(length(xs))
+    X_boundary = DiffusionProcess(xs, μ_boundary, σ_boundary)
+    X_boundary_nd = MultivariateDiffusionProcess((; x = xs);
+        drift = (; x = μ_boundary), variance = (; x = σ_boundary .^ 2))
+    @test Matrix(generator(X_boundary)) ≈ Matrix(generator(X_boundary_nd))
+    G_boundary = Matrix(generator(X_boundary))
+    @test minimum([G_boundary[i, j] for i in axes(G_boundary, 1), j in axes(G_boundary, 2) if i != j]) >= -1e-12
 end
 
 
@@ -165,6 +331,29 @@ end
     d2y = SecondDerivative(x, y)
     @test length(d2y) == length(x)
     @test d2y[500] ≈ 2.0 atol = 1e-2
+
+    xs = range(-1.0, stop = 1.0, length = 31)
+    ys = range(-2.0, stop = 2.0, length = 41)
+    grid = (; x = xs, y = ys)
+    f = [x^2 + y^3 + x * y for x in xs, y in ys]
+
+    fx = FirstDerivative(grid, f, :x; direction = :forward)
+    fy = FirstDerivative(grid, f, :y; direction = :backward)
+    @test size(fx) == size(f)
+    @test fx[15, 20] ≈ 2 * xs[15] + ys[20] atol = 1e-1
+    @test fy[15, 20] ≈ 3 * ys[20]^2 + xs[15] atol = 2e-1
+
+    fxx = SecondDerivative(grid, f, :x, :x)
+    fyy = SecondDerivative(grid, f, :y)
+    fxy_up = SecondDerivative(grid, f, :x, :y; direction = :up)
+    fxy_down = SecondDerivative(grid, f, :x, :y; direction = :down)
+    @test fxx[15, 20] ≈ 2.0 atol = 1e-10
+    @test fyy[15, 20] ≈ 6 * ys[20] atol = 1e-10
+    @test fxy_up[15, 20] ≈ 1.0 atol = 1e-10
+    @test fxy_down[15, 20] ≈ 1.0 atol = 1e-10
+    @test_throws ArgumentError FirstDerivative(grid, f, :z)
+    @test_throws DimensionMismatch SecondDerivative(grid, f[1:end-1, :], :x, :x)
+    @test_throws ArgumentError SecondDerivative(grid, f, :x, :y; direction = :sideways)
 end
 
 

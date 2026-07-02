@@ -25,7 +25,7 @@ function principal_eigenvalue(𝕋; r0 = ones(size(𝕋, 1)), η0 = nothing, max
         if 𝕋 isa Tridiagonal
             r = [1.0 ; - Tridiagonal(𝕋.dl[2:end], 𝕋.d[2:end], 𝕋.du[2:end]) \ vec(𝕋[2:end, 1])]
         else
-            r = [1.0 ; - 𝕋[2:end, 2:end] \ vec(𝕋[2:end, 1])]
+            r = [1.0 ; - 𝕋[2:end, 2:end] \ collect(𝕋[2:end, 1])]
         end
         return 0.0, abs.(r)
     else
