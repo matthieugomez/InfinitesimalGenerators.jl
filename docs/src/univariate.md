@@ -26,6 +26,8 @@ X = DiffusionProcess(x, -0.03 .* x, 0.01 .* ones(100))
 generator(X)
 ```
 
+In the finite-difference literature, a discretization with non-negative off-diagonal weights is called a *monotone* scheme — the property that guarantees convergence to the right (viscosity) solution of HJB equations, and the reason upwinding is the standard discretization there (see [EconPDEs' discussion of upwinding](https://matthieugomez.github.io/EconPDEs.jl/dev/getting_started/#Upwinding)). "Monotone scheme" and "valid Markov generator" are the same condition seen from two sides, which is why solutions move between the two packages exactly.
+
 ## Convenience constructors
 
 The two workhorse processes come with constructors that choose the grid automatically:

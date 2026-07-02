@@ -80,7 +80,7 @@ SecondDerivative(grid, F, 1, 2; direction = :up)
 nothing # hide
 ```
 
-The argument `bc` is the value of the *first derivative* at each limit of the grid. It defaults to zero, the right condition for reflecting boundaries — and the hook through which HJB boundary conditions like borrowing constraints enter (see the [HJB tutorial](hjb.md)).
+The argument `bc` is the value of the *first derivative* at each limit of the grid. It defaults to zero, the right condition for reflecting boundaries — and the hook through which HJB boundary conditions like borrowing constraints enter (see the [HJB tutorial](hjb.md)). The convention is deliberately the same as the `bc` keyword of [EconPDEs.jl](https://github.com/matthieugomez/EconPDEs.jl)'s `pdesolve` (the outward first derivative at each boundary), so boundary conditions carry over unchanged between the two packages.
 
 ```@example operators
 @assert abs(sum(g) - 1) <= 1e-10 # hide
