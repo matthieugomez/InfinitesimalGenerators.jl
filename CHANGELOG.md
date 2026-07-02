@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.6.0
+## 2.7.0
 
 ### Breaking
 - `DiffusionProcess` and `AdditiveFunctionalDiffusion` are now immutable
@@ -9,6 +9,10 @@
   construction will no longer work.
 - `ProductProcess` now represents the independent product of Markov processes
   in argument order, e.g. `ProductProcess(X, Z)`.
+- `generator(X::MultivariateDiffusionProcess)` now throws by default when the
+  correlated-state stencil creates negative off-diagonal rates. Pass
+  `check = :warn` or `check = false` to inspect the raw finite-difference
+  operator anyway.
 
 ### Added
 - `UnivariateMarkovProcess` and `MultivariateMarkovProcess` abstract subtypes.

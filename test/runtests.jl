@@ -178,6 +178,28 @@ end
     @test maximum(abs.(sum(Gcorr, dims = 2))) < 1e-10
     @test minimum([Gcorr[i, j] for i in axes(Gcorr, 1), j in axes(Gcorr, 2) if i != j]) >= -1e-12
 
+    bad_drift = (; x = zeros(length(xs), length(ys)),
+                   y = zeros(length(xs), length(ys)))
+    bad_variance = (; x = 0.01 .* ones(length(xs), length(ys)),
+                      y = ones(length(xs), length(ys)))
+    bad_covxy = 0.09 .* ones(length(xs), length(ys))
+    Xnonmonotone = MultivariateDiffusionProcess(grid; drift = bad_drift,
+        variance = bad_variance, covariance = (; xy = bad_covxy))
+    err = try
+        generator(Xnonmonotone)
+        nothing
+    catch err
+        err
+    end
+    @test err isa ArgumentError
+    @test occursin("negative off-diagonal", sprint(showerror, err))
+    @test occursin("Δx / Δy", sprint(showerror, err))
+    Gnonmonotone = generator(Xnonmonotone; check = false)
+    Gnonmonotone_warn = @test_logs (:warn, r"negative off-diagonal") generator(Xnonmonotone; check = :warn)
+    @test Gnonmonotone_warn == Gnonmonotone
+    @test minimum([Gnonmonotone[i, j] for i in axes(Gnonmonotone, 1), j in axes(Gnonmonotone, 2) if i != j]) < 0
+    @test_throws ArgumentError generator(Xnonmonotone; check = :invalid)
+
     @test_throws ArgumentError MultivariateDiffusionProcess(grid; drift = drift,
         variance = variance, covariance = (; x = ones(length(xs), length(ys))))
     @test_throws ArgumentError MultivariateDiffusionProcess(grid; drift = drift,

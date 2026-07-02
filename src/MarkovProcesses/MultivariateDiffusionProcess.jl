@@ -200,12 +200,16 @@ function _mvd_add_cross_derivative!(rows, cols, vals, L, row, I, d1, d2, x1, x2,
 end
 
 """
-    generator(X::MultivariateDiffusionProcess; check = true, check_tol = 1e-12)
+    generator(X::MultivariateDiffusionProcess; check = :throw, check_tol = 1e-12)
 
 Assemble the sparse infinitesimal generator matrix. The matrix acts on `vec(f)`,
 where `f` is an array on `state_space(X)`.
+
+By default, throws an error if the finite-difference stencil creates a negative
+off-diagonal entry. Use `check = :warn` to return the matrix with a warning, or
+`check = false` to skip the check.
 """
-function generator(X::MultivariateDiffusionProcess; check = true, check_tol = 1e-12)
+function generator(X::MultivariateDiffusionProcess; check = :throw, check_tol = 1e-12)
     grid = X.grid
     names = keys(grid)
     N = length(names)
@@ -233,11 +237,36 @@ function generator(X::MultivariateDiffusionProcess; check = true, check_tol = 1e
     A = sparse(rows, cols, vals, n, n)
     rowsum = vec(sum(A, dims = 2))
     A = A - sparse(1:n, 1:n, rowsum, n, n)
-    if check
+
+    check_mode = check === true ? :throw : check
+    if check_mode !== false
+        check_mode ∈ (:throw, :warn) ||
+            throw(ArgumentError("`check` must be `:throw`, `:warn`, `true`, or `false`"))
         check_rows, check_cols, check_vals = findnz(A)
         for k in eachindex(check_vals)
             if check_rows[k] != check_cols[k] && check_vals[k] < -check_tol
-                @warn "Generator has a negative off-diagonal entry; the drift/covariance stencil is not monotone at this grid resolution" row = check_rows[k] col = check_cols[k] value = check_vals[k]
+                rowI = cartesian_indices[check_rows[k]]
+                colI = cartesian_indices[check_cols[k]]
+                message = string(
+                    "MultivariateDiffusionProcess generator has a negative off-diagonal entry ",
+                    "(row index $rowI, column index $colI, value $(check_vals[k])) and is not a valid ",
+                    "Markov generator. Rows still sum to zero, but a negative off-diagonal entry is a ",
+                    "negative transition rate. This usually happens with correlated states when the ",
+                    "instantaneous covariance matrix is positive semidefinite but the grid-scaled ",
+                    "diagonal-dominance condition for the directional cross-derivative stencil fails. ",
+                    "For a two-state pair (x, y), the local condition is roughly ",
+                    "abs(covariance.xy) <= variance.x * Δy / Δx and ",
+                    "abs(covariance.xy) <= variance.y * Δx / Δy; on equally spaced grids this reduces ",
+                    "to abs(covariance.xy) <= min(variance.x, variance.y). To fix it, refine or rescale ",
+                    "the grids so Δx / Δy is closer to sqrt(variance.x / variance.y), use a state ",
+                    "transformation that balances local volatilities, or reduce the covariance. Use ",
+                    "`generator(X; check = :warn)` or `check = false` only if you intentionally want ",
+                    "the raw finite-difference operator without a Markov-process interpretation.")
+                if check_mode === :warn
+                    @warn message row = check_rows[k] col = check_cols[k] value = check_vals[k]
+                else
+                    throw(ArgumentError(message))
+                end
                 break
             end
         end

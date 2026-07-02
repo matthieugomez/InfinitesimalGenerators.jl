@@ -91,6 +91,27 @@ stationary_distribution(Y)  # array with size(Y)
 feynman_kac(Y, range(0, 10, step = 1); ψ = ones(size(Y)))
 ```
 
+`generator(Y)` checks that the discretized operator is a valid Markov generator:
+rows must sum to zero and off-diagonal entries must be nonnegative transition
+rates. The directional cross-derivative stencil used for correlated states is
+monotone only under a grid-scaled diagonal-dominance condition. For two states
+`x` and `y`, a useful local rule of thumb is
+
+```julia
+abs(covxy) <= variance.x * Δy / Δx
+abs(covxy) <= variance.y * Δx / Δy
+```
+
+On equally spaced grids this becomes `abs(covxy) <= min(variance.x,
+variance.y)`, which is stronger than positive semidefiniteness of the covariance
+matrix. If `generator(Y)` throws a negative-off-diagonal error, the most common
+fix is to rescale or refine the grids so `Δx / Δy` is closer to
+`sqrt(variance.x / variance.y)` in the region where the covariance is large.
+Equivalently, transform states so their local volatilities are more balanced, or
+reduce the covariance. Use `generator(Y; check = :warn)` or `check = false` only
+when you intentionally want the raw finite-difference operator without a Markov
+process interpretation.
+
 Use `SwitchingProcess` when continuous dynamics depend on the finite-state Markov chain.
 
 ```julia
