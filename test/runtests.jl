@@ -23,16 +23,16 @@ InfinitesimalGenerators.generator(::CustomMarkovProcess) = [-1.0 1.0; 2.0 -2.0]
     @test maximum(abs, u[:, end] .- expmv(ts[end], generator(X), ψ)) <= 1e-5
     @test maximum(abs, feynman_kac(generator(X), ts; ψ = ψ, direction = :forward) .- feynman_kac(generator(X), ts; ψ = ψ, direction = :forward)) <= 1e-5
 
-    T_sparse = sparse([-1.0 1.0; 1.0 -1.0])
-    u_sparse = feynman_kac(T_sparse, 0.0:1.0:2.0; f = zeros(2), ψ = ones(2))
+    𝔸_sparse = sparse([-1.0 1.0; 1.0 -1.0])
+    u_sparse = feynman_kac(𝔸_sparse, 0.0:1.0:2.0; f = zeros(2), ψ = ones(2))
     @test u_sparse ≈ ones(2, 3)
 
     # scalar generator with time-varying f and v
-    T_scalar = zeros(1, 1)
+    𝔸_scalar = zeros(1, 1)
     ts_scalar = 0:1:2
     f_scalar = reshape([1.0, 2.0, 3.0], 1, :)
     v_scalar = reshape([0.0, 1.0, 3.0], 1, :)
-    u_scalar = feynman_kac(T_scalar, ts_scalar; f = f_scalar, ψ = [1.0], v = v_scalar, direction = :forward)
+    u_scalar = feynman_kac(𝔸_scalar, ts_scalar; f = f_scalar, ψ = [1.0], v = v_scalar, direction = :forward)
     u_expected = zeros(1, length(ts_scalar))
     u_expected[:, 1] .= 1.0
     for i in 1:(length(ts_scalar) - 1)
@@ -42,20 +42,20 @@ InfinitesimalGenerators.generator(::CustomMarkovProcess) = [-1.0 1.0; 2.0 -2.0]
     end
     @test u_scalar ≈ u_expected
 
-    u_matrix_f = feynman_kac(T_scalar, ts_scalar; f = f_scalar, ψ = [0.0], v = [0.0])
-    @test u_matrix_f ≈ feynman_kac(T_scalar, ts_scalar; f = f_scalar, ψ = [0.0], v = zeros(1, length(ts_scalar)))
-    u_matrix_v = feynman_kac(T_scalar, ts_scalar; f = [1.0], ψ = [0.0], v = v_scalar)
-    @test u_matrix_v ≈ feynman_kac(T_scalar, ts_scalar; f = ones(1, length(ts_scalar)), ψ = [0.0], v = v_scalar)
+    u_matrix_f = feynman_kac(𝔸_scalar, ts_scalar; f = f_scalar, ψ = [0.0], v = [0.0])
+    @test u_matrix_f ≈ feynman_kac(𝔸_scalar, ts_scalar; f = f_scalar, ψ = [0.0], v = zeros(1, length(ts_scalar)))
+    u_matrix_v = feynman_kac(𝔸_scalar, ts_scalar; f = [1.0], ψ = [0.0], v = v_scalar)
+    @test u_matrix_v ≈ feynman_kac(𝔸_scalar, ts_scalar; f = ones(1, length(ts_scalar)), ψ = [0.0], v = v_scalar)
 end
 
 
 @testset "feynman_kac element type" begin
     # output element type should follow the inputs, not be hard-coded to Float64
     Xf = OrnsteinUhlenbeck(; κ = 0.1, σ = 0.02, length = 50)
-    M = generator(Xf)
-    𝕋 = Tridiagonal(Float32.(M.dl), Float32.(M.d), Float32.(M.du))
+    𝔸64 = generator(Xf)
+    𝔸 = Tridiagonal(Float32.(𝔸64.dl), Float32.(𝔸64.d), Float32.(𝔸64.du))
     ts = Float32.(0:0.1:10)   # concrete Float32 grid (a Float32 range has Float64 eltype on Julia 1.6)
-    u = feynman_kac(𝕋, ts; ψ = Float32.(Xf.x .^ 2), direction = :forward)
+    u = feynman_kac(𝔸, ts; ψ = Float32.(Xf.x .^ 2), direction = :forward)
     @test eltype(u) == Float32
     @test all(isfinite, u)
 end
@@ -419,10 +419,10 @@ end
 @testset "jointoperator" begin
     X1 = OrnsteinUhlenbeck(; κ = 0.1, σ = 0.02, length = 50)
     X2 = OrnsteinUhlenbeck(; κ = 0.2, σ = 0.03, length = 50)
-    T1 = generator(X1)
-    T2 = generator(X2)
+    𝔸1 = generator(X1)
+    𝔸2 = generator(X2)
     Q = [-0.1 0.1; 0.2 -0.2]
-    J = jointoperator([T1, T2], Q)
+    J = jointoperator([𝔸1, 𝔸2], Q)
     @test size(J) == (100, 100)
     # rows should sum to zero (generator property)
     @test maximum(abs.(sum(Matrix(J), dims = 2))) < 1e-10
@@ -435,7 +435,7 @@ end
     η_stalled, r_stalled = @test_logs (:warn, r"Inverse iteration") InfinitesimalGenerators.principal_eigenvalue(A; η0 = 1.23, maxiter = 0)
     @test η_stalled == 1.23
     @test norm(r_stalled) ≈ 1.0
-    @test_throws DimensionMismatch jointoperator([T1], Q)
-    @test_throws DimensionMismatch jointoperator([T1, generator(OrnsteinUhlenbeck(; κ = 0.1, σ = 0.02, length = 60))], Q)
-    @test_throws DimensionMismatch jointoperator([T1, T2], [-0.1 0.1 0.0; 0.2 -0.2 0.0])
+    @test_throws DimensionMismatch jointoperator([𝔸1], Q)
+    @test_throws DimensionMismatch jointoperator([𝔸1, generator(OrnsteinUhlenbeck(; κ = 0.1, σ = 0.02, length = 60))], Q)
+    @test_throws DimensionMismatch jointoperator([𝔸1, 𝔸2], [-0.1 0.1 0.0; 0.2 -0.2 0.0])
 end

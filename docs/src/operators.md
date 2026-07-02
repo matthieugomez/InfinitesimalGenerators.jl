@@ -14,22 +14,22 @@ nothing # hide
 
 ## The generator itself
 
-`generator(X)` returns the generator (transition-rate) matrix ``\mathbb{T}`` of the discretized process — the operator ``f \mapsto \lim_{t \downarrow 0} E[f(x_t) \mid x_0 = x]/t`` acting on the flattened state space. Rows sum to zero and off-diagonals are non-negative, so the matrix can be used directly for anything the package does not provide: exponentials for transition probabilities, resolvents for present values, transposes for densities.
+`generator(X)` returns the generator (transition-rate) matrix ``\mathbb{A}`` of the discretized process — the operator ``f \mapsto \lim_{t \downarrow 0} E[f(x_t) \mid x_0 = x]/t`` acting on the flattened state space. Rows sum to zero and off-diagonals are non-negative, so the matrix can be used directly for anything the package does not provide: exponentials for transition probabilities, resolvents for present values, transposes for densities.
 
 ```@example operators
-𝕋 = generator(X)
+𝔸 = generator(X)
 ```
 
 ## Stationary distributions
 
-`stationary_distribution(X)` solves the Kolmogorov forward equation ``\mathbb{T}' g = 0`` and returns the probability mass at each grid point, shaped like `size(X)` — see the [distribution dynamics tutorial](distributions.md) for the computation by hand:
+`stationary_distribution(X)` solves the Kolmogorov forward equation ``\mathbb{A}' g = 0`` and returns the probability mass at each grid point, shaped like `size(X)` — see the [distribution dynamics tutorial](distributions.md) for the computation by hand:
 
 ```@example operators
 g = stationary_distribution(X)
 sum(g .* xs)   # ≈ xbar
 ```
 
-The keyword form `stationary_distribution(X; δ = δ, ψ = ψ)` computes the stationary distribution when agents die at rate ``\delta`` and are reborn with distribution ``\psi`` — the resolvent ``(\delta I - \mathbb{T}')^{-1} \delta \psi`` — the relevant object in perpetual-youth and firm-entry models:
+The keyword form `stationary_distribution(X; δ = δ, ψ = ψ)` computes the stationary distribution when agents die at rate ``\delta`` and are reborn with distribution ``\psi`` — the resolvent ``(\delta I - \mathbb{A}')^{-1} \delta \psi`` — the relevant object in perpetual-youth and firm-entry models:
 
 ```@example operators
 ψ = zeros(length(xs)); ψ[1] = 1.0    # everyone reborn at the bottom

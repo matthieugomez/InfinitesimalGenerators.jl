@@ -10,22 +10,22 @@ using InfinitesimalGenerators, LinearAlgebra
 κ, σ = 0.1, 0.05
 X = OrnsteinUhlenbeck(; xbar = 0.0, κ = κ, σ = σ)
 xs = only(state_space(X))
-𝕋 = generator(X)
+𝔸 = generator(X)
 ```
 
 ## Evolving a distribution by hand
 
-If expectations satisfy the backward equation ``\partial_t u = \mathbb{T} u``, densities satisfy its adjoint, the **Kolmogorov forward (Fokker–Planck) equation**:
+If expectations satisfy the backward equation ``\partial_t u = \mathbb{A} u``, densities satisfy its adjoint, the **Kolmogorov forward (Fokker–Planck) equation**:
 
 ```math
-\partial_t g = \mathbb{T}' g.
+\partial_t g = \mathbb{A}' g.
 ```
 
 The transpose is not incidental: ``E[f(x_t)] = g' f`` for any test function, so whatever operator advances expectations backward, its transpose advances the distribution forward. On the discretized state space, `g` is the vector of probability masses at each grid point, and the forward equation is again a linear ODE solved with implicit Euler steps:
 
 ```@example distributions
-function evolve(𝕋, g0, T; dt = 0.1)
-    B = factorize(I - dt * copy(𝕋'))
+function evolve(𝔸, g0, T; dt = 0.1)
+    B = factorize(I - dt * copy(𝔸'))
     g = copy(g0)
     for _ in 1:round(Int, T / dt)
         g = B \ g
@@ -46,22 +46,22 @@ g0[findmin(abs.(xs .- σ / sqrt(2κ)))[2]] = 1.0
 Δx = step(xs)
 plot(xlabel = "log productivity x", ylabel = "cross-sectional density")
 for T in (1, 5, 20, 100)
-    plot!(xs, evolve(𝕋, g0, T) ./ Δx; label = "t = $T")
+    plot!(xs, evolve(𝔸, g0, T) ./ Δx; label = "t = $T")
 end
 current()
 ```
 
-The discretized process is an honest Markov chain — rows of ``\mathbb{T}`` sum to zero and off-diagonals are non-negative — so the masses stay non-negative and sum to one at every date, with no renormalization needed:
+The discretized process is an honest Markov chain — rows of ``\mathbb{A}`` sum to zero and off-diagonals are non-negative — so the masses stay non-negative and sum to one at every date, with no renormalization needed:
 
 ```@example distributions
-sum(evolve(𝕋, g0, 100))
+sum(evolve(𝔸, g0, 100))
 ```
 
 For the Ornstein–Uhlenbeck process the transition distribution is known in closed form — Gaussian with mean ``e^{-\kappa t} x_0`` and variance ``\frac{\sigma^2}{2\kappa}(1 - e^{-2\kappa t})`` — which checks the discretization at, say, ``t = 5``:
 
 ```@example distributions
 t, x0 = 5.0, xs[findmax(g0)[2]]
-gt = evolve(𝕋, g0, t)
+gt = evolve(𝔸, g0, t)
 mean_t = sum(gt .* xs)
 var_t = sum(gt .* xs .^ 2) - mean_t^2
 (; mean_t, closed_mean = exp(-κ * t) * x0,
@@ -75,15 +75,15 @@ The mean is essentially exact: the upwind scheme discretizes the drift ``\kappa(
 As ``t \to \infty`` the distribution converges to the stationary distribution, the fixed point of the forward equation:
 
 ```math
-\mathbb{T}' g = 0, \qquad \textstyle\sum_i g_i = 1.
+\mathbb{A}' g = 0, \qquad \textstyle\sum_i g_i = 1.
 ```
 
-That is a linear system: `g` is the null vector of the transposed generator, normalized to sum to one. By hand, replace one (redundant) row of ``\mathbb{T}'`` with the normalization:
+That is a linear system: `g` is the null vector of the transposed generator, normalized to sum to one. By hand, replace one (redundant) row of ``\mathbb{A}'`` with the normalization:
 
 ```@example distributions
-A = Matrix(𝕋')
-A[end, :] .= 1.0
-g∞ = A \ [zeros(length(xs) - 1); 1.0]
+B = Matrix(𝔸')
+B[end, :] .= 1.0
+g∞ = B \ [zeros(length(xs) - 1); 1.0]
 nothing # hide
 ```
 
@@ -106,15 +106,15 @@ maximum(abs, g - g∞)
 
 Two variations are worth knowing:
 
-- **Convergence check.** The evolved distribution approaches the stationary one at the speed of mean reversion: `maximum(abs, evolve(𝕋, g0, 100) - g)` is of the order of the autocorrelation ``e^{-\kappa \cdot 100} \approx 5 \times 10^{-5}``, and by ``t = 300`` the two agree to machine precision.
-- **Death and rebirth.** `stationary_distribution(X; δ = δ, ψ = ψ)` computes the stationary distribution when agents die at rate ``\delta`` and are reborn with distribution ``\psi`` — the resolvent ``(\delta I - \mathbb{T}')^{-1} \delta \psi`` — which is the relevant object in perpetual-youth and firm-entry models.
+- **Convergence check.** The evolved distribution approaches the stationary one at the speed of mean reversion: `maximum(abs, evolve(𝔸, g0, 100) - g)` is of the order of the autocorrelation ``e^{-\kappa \cdot 100} \approx 5 \times 10^{-5}``, and by ``t = 300`` the two agree to machine precision.
+- **Death and rebirth.** `stationary_distribution(X; δ = δ, ψ = ψ)` computes the stationary distribution when agents die at rate ``\delta`` and are reborn with distribution ``\psi`` — the resolvent ``(\delta I - \mathbb{A}')^{-1} \delta \psi`` — which is the relevant object in perpetual-youth and firm-entry models.
 
 ```@example distributions
-@assert abs(sum(evolve(𝕋, g0, 100)) - 1) <= 1e-10 # hide
+@assert abs(sum(evolve(𝔸, g0, 100)) - 1) <= 1e-10 # hide
 @assert maximum(abs, g - g∞) <= 1e-10 # hide
 @assert abs(mean_t - exp(-κ * t) * x0) <= 1e-3 # hide
 @assert abs(var_t / (σ^2 / (2κ) * (1 - exp(-2κ * t))) - 1) <= 0.1 # hide
-@assert maximum(abs, evolve(𝕋, g0, 100) - g) <= 1e-5 # hide
-@assert maximum(abs, evolve(𝕋, g0, 300) - g) <= 1e-12 # hide
+@assert maximum(abs, evolve(𝔸, g0, 100) - g) <= 1e-5 # hide
+@assert maximum(abs, evolve(𝔸, g0, 300) - g) <= 1e-12 # hide
 nothing # hide
 ```

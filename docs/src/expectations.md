@@ -16,7 +16,7 @@ using InfinitesimalGenerators, LinearAlgebra
 κ, σ, ȳ = 0.1, 0.05, 1.0
 Y = OrnsteinUhlenbeck(; xbar = ȳ, κ = κ, σ = σ)
 ys = only(state_space(Y))
-𝕋 = generator(Y)
+𝔸 = generator(Y)
 ```
 
 ## Forecasts by hand
@@ -24,20 +24,22 @@ ys = only(state_space(Y))
 Fix a horizon ``T`` and consider the forecast ``u(y, t) = E[\psi(y_T) \mid y_t = y]``. It solves the **Kolmogorov backward equation**
 
 ```math
-0 = \partial_t u + \mathbb{T} u, \qquad u(\cdot, T) = \psi,
+0 = \partial_t u + \mathbb{A} u, \qquad u(\cdot, T) = \psi,
 ```
 
-where ``\mathbb{T}`` acts on the state argument. After discretizing the state space, ``\mathbb{T}`` is just the matrix above, so this is a linear ODE in ``\mathbb{R}^n``, solved by marching backward from ``T`` with implicit Euler steps:
+where, on the grid, ``\mathbb{A}`` is the matrix representation of the infinitesimal operator
+``(\mathbb{A}f)(y_i) = \lim_{\Delta t \downarrow 0} \left(E[f(y_{t+\Delta t}) \mid y_t = y_i] - f(y_i)\right) / \Delta t``.
+After discretizing the state space, this is a linear ODE in ``\mathbb{R}^n``, solved by marching backward from ``T`` with implicit Euler steps:
 
 ```math
-u_{t - dt} = (I - dt \, \mathbb{T})^{-1} u_t.
+u_{t - dt} = (I - dt \, \mathbb{A})^{-1} u_t.
 ```
 
 In code — factorize once, then one back-substitution per time step:
 
 ```@example expectations
-function expectation(𝕋, ψ, T; dt = 0.01)
-    B = factorize(I - dt * 𝕋)
+function expectation(𝔸, ψ, T; dt = 0.01)
+    B = factorize(I - dt * 𝔸)
     u = copy(ψ)
     for _ in 1:round(Int, T / dt)
         u = B \ u
@@ -45,7 +47,7 @@ function expectation(𝕋, ψ, T; dt = 0.01)
     return u
 end
 
-u = expectation(𝕋, collect(ys), 10.0)   # ψ(y) = y: the conditional mean E[y_T | y_0]
+u = expectation(𝔸, collect(ys), 10.0)   # ψ(y) = y: the conditional mean E[y_T | y_0]
 nothing # hide
 ```
 
@@ -82,11 +84,11 @@ Now price a claim to the flow ``y_t`` discounted at rate ``r``:
 P(y) = E\left[\int_0^\infty e^{-rt} y_t \, dt \,\Big|\, y_0 = y\right].
 ```
 
-Differentiating with respect to the starting date gives the stationary backward equation ``r P = y + \mathbb{T} P`` — the continuous-time analogue of "price equals dividend plus discounted expected price". Discretized, it is a single linear solve in the resolvent of the generator:
+Differentiating with respect to the starting date gives the stationary backward equation ``r P = y + \mathbb{A} P`` — the continuous-time analogue of "price equals dividend plus discounted expected price". Discretized, it is a single linear solve in the resolvent of the generator:
 
 ```@example expectations
 r = 0.05
-P = (r * I - 𝕋) \ collect(ys)
+P = (r * I - 𝔸) \ collect(ys)
 nothing # hide
 ```
 
