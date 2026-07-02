@@ -1,18 +1,18 @@
 """
-    stationary_distribution(𝕋; δ = 0.0, ψ = Ones(size(𝕋, 1)))
+    stationary_distribution(𝔸; δ = 0.0, ψ = Ones(size(𝔸, 1)))
 
-Computes the stationary distribution corresponding to the generator matrix `𝕋`.
+Computes the stationary distribution corresponding to the generator matrix `𝔸`.
 """
-function stationary_distribution(𝕋::AbstractMatrix; δ = 0.0, ψ = Ones(size(𝕋, 1)))
-    size(𝕋, 1) == size(𝕋, 2) || throw(DimensionMismatch("𝕋 must be a square generator matrix"))
+function stationary_distribution(𝔸::AbstractMatrix; δ = 0.0, ψ = Ones(size(𝔸, 1)))
+    size(𝔸, 1) == size(𝔸, 2) || throw(DimensionMismatch("𝔸 must be a square generator matrix"))
     δ >= 0 || throw(ArgumentError("δ needs to be nonnegative"))
-    n = size(𝕋, 1)
+    n = size(𝔸, 1)
     ψ = vec(ψ)
-    length(ψ) == n || throw(DimensionMismatch("𝕋 and ψ should have the same length"))
+    length(ψ) == n || throw(DimensionMismatch("𝔸 and ψ should have the same length"))
     if δ > 0
-        g = abs.((δ * I - 𝕋') \ (δ * collect(ψ)))
+        g = abs.((δ * I - 𝔸') \ (δ * collect(ψ)))
     else
-        η, g = principal_eigenvalue(𝕋')
+        η, g = principal_eigenvalue(𝔸')
         abs(η) <= 1e-5 || @warn "Principal Eigenvalue does not seem to be zero"
     end
     total_mass = sum(g)

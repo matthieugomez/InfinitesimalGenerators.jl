@@ -27,15 +27,15 @@ end
 
 """
     feynman_kac(X::ContinuousTimeMarkovProcess, ts; f = nothing, ψ = nothing, v = nothing, direction = :backward)
-    feynman_kac(𝕋::AbstractMatrix, ts; f, ψ, v, direction = :backward)
+    feynman_kac(𝔸::AbstractMatrix, ts; f, ψ, v, direction = :backward)
 
 Solve the Feynman–Kac PDE associated with a Markov process `X` (or directly with a generator
-matrix `𝕋`) on the time grid `ts`, using implicit Euler time steps.
+matrix `𝔸`) on the time grid `ts`, using implicit Euler time steps.
 
 With `direction = :backward`, returns the solution of
 
     u(x, ts[end]) = ψ(x)
-    0 = uₜ + 𝕋u - v(x, t)u + f(x, t)
+    0 = uₜ + 𝔸u - v(x, t)u + f(x, t)
 
 or, equivalently, in integral form,
 
@@ -44,7 +44,7 @@ or, equivalently, in integral form,
 With `direction = :forward`, returns the solution of
 
     u(x, ts[1]) = ψ(x)
-    uₜ = 𝕋u - v(x, t)u + f(x, t)
+    uₜ = 𝔸u - v(x, t)u + f(x, t)
 
 or, equivalently, in integral form,
 
@@ -52,29 +52,29 @@ or, equivalently, in integral form,
 
 For the process form, `f`, `ψ`, and `v` are arrays shaped like the state space (`size(X)`);
 `f` and `v` may also carry a trailing time dimension of length `length(ts)`. The result has
-one slice per date in `ts`. For the matrix form, they are vectors of length `size(𝕋, 1)`.
+one slice per date in `ts`. For the matrix form, they are vectors of length `size(𝔸, 1)`.
 """
 function feynman_kac(X::ContinuousTimeMarkovProcess, ts; f = nothing, ψ = nothing, v = nothing, direction = :backward)
-    𝕋 = generator(X)
-    f_flat = f === nothing ? zeros(eltype(𝕋), length(X)) :
+    𝔸 = generator(X)
+    f_flat = f === nothing ? zeros(eltype(𝔸), length(X)) :
         _flatten_state_time_argument(X, f, ts, :f)
-    ψ_flat = ψ === nothing ? zeros(eltype(𝕋), length(X)) :
+    ψ_flat = ψ === nothing ? zeros(eltype(𝔸), length(X)) :
         _flatten_state_vector_argument(X, ψ, :ψ)
-    v_flat = v === nothing ? zeros(eltype(𝕋), length(X)) :
+    v_flat = v === nothing ? zeros(eltype(𝔸), length(X)) :
         _flatten_state_time_argument(X, v, ts, :v)
-    u = feynman_kac(𝕋, ts; f = f_flat, ψ = ψ_flat, v = v_flat, direction = direction)
+    u = feynman_kac(𝔸, ts; f = f_flat, ψ = ψ_flat, v = v_flat, direction = direction)
     return _reshape_state_time_output(X, u)
 end
 
-function feynman_kac(𝕋, ts;
-    f::Union{AbstractVector, AbstractMatrix} = zeros(eltype(𝕋), size(𝕋, 1)),
-    ψ::AbstractVector = zeros(eltype(𝕋), size(𝕋, 1)),
-    v::Union{AbstractVector, AbstractMatrix} = zeros(eltype(𝕋), size(𝕋, 1)),
+function feynman_kac(𝔸, ts;
+    f::Union{AbstractVector, AbstractMatrix} = zeros(eltype(𝔸), size(𝔸, 1)),
+    ψ::AbstractVector = zeros(eltype(𝔸), size(𝔸, 1)),
+    v::Union{AbstractVector, AbstractMatrix} = zeros(eltype(𝔸), size(𝔸, 1)),
     direction= :backward)
-    size(𝕋, 1) == size(𝕋, 2) || throw(DimensionMismatch("𝕋 must be square matrix"))
-    size(𝕋, 1) == size(f, 1) || throw(DimensionMismatch("𝕋 and f should have the same number of rows"))
-    size(𝕋, 1) == length(ψ) || throw(DimensionMismatch("𝕋 and ψ should have the same number of rows"))
-    size(𝕋, 1) == size(v, 1) || throw(DimensionMismatch("𝕋 and v should have the same number of rows"))
+    size(𝔸, 1) == size(𝔸, 2) || throw(DimensionMismatch("𝔸 must be square matrix"))
+    size(𝔸, 1) == size(f, 1) || throw(DimensionMismatch("𝔸 and f should have the same number of rows"))
+    size(𝔸, 1) == length(ψ) || throw(DimensionMismatch("𝔸 and ψ should have the same number of rows"))
+    size(𝔸, 1) == size(v, 1) || throw(DimensionMismatch("𝔸 and v should have the same number of rows"))
     size(f, 2) ∈ (1, length(ts)) ||  throw(DimensionMismatch("The number of columns in f should equal the length of ts"))
     size(v, 2) ∈ (1, length(ts)) ||  throw(DimensionMismatch("The number of columns in v should equal the length of ts"))
     direction ∈ (:forward, :backward) || throw(ArgumentError("Direction must be :backward or :forward"))
@@ -87,20 +87,20 @@ function feynman_kac(𝕋, ts;
         # direction is forward
         f_reverse = ndims(f) == 2 ? @view(f[:, end:-1:1]) : f
         v_reverse = ndims(v) == 2 ? @view(v[:, end:-1:1]) : v
-        u = feynman_kac(𝕋, - reverse(ts); ψ = ψ, f = f_reverse, v = v_reverse, direction = :backward)
+        u = feynman_kac(𝔸, - reverse(ts); ψ = ψ, f = f_reverse, v = v_reverse, direction = :backward)
         return u[:,end:-1:1]
     else
         # direction is backward
-        T = float(promote_type(eltype(𝕋), eltype(f), eltype(ψ), eltype(v), eltype(ts)))
-        u = zeros(T, size(𝕋, 1), length(ts))
+        T = float(promote_type(eltype(𝔸), eltype(f), eltype(ψ), eltype(v), eltype(ts)))
+        u = zeros(T, size(𝔸, 1), length(ts))
         u[:, end] = ψ
         if ndims(f) == 1
             # f and v are vectors
             if isa(ts, AbstractRange)
                 # constant time step
                 dt = step(ts)
-                B = factorize(I + (Diagonal(v) - 𝕋) * dt)
-                rhs = Vector{T}(undef, size(𝕋, 1))
+                B = factorize(I + (Diagonal(v) - 𝔸) * dt)
+                rhs = Vector{T}(undef, size(𝔸, 1))
                 # Use in-place solves for tridiagonal/banded factors, but keep
                 # a fallback for sparse factors such as CHOLMOD without ldiv!.
                 can_ldiv = hasmethod(ldiv!, Tuple{typeof(B), typeof(rhs)})
@@ -118,7 +118,7 @@ function feynman_kac(𝕋, ts;
                 # non-constant time step
                 for i in (length(ts)-1):(-1):1
                     dt = ts[i+1] - ts[i]
-                    B = I + (Diagonal(v) - 𝕋) * dt
+                    B = I + (Diagonal(v) - 𝔸) * dt
                     u[:, i] = B \ (u[:, i+1] .+ f .* dt)
                 end
             end
@@ -126,7 +126,7 @@ function feynman_kac(𝕋, ts;
             # f and v are matrices
             for i in (length(ts)-1):(-1):1
                 dt = ts[i+1] - ts[i]
-                B = I + (Diagonal(view(v, :, i)) - 𝕋) * dt
+                B = I + (Diagonal(view(v, :, i)) - 𝔸) * dt
                 u[:, i] = B \ (u[:, i+1] .+ f[:, i] .* dt)
             end
         end

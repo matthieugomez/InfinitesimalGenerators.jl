@@ -33,13 +33,13 @@ nothing # hide
 Discretize ``a`` on a grid and stack the value functions into `v` (one column per income state). The discretized HJB is then a system
 
 ```math
-\rho v = u(c(v)) + A(c(v)) \, v,
+\rho v = u(c(v)) + \mathbb{A}(c(v)) \, v,
 ```
 
 nonlinear only through the policy ``c(v)``. The key trick of the scheme is *where the policy is evaluated*: compute ``c_n = c(v_n)`` from the **current guess**, freeze it, and take one backward time step of the equation that is now *linear* in the new value ``v_{n+1}``:
 
 ```math
-\left(\left(\rho + \tfrac{1}{\Delta}\right) I - A(c_n)\right) v_{n+1} = u(c_n) + \tfrac{1}{\Delta} v_n.
+\left(\left(\rho + \tfrac{1}{\Delta}\right) I - \mathbb{A}(c_n)\right) v_{n+1} = u(c_n) + \tfrac{1}{\Delta} v_n.
 ```
 
 Each iteration therefore has three steps, and only the last one is a solve — a *linear* one; no nonlinear solver appears anywhere:
@@ -122,7 +122,7 @@ C - Y
 The scheme above buys linearity by evaluating the policy at the *lagged* guess: the step solves for ``v_{n+1}`` under the policy implied by ``v_n``. The alternative — the **fully implicit** step — evaluates the policy at the *new* guess:
 
 ```math
-\left(\left(\rho + \tfrac{1}{\Delta}\right) I - A(c(v_{n+1}))\right) v_{n+1} = u(c(v_{n+1})) + \tfrac{1}{\Delta} v_n.
+\left(\left(\rho + \tfrac{1}{\Delta}\right) I - \mathbb{A}(c(v_{n+1}))\right) v_{n+1} = u(c(v_{n+1})) + \tfrac{1}{\Delta} v_n.
 ```
 
 The unknown now appears inside the policy, so each time step is a genuine **nonlinear system**, solved with Newton's method. This is what [EconPDEs.jl](https://github.com/matthieugomez/EconPDEs.jl) implements, and it is what you want once the equation is more nonlinear than this tutorial's:

@@ -22,10 +22,10 @@ Pkg.add("InfinitesimalGenerators")
 Every tool in the package is built on one object. For a Markov process ``x_t``, the infinitesimal generator is the operator
 
 ```math
-(\mathbb{T}f)(x) = \lim_{t \downarrow 0} \frac{E[f(x_t) \mid x_0 = x] - f(x)}{t}.
+(\mathbb{A}f)(x) = \lim_{t \downarrow 0} \frac{E[f(x_t) \mid x_0 = x] - f(x)}{t}.
 ```
 
-On a discretized state space with ``n`` points, ``\mathbb{T}`` becomes an ``n \times n`` matrix with non-negative off-diagonal entries and rows summing to zero — the generator (transition-rate) matrix of a continuous-time Markov chain. The package constructs this matrix for [univariate processes](univariate.md) (`DiffusionProcess`, with convenience constructors `OrnsteinUhlenbeck` and `CoxIngersollRoss`; `ContinuousTimeMarkovChain`) and [multivariate ones](multivariate.md) (`ProductProcess`, `SwitchingProcess`, `MultivariateDiffusionProcess`), and the [operators](operators.md) built on it — `stationary_distribution`, `feynman_kac`, `cgf`, `tail_index` — apply to all of them.
+On a discretized state space with ``n`` points, ``\mathbb{A}`` becomes an ``n \times n`` matrix with non-negative off-diagonal entries and rows summing to zero — the generator (transition-rate) matrix of a continuous-time Markov chain. The package constructs this matrix for [univariate processes](univariate.md) (`DiffusionProcess`, with convenience constructors `OrnsteinUhlenbeck` and `CoxIngersollRoss`; `ContinuousTimeMarkovChain`) and [multivariate ones](multivariate.md) (`ProductProcess`, `SwitchingProcess`, `MultivariateDiffusionProcess`), and the [operators](operators.md) built on it — `stationary_distribution`, `feynman_kac`, `cgf`, `tail_index` — apply to all of them.
 
 All built-in process types subtype `ContinuousTimeMarkovProcess{N}`, where `N` is the number of tensor-product state-space axes. A scalar diffusion or a finite-state chain has `N == 1`; `ProductProcess(X, Z)` has `N == ndims(X) + ndims(Z)`. The state shape is `size(X)`, and arrays are flattened in Julia's column-major order when applying `generator(X)`.
 

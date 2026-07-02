@@ -26,7 +26,7 @@ state_space(X::DiffusionProcess) = (X.x,)
 """
     Returns the discretized version of the infinitesimal generator of the Diffusion Process
     
-        𝕋: f ⭌ lim 1/t * E[f(x_t)|x_0=x]
+        𝔸: f ⭌ lim 1/t * E[f(x_t)|x_0=x]
                  = μx * ∂f + 0.5 * σx^2 * ∂^2f
 
     defined on the set of functions f such that 
@@ -37,7 +37,7 @@ state_space(X::DiffusionProcess) = (X.x,)
 
     The transpose of this operator corresponds to
         
-        𝕋': g ⭌ v * g - ∂(μx * g) + 0.5 * ∂^2(σx^2 * g)
+        𝔸': g ⭌ v * g - ∂(μx * g) + 0.5 * ∂^2(σx^2 * g)
 
     defined on the set of functions g such that  
         
@@ -51,7 +51,7 @@ end
 
 function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
     n = length(x)
-    𝕋 = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
+    𝔸 = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
     @inbounds for i in 1:n
         Δxp = x[min(i, n-1)+1] - x[min(i, n-1)]
         Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
@@ -59,23 +59,23 @@ function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
         # upwinding with reflecting boundaries: outward boundary drift is dropped
         if μx[i] >= 0
             if i < n
-                𝕋[i, i + 1] += μx[i] / Δxp
-                𝕋[i, i] -= μx[i] / Δxp
+                𝔸[i, i + 1] += μx[i] / Δxp
+                𝔸[i, i] -= μx[i] / Δxp
             end
         elseif i > 1
-            𝕋[i, i] += μx[i] / Δxm
-            𝕋[i, i - 1] -= μx[i] / Δxm
+            𝔸[i, i] += μx[i] / Δxm
+            𝔸[i, i - 1] -= μx[i] / Δxm
         end
-        𝕋[i, max(i - 1, 1)] += 0.5 * σx[i]^2 / (Δxm * Δx)
-        𝕋[i, i] -= 0.5 * σx[i]^2 * 2 / (Δxm * Δxp)
-        𝕋[i, min(i + 1, n)] += 0.5 * σx[i]^2 / (Δxp * Δx)
+        𝔸[i, max(i - 1, 1)] += 0.5 * σx[i]^2 / (Δxm * Δx)
+        𝔸[i, i] -= 0.5 * σx[i]^2 * 2 / (Δxm * Δxp)
+        𝔸[i, min(i + 1, n)] += 0.5 * σx[i]^2 / (Δxp * Δx)
     end
     # ensure rows sum to zero with machine precision
-    c = sum(𝕋, dims = 2)
+    c = sum(𝔸, dims = 2)
     for i in 1:n
-        𝕋[i, i] -= c[i]
+        𝔸[i, i] -= c[i]
     end
-    return 𝕋
+    return 𝔸
 end
 
 """

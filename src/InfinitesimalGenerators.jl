@@ -19,8 +19,8 @@ one-dimensional processes. `size(X)` is derived from those axes, and `ndims(X)`
 returns the type parameter `N`.
 """
 abstract type ContinuousTimeMarkovProcess{N} end
-# This type should define generator(), which returns a generator matrix 𝕋 such that
-# 𝕋f = lim_{t→0} E[f(x_t)|x_0=x]/t
+# This type should define generator(), which returns a generator matrix 𝔸 such that
+# 𝔸f = lim_{t→0} E[f(x_t)|x_0=x]/t
 
 """
     state_space(X::ContinuousTimeMarkovProcess)

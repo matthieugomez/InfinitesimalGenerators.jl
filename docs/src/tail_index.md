@@ -43,14 +43,14 @@ nothing # hide
 For a diffusion, ``E[e^{\xi m_t} f(x_t)]`` obeys the same backward equation as an ordinary expectation, except with a *tilted* generator: multiplying by ``e^{\xi m_t}`` adds the instantaneous CGF of the increment, ``\xi \mu_m(x) + \tfrac{1}{2}\xi^2 \sigma_m(x)^2``, to the diagonal:
 
 ```math
-\mathbb{T}_\xi = \mathbb{T} + \text{Diagonal}\left(\xi \mu_m + \tfrac{1}{2} \xi^2 \sigma_m^2\right).
+\mathbb{A}_\xi = \mathbb{A} + \text{Diagonal}\left(\xi \mu_m + \tfrac{1}{2} \xi^2 \sigma_m^2\right).
 ```
 
-As ``t`` grows, ``E[e^{\xi m_t}] \approx e^{\Lambda(\xi) t}`` where ``\Lambda(\xi)`` is the dominant eigenvalue of ``\mathbb{T}_\xi`` — a Perron–Frobenius eigenvalue, real and simple, because ``\mathbb{T}_\xi`` has non-negative off-diagonals. By hand:
+As ``t`` grows, ``E[e^{\xi m_t}] \approx e^{\Lambda(\xi) t}`` where ``\Lambda(\xi)`` is the dominant eigenvalue of ``\mathbb{A}_\xi`` — a Perron–Frobenius eigenvalue, real and simple, because ``\mathbb{A}_\xi`` has non-negative off-diagonals. By hand:
 
 ```@example tail
-𝕋 = generator(X)
-Λ(ξ) = maximum(real, eigvals(Matrix(𝕋 + Diagonal(ξ .* μm .+ 0.5 .* ξ .^ 2 .* σm .^ 2))))
+𝔸 = generator(X)
+Λ(ξ) = maximum(real, eigvals(Matrix(𝔸 + Diagonal(ξ .* μm .+ 0.5 .* ξ .^ 2 .* σm .^ 2))))
 Λ(1.0)
 ```
 
