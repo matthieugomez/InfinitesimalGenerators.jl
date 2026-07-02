@@ -8,7 +8,7 @@ abstract type AdditiveFunctional end
 Compute the long run cgf(m), i.e. the function
 ξ ⭌ lim_{t→∞} log(E[e^{ξ * m_t}])/t
 """
-function cgf(m::AdditiveFunctional; eigenvector = :right, r0 = Ones(length(m.X.x)), η0 = nothing)
+function cgf(m::AdditiveFunctional; eigenvector = :right, r0 = Ones(length(m.X)), η0 = nothing)
     ξ -> begin
         if eigenvector == :right
             principal_eigenvalue(tilted_generator(m)(ξ); r0 = r0, η0 = η0)

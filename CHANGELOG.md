@@ -7,6 +7,15 @@
   `struct`s (previously `mutable struct`), so the invariants checked in their
   constructors cannot be bypassed. Code that reassigned their fields after
   construction will no longer work.
+- `ProductProcess` now represents the independent product of Markov processes
+  in argument order, e.g. `ProductProcess(X, Z)`.
+
+### Added
+- `UnivariateMarkovProcess` and `MultivariateMarkovProcess` abstract subtypes.
+- `MultivariateDiffusionProcess` for tensor-product diffusion grids with drift,
+  variance, and covariance arrays.
+- Process-level `feynman_kac(X::MarkovProcess, ts; ...)`, accepting state-shaped
+  arrays and returning state-shaped time paths.
 
 ### Fixed
 - `∂(::DiffusionProcess)` no longer produces `NaN` rows at nodes where the drift
@@ -14,6 +23,10 @@
   `Diagonal(μx) \ generator(…)`, which divided by zero there): it uses an upwind
   scheme matching `generator`, and falls back to a central difference at interior
   zero-drift nodes.
+- One-dimensional diffusion generators now consistently drop outward drift at
+  reflecting boundaries, matching the multidimensional generator.
+- `MultivariateDiffusionProcess` construction now always goes through validation
+  and rejects non-PSD covariance matrices.
 - CI: the nightly Julia job is now correctly allowed to fail
   (`continue-on-error`) instead of failing the whole workflow. Previously the
   `allow_failure` matrix key was defined but never referenced.
@@ -22,6 +35,8 @@
 - `feynman_kac` allocates its output using the promoted element type of its
   inputs, so `Float32` (and other) element types are preserved instead of being
   forced to `Float64`.
+- `stationary_distribution(X::MarkovProcess)` now returns arrays with `size(X)`
+  for multidimensional processes, while matrix-level calls remain flat.
 - The test suite is organized into `@testset`s and tightened: several
   expressions that looked like assertions but tested nothing are now real
   `@test`s, and the zero-drift `∂` path and `feynman_kac` element type are
