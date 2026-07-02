@@ -2,7 +2,7 @@ module InfinitesimalGenerators
 
 using Distributions: Normal, Gamma, quantile
 using FillArrays: Ones, Zeros
-using LinearAlgebra: Diagonal, Tridiagonal, I, Symmetric, eigmin, factorize, kron
+using LinearAlgebra: Diagonal, Tridiagonal, I, Symmetric, eigmin, factorize, kron, ldiv!
 using SparseArrays: blockdiag, findnz, sparse, spzeros
 using Roots: fzero
 using BlockBandedMatrices: BandedBlockBandedMatrix, Block

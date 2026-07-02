@@ -92,8 +92,19 @@ function feynman_kac(𝕋, ts;
                 # constant time step
                 dt = step(ts)
                 B = factorize(I + (Diagonal(v) - 𝕋) * dt)
+                rhs = Vector{T}(undef, size(𝕋, 1))
+                # Use in-place solves for tridiagonal/banded factors, but keep
+                # a fallback for sparse factors such as CHOLMOD without ldiv!.
+                can_ldiv = hasmethod(ldiv!, Tuple{typeof(B), typeof(rhs)})
                 for i in (length(ts)-1):(-1):1
-                    u[:, i] = B \ (u[:, i+1] .+ f .* dt)
+                    @views copyto!(rhs, u[:, i + 1])
+                    @. rhs += f * dt
+                    if can_ldiv
+                        ldiv!(B, rhs)
+                        @views copyto!(u[:, i], rhs)
+                    else
+                        @views u[:, i] .= B \ rhs
+                    end
                 end
             else
                 # non-constant time step
