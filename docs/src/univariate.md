@@ -12,7 +12,7 @@ using InfinitesimalGenerators
 states = [0.5, 1.5]
 Q = [-0.1 0.1; 0.2 -0.2]
 Z = ContinuousTimeMarkovChain(states, Q)
-stationary_distribution(Z)
+generator(Z)
 ```
 
 ## Diffusions
