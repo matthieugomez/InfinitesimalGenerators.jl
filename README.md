@@ -45,11 +45,8 @@ The [stable documentation](https://matthieugomez.com/InfinitesimalGenerators.jl/
 3. [Solving HJB equations](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/hjb/) — the implicit method of Achdou, Han, Lasry, Lions, and Moll (2022), built from generator matrices.
 4. [Tail indices](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/tail_index/) — principal eigenvalues of tilted generators, `cgf`, and `tail_index`.
 
-# Use with EconPDEs.jl
-
-[EconPDEs.jl](https://github.com/matthieugomez/EconPDEs.jl) solves the nonlinear part of a continuous-time model (the HJB equation); this package handles what comes after. Both packages discretize with the same upwind convention, so the distributions and expectations computed here are exactly consistent with the solved value function. See [this worked example](https://matthieugomez.com/EconPDEs.jl/dev/infinitesimal_generators/) in the EconPDEs documentation and the [HJB tutorial](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/hjb/) in this one.
 
 # Related packages
 
-- [EconPDEs](https://github.com/matthieugomez/EconPDEs.jl) solves the nonlinear PDEs (HJB equations) whose solutions this package takes as inputs. The two packages are designed to be used together.
+- [EconPDEs.jl](https://github.com/matthieugomez/EconPDEs.jl) solves the nonlinear part of a continuous-time model (the HJB equation); while this package focuses on linear problems (iterating expectations backward in time or distributions forward in time). The two packages are designed to be used together. See [this worked example](https://matthieugomez.com/EconPDEs.jl/dev/infinitesimal_generators/) in the EconPDEs documentation and the [HJB tutorial](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/hjb/) in this one.
 - [SimpleDifferentialOperators](https://github.com/QuantEcon/SimpleDifferentialOperators.jl) contains more general tools to define operators with different boundary conditions. In contrast, InfinitesimalGenerators always assumes reflecting boundaries.
