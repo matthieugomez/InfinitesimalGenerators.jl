@@ -1,8 +1,14 @@
 """
-    Returns the Diffusion Process `x_t` with SDE
-    
-        dx_t = μ(x_t) dt + σ(x_t) dZ_t
+    DiffusionProcess(x, μx, σx)
 
+Returns the diffusion process
+
+    dx_t = μ(x_t) dt + σ(x_t) dZ_t
+
+discretized on the strictly increasing grid `x` (possibly non-uniform), where `μx` and `σx`
+are the drift and volatility evaluated on the grid. The drift is discretized by upwinding
+and the boundaries are reflecting, so [`generator`](@ref) always returns a valid generator
+(transition-rate) matrix.
 """
 struct DiffusionProcess{TX <: AbstractVector{<:Real}, Tμ <: AbstractVector{<:Real}, Tσ <: AbstractVector{<:Real}} <: ContinuousTimeMarkovProcess{1}
     x::TX
@@ -16,34 +22,22 @@ struct DiffusionProcess{TX <: AbstractVector{<:Real}, Tμ <: AbstractVector{<:Re
     end
 end
 
-"""
-    state_space(X::ContinuousTimeMarkovProcess)
-
-Return the state-space axes of the Markov process as a tuple.
-"""
 state_space(X::DiffusionProcess) = (X.x,)
 
 """
-    Returns the discretized version of the infinitesimal generator of the Diffusion Process
-    
-        𝔸: f ⭌ lim 1/t * E[f(x_t)|x_0=x]
-                 = μx * ∂f + 0.5 * σx^2 * ∂^2f
+    generator(X::DiffusionProcess)
 
-    defined on the set of functions f such that 
-        
-        ∂f(x) = 0 
+Returns the discretized infinitesimal generator of the diffusion,
 
-    at the border of the state space
+    𝔸: f ↦ μx * ∂f + 0.5 * σx^2 * ∂²f,
 
-    The transpose of this operator corresponds to
-        
-        𝔸': g ⭌ v * g - ∂(μx * g) + 0.5 * ∂^2(σx^2 * g)
+acting on functions with reflecting boundary conditions (∂f = 0 at the edges of the grid).
+Its transpose is the discretized forward (Fokker–Planck) operator,
 
-    defined on the set of functions g such that  
-        
-        -μx * g(x) + 0.5 * ∂(σx^2 * g) = 0
+    𝔸': g ↦ -∂(μx * g) + 0.5 * ∂²(σx^2 * g),
 
-    at the border of state space
+acting on densities with zero-flux boundary conditions (-μx * g + 0.5 * ∂(σx^2 * g) = 0 at
+the edges of the grid).
 """
 function generator(X::DiffusionProcess)
     generator(X.x, X.μx, X.σx)
@@ -81,7 +75,7 @@ end
 """
     Returns the discretized version of the operator ∂
 
-        δ: f ⭌ ∂f
+        ∂: f ↦ ∂f
 
     The scheme is upwind with respect to the drift (forward where μx ≥ 0,
     backward where μx < 0), matching the discretization used in `generator`.
@@ -117,10 +111,20 @@ function ∂(X::DiffusionProcess)
 end
 
 """
-    Returns the Ornstein Uhlenbeck process defined by the SDE
-        
-        dx_t = -κ * (x_t - xbar) * dt + σ * dZ_t
+    OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, xmin, xmax, pow = 1)
 
+Returns the Ornstein–Uhlenbeck process
+
+    dx_t = -κ * (x_t - xbar) * dt + σ * dZ_t
+
+discretized as a [`DiffusionProcess`](@ref) on an automatically chosen grid.
+
+By default the grid has `length` points spanning the `p` and `1 - p` quantiles of the
+stationary distribution `N(xbar, σ^2 / 2κ)`; pass `xmin` and `xmax` to override the limits.
+`pow` controls the grid spacing (when `xmin > 0`, points are uniform in `x^(1/pow)`, so
+`pow > 1` concentrates points near `xmin`). The default `p = 1e-10` is deliberately extreme:
+reflecting boundaries distort solutions near the edges of the grid, and a wide grid pushes
+that distortion where the process never goes — which matters especially for [`tail_index`](@ref).
 """
 function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length = 100,
     xmin = quantile(Normal(xbar, σ / sqrt(2 * κ)), p), xmax = quantile(Normal(xbar, σ / sqrt(2 * κ)), 1 - p), pow = 1)
@@ -134,10 +138,19 @@ function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length =
 end
 
 """
-    Returns the Cox Ingersoll Ross process defined by the SDE
-        
-        dx_t = -κ * (x - xbar) * dt + σ * sqrt(x) * dZ_t
+    CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, xmin, xmax, pow = 2)
 
+Returns the Cox–Ingersoll–Ross process
+
+    dx_t = -κ * (x_t - xbar) * dt + σ * sqrt(x_t) * dZ_t
+
+discretized as a [`DiffusionProcess`](@ref) on an automatically chosen grid. Requires the
+Feller condition `2κ * xbar / σ^2 > 1`, so that 0 is not attainable.
+
+By default the grid has `length` points spanning the `p` and `1 - p` quantiles of the
+stationary Gamma distribution; pass `xmin` and `xmax` to override the limits. `pow` controls
+the grid spacing (points are uniform in `x^(1/pow)`, so the default `pow = 2` concentrates
+points near zero, where the volatility is smallest).
 """
 function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, α = 2 * κ * xbar / σ^2, β = σ^2 / (2 * κ), xmin = quantile(Gamma(α, β), p), xmax = quantile(Gamma(α, β), 1 - p), pow = 2)
     # check 0 is not attainable

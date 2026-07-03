@@ -1,36 +1,8 @@
-function _flatten_state_vector_argument(X::ContinuousTimeMarkovProcess, x, label::Symbol)
-    length(x) == length(X) ||
-        throw(DimensionMismatch("`$label` has length $(length(x)) but process has length $(length(X))"))
-    return vec(x)
-end
-
-function _flatten_state_time_argument(X::ContinuousTimeMarkovProcess, x, ts, label::Symbol)
-    state_shape = size(X)
-    if x isa AbstractVector
-        length(x) == length(X) ||
-            throw(DimensionMismatch("`$label` has length $(length(x)) but process has length $(length(X))"))
-        return x
-    elseif size(x) == state_shape
-        return vec(x)
-    elseif x isa AbstractMatrix && size(x, 1) == length(X) && size(x, 2) in (1, length(ts))
-        return x
-    elseif length(size(x)) == length(state_shape) + 1 &&
-            size(x)[1:end - 1] == state_shape &&
-            size(x, ndims(x)) in (1, length(ts))
-        return reshape(x, length(X), size(x, ndims(x)))
-    else
-        throw(DimensionMismatch(
-            "`$label` must have shape $(state_shape), length $(length(X)), " *
-            "or time-varying shape ($(state_shape)..., $(length(ts)))"))
-    end
-end
-
 """
-    feynman_kac(X::ContinuousTimeMarkovProcess, ts; f = nothing, ψ = nothing, v = nothing, direction = :backward)
     feynman_kac(𝔸::AbstractMatrix, ts; f, ψ, v, direction = :backward)
 
-Solve the Feynman–Kac PDE associated with a Markov process `X` (or directly with a generator
-matrix `𝔸`) on the time grid `ts`, using implicit Euler time steps.
+Solve the Feynman–Kac PDE associated with a generator matrix `𝔸` on the time grid
+`ts`, using implicit Euler time steps.
 
 With `direction = :backward`, returns the solution of
 
@@ -50,23 +22,10 @@ or, equivalently, in integral form,
 
     u(x, t) = E[∫₀ᵗ e^{-∫₀ˢ v(x_u) du} f(x_s) ds + e^{-∫₀ᵗ v(x_u) du} ψ(xₜ) | x₀ = x].
 
-For the process form, `f`, `ψ`, and `v` are arrays shaped like the state space (`size(X)`);
-`f` and `v` may also carry a trailing time dimension of length `length(ts)`. The result has
-one slice per date in `ts`. For the matrix form, they are vectors of length `size(𝔸, 1)`.
+The inputs `f`, `ψ`, and `v` are vectors of length `size(𝔸, 1)`. The inputs `f`
+and `v` may also be matrices with one column or `length(ts)` columns.
 """
-function feynman_kac(X::ContinuousTimeMarkovProcess, ts; f = nothing, ψ = nothing, v = nothing, direction = :backward)
-    𝔸 = generator(X)
-    f_flat = f === nothing ? zeros(eltype(𝔸), length(X)) :
-        _flatten_state_time_argument(X, f, ts, :f)
-    ψ_flat = ψ === nothing ? zeros(eltype(𝔸), length(X)) :
-        _flatten_state_vector_argument(X, ψ, :ψ)
-    v_flat = v === nothing ? zeros(eltype(𝔸), length(X)) :
-        _flatten_state_time_argument(X, v, ts, :v)
-    u = feynman_kac(𝔸, ts; f = f_flat, ψ = ψ_flat, v = v_flat, direction = direction)
-    return _reshape_state_time_output(X, u)
-end
-
-function feynman_kac(𝔸, ts;
+function feynman_kac(𝔸::AbstractMatrix, ts;
     f::Union{AbstractVector, AbstractMatrix} = zeros(eltype(𝔸), size(𝔸, 1)),
     ψ::AbstractVector = zeros(eltype(𝔸), size(𝔸, 1)),
     v::Union{AbstractVector, AbstractMatrix} = zeros(eltype(𝔸), size(𝔸, 1)),

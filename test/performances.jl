@@ -15,13 +15,14 @@ x = range(- 10 * sqrt(σ^2 /(2 * κx)), stop = 10 * sqrt(σ^2 /(2 * κx)), lengt
 
 ## stationnary distribution
 @time g = stationary_distribution(DiffusionProcess(x, μx, σx))
-#   0.002711 seconds (248 allocations: 713.797 KiB)
+#   0.000043 seconds (79 allocations: 193.938 KiB)
 
 ## Feynman-Kac
 ψ = x.^2
 t = range(0, stop = 1000, step = 1/10)
 @time u = feynman_kac(generator(DiffusionProcess(x, μx, σx)), t; ψ = ψ)[:, end]
-#   0.019786 seconds (3.09 k allocations: 31.120 MiB, 14.88% gc time)
+#   0.103 seconds (67 allocations: 76.462 MiB) — scales linearly in length(t);
+#   with stop = 100 it runs in 0.0085 seconds (7.8 MiB)
 g'u ≈ g'ψ
 
 
@@ -36,7 +37,7 @@ x = range(- 3 * sqrt(σ^2 /(2 * κx)), stop = 3 * sqrt(σ^2 /(2 * κx)), length 
 ρ = 1.0
 M = AdditiveFunctionalDiffusion(DiffusionProcess(x, μx, σx), μM, σM; ρ = ρ)
 @time ζ = tail_index(M)
-#  0.22s
-@time η, l = cgf(M, eigenvector = :left)(ζ)
-@time η, r = cgf(M, eigenvector = :right)(ζ)
-#  0.06s combined
+#  0.001 seconds
+@time η, l = cgf_eigenvector(M, ζ, :left)
+@time η, r = cgf_eigenvector(M, ζ, :right)
+#  0.0001 seconds combined

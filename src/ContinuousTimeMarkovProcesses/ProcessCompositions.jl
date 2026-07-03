@@ -39,16 +39,19 @@ end
 """
     SwitchingProcess(Z, Xs)
 
-Returns a Markov process whose dynamics switch across the states of Markov chain
-`Z`. In state `only(state_space(Z))[i]`, the process follows `Xs[i]`.
+Returns a Markov process whose dynamics are modulated by the autonomous Markov process `Z`
+— any process in the package, e.g. a `ContinuousTimeMarkovChain` (regime switching) or a
+`DiffusionProcess` (continuous modulation). In the `i`-th state of `Z` (in column-major
+order for multivariate `Z`), the process follows `Xs[i]`; all `Xs` must share the same
+state space.
 """
-struct SwitchingProcess{N, TZ <: ContinuousTimeMarkovChain, TP <: AbstractVector{<:ContinuousTimeMarkovProcess}} <: ContinuousTimeMarkovProcess{N}
+struct SwitchingProcess{N, TZ <: ContinuousTimeMarkovProcess, TP <: AbstractVector{<:ContinuousTimeMarkovProcess}} <: ContinuousTimeMarkovProcess{N}
     Z::TZ
     processes::TP
-    function SwitchingProcess(Z::TZ, processes::TP) where {TZ <: ContinuousTimeMarkovChain, TP <: AbstractVector{<:ContinuousTimeMarkovProcess}}
+    function SwitchingProcess(Z::TZ, processes::TP) where {TZ <: ContinuousTimeMarkovProcess, TP <: AbstractVector{<:ContinuousTimeMarkovProcess}}
         # validate switching components
         length(processes) == length(Z) ||
-            throw(DimensionMismatch("there should be one process per Markov-chain state"))
+            throw(DimensionMismatch("there should be one process per state of the modulating process"))
         length(processes) > 0 || throw(ArgumentError("processes cannot be empty"))
         shape = size(processes[1])
         all(size(X) == shape for X in processes) ||
@@ -63,7 +66,15 @@ end
 
 state_space(X::SwitchingProcess) = (state_space(X.processes[1])..., state_space(X.Z)...)
 
-generator(X::SwitchingProcess) = jointoperator(generator.(X.processes), generator(X.Z))
+function generator(X::SwitchingProcess)
+    Q = generator(X.Z)
+    operators = generator.(X.processes)
+    # the block-banded path stores every block pair: right for a small dense Q (a typical
+    # chain), wasteful for a large structured Q (e.g. a diffusion modulator) — use the
+    # sparse path there
+    Q isa Matrix && return jointoperator(operators, Q)
+    return jointoperator(sparse.(operators), sparse(Q))
+end
 
 """
     ProductProcess(X, Y, ...)

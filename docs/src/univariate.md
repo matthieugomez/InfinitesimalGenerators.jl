@@ -1,10 +1,10 @@
 # Univariate processes
 
-Every process in the package implements the same three verbs — `generator(X)` (the discretized generator, as a generator (transition-rate) matrix), `state_space(X)` (a tuple of state-space axes), and `size(X)` (the tensor shape of the state space) — and everything else ([stationary distributions, expectations, tail indices](operators.md)) is built on them. Univariate processes subtype `ContinuousTimeMarkovProcess{1}`, so `ndims(X) == 1`, `state_space(X)` is a one-element tuple, and `size(X)` is a one-element tuple. This page tours the univariate process types.
+Every process in the package implements the same three verbs — [`generator(X)`](@ref generator) (the generator (transition-rate) matrix of the discretized process), [`state_space(X)`](@ref state_space) (a tuple of state-space axes), and `size(X)` (the tensor shape of the state space) — and everything else ([stationary distributions, expectations, tail indices](operators.md)) is built on them. Univariate processes subtype `ContinuousTimeMarkovProcess{1}`, so `ndims(X) == 1` and `state_space(X)` and `size(X)` are one-element tuples. This page tours the univariate process types.
 
 ## Finite-state continuous-time Markov chains
 
-The simplest process is one whose generator is given directly: `ContinuousTimeMarkovChain(states, Q)` represents a continuous-time chain on `states` with generator (transition-rate) matrix `Q` (rows sum to zero, non-negative off-diagonals), and `generator(Z)` is just `Q`:
+The simplest process is one whose generator is given directly: [`ContinuousTimeMarkovChain`](@ref)`(states, Q)` represents a continuous-time chain on `states` with generator matrix `Q` (rows sum to zero, non-negative off-diagonals), and `generator(Z)` is just `Q`. (`ContinuousTimeMarkovChain(Q)`, without states, uses the indices `1:size(Q, 1)`.)
 
 ```@example univariate
 using InfinitesimalGenerators
@@ -12,12 +12,12 @@ using InfinitesimalGenerators
 states = [0.5, 1.5]
 Q = [-0.1 0.1; 0.2 -0.2]
 Z = ContinuousTimeMarkovChain(states, Q)
-stationary_distribution(Z)
+generator(Z)
 ```
 
 ## Diffusions
 
-`DiffusionProcess(x, μx, σx)` represents ``dx_t = \mu(x_t)dt + \sigma(x_t)dZ_t``, given a strictly increasing grid `x` (possibly non-uniform) and the drift and volatility evaluated on it. Discretizing turns the diffusion into exactly the object above — a finite-state chain jumping between neighboring grid points. The drift is discretized by upwinding — forward differences where it is positive, backward where it is negative — and the boundaries are reflecting, so the generator is always a well-defined generator (transition-rate) matrix (rows sum to zero, non-negative off-diagonals):
+[`DiffusionProcess`](@ref)`(x, μx, σx)` represents ``dx_t = \mu(x_t)dt + \sigma(x_t)dZ_t``, given a strictly increasing grid `x` (possibly non-uniform) and the drift and volatility evaluated on it. Discretizing turns the diffusion into exactly the object above — a finite-state chain jumping between neighboring grid points. The drift is discretized by upwinding — forward differences where it is positive, backward where it is negative — and the boundaries are reflecting, so the discretized operator is always a valid generator matrix (rows sum to zero, non-negative off-diagonals):
 
 ```@example univariate
 x = range(-1, 1, length = 100)
@@ -30,7 +30,7 @@ In the finite-difference literature, a discretization with non-negative off-diag
 
 ## Convenience constructors
 
-The two workhorse processes come with constructors that choose the grid automatically:
+The two workhorse processes come with constructors — [`OrnsteinUhlenbeck`](@ref) and [`CoxIngersollRoss`](@ref) — that choose the grid automatically:
 
 ```@example univariate
 X = OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.03, σ = 0.01)   # dx = -κ (x - xbar) dt + σ dZ

@@ -1,5 +1,57 @@
 # Changelog
 
+## 3.1.0
+
+### Added
+- `check_generator(𝔸; atol)` checks that a matrix is a generator (transition-rate)
+  matrix — nonnegative off-diagonal entries, rows summing to zero — exploiting matrix
+  structure (bands, stored sparse entries) instead of scanning all `n²` entries.
+  Violations emit a warning reporting their size rather than throwing, since a matrix
+  close to a generator often still yields accurate results. Useful before handing a
+  hand-built matrix to `stationary_distribution` or `feynman_kac`;
+  `ContinuousTimeMarkovChain` now uses it to check its input (and so warns, rather than
+  errors, on an invalid `Q`).
+- `SwitchingProcess(Z, Xs)` now accepts *any* process as the modulator `Z`, not just a
+  `ContinuousTimeMarkovChain` — e.g. a diffusion modulator yields continuously modulated
+  dynamics, equivalent to a `MultivariateDiffusionProcess` with independent innovations.
+- `AdditiveFunctional` now works for *any* `ContinuousTimeMarkovProcess` — chains,
+  products, switching processes, multivariate diffusions — not just univariate
+  diffusions, and gains a keyword constructor with canonical coefficients:
+  `AdditiveFunctional(X; drift, variance, covariance)`, where `drift` and `variance`
+  are scalars or arrays shaped like `size(X)`. The `covariance` keyword specifies
+  `cov(dm, dx)` directly and — new capability — also works for
+  `MultivariateDiffusionProcess` states (a `NamedTuple` such as `(; x = cx)`).
+  The positional `AdditiveFunctional(X, μm, σm; ρ)` remains as SDE-style sugar.
+- `tilted_generator(m, ξ)` is exported: the tilted generator matrix `𝔸_ξ` from which
+  all additive-functional operators are computed, and the extension point for custom
+  functionals (parallel to `generator` for custom processes). It can be passed
+  directly to `feynman_kac` for finite-horizon moments `E[e^{ξ mₜ} ψ(xₜ)]`.
+- `principal_eigenvalue` is exported (previously documented under its qualified
+  name). It now checks on entry that its input is a Metzler matrix (nonnegative
+  off-diagonal entries) — the Perron–Frobenius hypothesis its result relies on —
+  warning if not.
+- The `direction` keyword of `FirstDerivative` and `SecondDerivative` accepts
+  `:forward`/`:up` and `:backward`/`:down` as synonyms everywhere (the `:up`/`:down`
+  vocabulary matches EconPDEs' `_up`/`_down` derivative names).
+
+### Changed
+- `cgf(m, ξ)` now returns the scalar `Λ(ξ)`. The old closure form `cgf(m)(ξ)`,
+  returning a tuple, is deprecated; eigenvectors are available through the new
+  `cgf_eigenvector(m, ξ, :right)` / `cgf_eigenvector(m, ξ, :left)` (the left
+  eigenvector is normalized to sum to one, as before).
+- `AdditiveFunctionalDiffusion` is a legacy type: `AdditiveFunctional` constructs an
+  equivalent functional for diffusion states, including correlated noise. The type
+  remains exported and functional.
+- The rebirth-distribution keyword of `stationary_distribution` is now `rebirth`
+  instead of `ψ`, to avoid the collision with `feynman_kac`, where `ψ` is the
+  terminal payoff. The old keyword still works with a deprecation warning.
+- The multi-dimensional methods of `FirstDerivative` and `SecondDerivative` now
+  return lazy arrays (entries computed on demand), like the one-dimensional
+  methods, instead of materialized `Array`s. Use `collect` to materialize.
+- Cross-derivatives (`SecondDerivative(grid, F, dim1, dim2)` with `dim1 != dim2`)
+  now throw if a nonzero `bc` is passed; the keyword was previously accepted and
+  silently ignored.
+
 ## 3.0.0
 
 ### Breaking

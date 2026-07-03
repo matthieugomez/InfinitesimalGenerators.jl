@@ -16,7 +16,7 @@ makedocs(;
         edit_link = "main",
         assets = ["assets/custom.css"],
     ),
-    checkdocs = :none,
+    checkdocs = :exports,
     pagesonly = true,
     pages = [
         "Home" => "index.md",

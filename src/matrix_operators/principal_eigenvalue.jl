@@ -1,9 +1,14 @@
 """
+    principal_eigenvalue(𝔸; r0 = ones(size(𝔸, 1)), η0 = nothing, maxiter = 100, tol = 1e-12)
+
 Compute the principal eigenvalue and eigenvector of a Metzler matrix 𝔸
-(i.e. a matrix with non-negative off-diagonal entries).
+(i.e. a matrix with non-negative off-diagonal entries), returned as a tuple `(η, r)`.
 
 By Perron-Frobenius, the eigenvalue η with largest real part is real,
-and the corresponding eigenvector r is strictly positive.
+and the corresponding eigenvector r is strictly positive. Metzlerity is what makes this
+hold — generators and tilted generators both satisfy it — so the matrix is checked on
+entry, with a warning if an off-diagonal entry is negative (results may still be accurate
+when the violation is small).
 
 Two cases:
 1. If rows or columns sum to zero (𝔸 is a generator), then η = 0.
@@ -19,7 +24,8 @@ Two cases:
    this is not guaranteed; pass `η0` to start from a known bound if needed.
    For tridiagonal 𝔸, each iteration costs O(n).
 """
-function principal_eigenvalue(𝔸; r0 = ones(size(𝔸, 1)), η0 = nothing, maxiter = 100, tol = 1e-12)
+function principal_eigenvalue(𝔸::AbstractMatrix; r0 = ones(size(𝔸, 1)), η0 = nothing, maxiter = 100, tol = 1e-12)
+    check_metzler(𝔸)
     if (maximum(abs.(sum(𝔸, dims = 1))) < 1e-9) || (maximum(abs.(sum(𝔸, dims = 2))) < 1e-9)
         # rows or columns sum to zero → η = 0, solve 𝔸r = 0 with r[1] = 1
         if 𝔸 isa Tridiagonal

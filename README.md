@@ -1,6 +1,7 @@
 [![Build status](https://github.com/matthieugomez/InfinitesimalGenerators.jl/workflows/CI/badge.svg)](https://github.com/matthieugomez/InfinitesimalGenerators.jl/actions)
 [![Coverage](https://codecov.io/gh/matthieugomez/InfinitesimalGenerators.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/matthieugomez/InfinitesimalGenerators.jl)
-[![Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://matthieugomez.github.io/InfinitesimalGenerators.jl/dev/)
+[![Stable documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/)
+[![Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://matthieugomez.com/InfinitesimalGenerators.jl/dev/)
 
 This package computes objects associated with continuous-time Markov processes — stationary distributions, conditional expectations, tail indices — by discretizing the process into its infinitesimal generator matrix.
 
@@ -31,22 +32,22 @@ stationary_distribution(X)                  # its stationary distribution
 feynman_kac(X, 0:0.1:10; ψ = collect(x))    # conditional expectations E[x_T | x_t]
 ```
 
-Beyond univariate diffusions, the package supports finite-state continuous-time Markov chains (`ContinuousTimeMarkovChain`), multivariate diffusions (`MultivariateDiffusionProcess`), and their compositions (`ProductProcess`, `SwitchingProcess`) — all through the same three verbs. Generators are discretized with the standard upwind finite-difference scheme, with reflecting boundaries.
+Beyond univariate diffusions, the package supports finite-state continuous-time Markov chains (`ContinuousTimeMarkovChain`), multivariate diffusions (`MultivariateDiffusionProcess`), and their compositions (`ProductProcess`, `SwitchingProcess`) — all through the same three verbs: `generator`, `state_space`, and `size`. Generators are discretized with the standard upwind finite-difference scheme, with reflecting boundaries.
 
 Process types subtype `ContinuousTimeMarkovProcess{N}`, where `N` is the number of tensor-product state-space axes. For example, a scalar diffusion has `N == 1`, while `ProductProcess(X, Z)` has `N == ndims(X) + ndims(Z)`.
 
 # Documentation
 
-The [documentation](https://matthieugomez.github.io/InfinitesimalGenerators.jl/dev/) has a manual — [univariate processes](https://matthieugomez.github.io/InfinitesimalGenerators.jl/dev/univariate/), [multivariate processes](https://matthieugomez.github.io/InfinitesimalGenerators.jl/dev/multivariate/), and the [operators](https://matthieugomez.github.io/InfinitesimalGenerators.jl/dev/operators/) that apply to them — and four tutorials, each showing the computation by hand from the generator matrix before introducing the helper function:
+The [stable documentation](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/) has a manual — [univariate processes](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/univariate/), [multivariate processes](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/multivariate/), and the [operators](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/operators/) that apply to them — and four tutorials, each showing the computation by hand from the generator matrix before introducing the helper function:
 
-1. [Expected values](https://matthieugomez.github.io/InfinitesimalGenerators.jl/dev/expectations/) — the Kolmogorov backward equation and `feynman_kac`.
-2. [Distribution dynamics](https://matthieugomez.github.io/InfinitesimalGenerators.jl/dev/distributions/) — the Kolmogorov forward equation and `stationary_distribution`.
-3. [Solving HJB equations](https://matthieugomez.github.io/InfinitesimalGenerators.jl/dev/hjb/) — the implicit method of Achdou, Han, Lasry, Lions, and Moll (2022), built from generator matrices.
-4. [Tail indices](https://matthieugomez.github.io/InfinitesimalGenerators.jl/dev/tail_index/) — principal eigenvalues of tilted generators, `cgf`, and `tail_index`.
+1. [Iterating backward on expectations](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/expectations/) — the Kolmogorov backward equation and `feynman_kac`.
+2. [Iterating forward on distributions](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/distributions/) — the Kolmogorov forward equation and `stationary_distribution`.
+3. [Solving HJB equations](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/hjb/) — the implicit method of Achdou, Han, Lasry, Lions, and Moll (2022), built from generator matrices.
+4. [Tail indices](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/tail_index/) — principal eigenvalues of tilted generators, `cgf`, and `tail_index`.
 
 # Use with EconPDEs.jl
 
-[EconPDEs.jl](https://github.com/matthieugomez/EconPDEs.jl) solves the nonlinear part of a continuous-time model (the HJB equation); this package handles what comes after. Both packages discretize with the same upwind convention, so the distributions and expectations computed here are exactly consistent with the solved value function. See [this worked example](https://matthieugomez.github.io/EconPDEs.jl/dev/infinitesimal_generators/) in the EconPDEs documentation and the [HJB tutorial](https://matthieugomez.github.io/InfinitesimalGenerators.jl/dev/hjb/) in this one.
+[EconPDEs.jl](https://github.com/matthieugomez/EconPDEs.jl) solves the nonlinear part of a continuous-time model (the HJB equation); this package handles what comes after. Both packages discretize with the same upwind convention, so the distributions and expectations computed here are exactly consistent with the solved value function. See [this worked example](https://matthieugomez.com/EconPDEs.jl/dev/infinitesimal_generators/) in the EconPDEs documentation and the [HJB tutorial](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/hjb/) in this one.
 
 # Related packages
 

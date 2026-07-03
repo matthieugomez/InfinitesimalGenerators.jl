@@ -1,6 +1,6 @@
 # Multivariate processes
 
-Multivariate processes live on tensor-product state spaces. They subtype `ContinuousTimeMarkovProcess{N}`, where `N` is the number of state-space axes: `size(X)` is the shape of the grid (e.g. `(100, 2)` for a diffusion crossed with a two-state chain), and `generator(X)` acts on states flattened in column-major order, so `stationary_distribution(X)` and `feynman_kac(X, ...)` return arrays shaped like `size(X)`.
+Multivariate processes live on tensor-product state spaces. They subtype `ContinuousTimeMarkovProcess{N}`, where `N` is the number of state-space axes: `size(X)` is the shape of the grid (e.g. `(100, 2)` for a diffusion crossed with a two-state chain), and [`generator(X)`](@ref generator) acts on states flattened in column-major order, so [`stationary_distribution(X)`](@ref stationary_distribution) and [`feynman_kac(X, ...)`](@ref feynman_kac) return arrays shaped like `size(X)`.
 
 Start from the univariate building blocks:
 
@@ -14,7 +14,7 @@ nothing # hide
 
 ## Products of independent processes
 
-`ProductProcess` combines independent processes into their joint process; the generator is assembled from Kronecker sums, and the state space is the tensor product in argument order:
+[`ProductProcess`](@ref) combines independent processes into their joint process; the generator is assembled from Kronecker sums, and the state space is the tensor product in argument order:
 
 ```@example multivariate
 Y = ProductProcess(X, Z)
@@ -23,7 +23,7 @@ Y = ProductProcess(X, Z)
 
 ## Regime switching
 
-`SwitchingProcess(Z, Xs)` drops the independence: the continuous dynamics *depend* on the chain. In state `only(state_space(Z))[i]`, the process follows `Xs[i]`; all regime processes must share the same grid. This is the natural representation of a solved model with a discrete state — see the [HJB tutorial](hjb.md), where wealth drifts at a policy-implied rate that switches with income:
+[`SwitchingProcess`](@ref)`(Z, Xs)` drops the independence: the dynamics *depend* on the autonomous modulating process `Z`. In the `i`-th state of `Z`, the process follows `Xs[i]`; all modulated processes must share the same grid. `Z` can be any process in the package — a chain gives regime switching, and a diffusion gives continuous modulation (equivalent to a `MultivariateDiffusionProcess` with independent innovations, built compositionally). This is the natural representation of a solved model with a discrete state — see the [HJB tutorial](hjb.md), where wealth drifts at a policy-implied rate that switches with income:
 
 ```@example multivariate
 xs = only(state_space(X))
@@ -35,7 +35,7 @@ size(S)
 
 ## Correlated diffusions
 
-`MultivariateDiffusionProcess` handles correlated diffusions on a tensor-product grid, with drift, variance, and covariance terms already evaluated on it (scalars or arrays), for example after solving an HJB:
+[`MultivariateDiffusionProcess`](@ref) handles correlated diffusions on a tensor-product grid, with drift, variance, and covariance terms already evaluated on it (scalars or arrays), for example after solving an HJB:
 
 ```@example multivariate
 xs = range(-1, 1, length = 50)

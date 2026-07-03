@@ -44,8 +44,8 @@ nonlinear only through the policy ``c(v)``. The key trick of the scheme is *wher
 
 Each iteration therefore has three steps, and only the last one is a solve — a *linear* one; no nonlinear solver appears anywhere:
 
-1. **The policy from the current guess.** The first-order condition ``u'(c) = v_j'(a)`` pins down consumption, with the finite difference chosen by the **upwind rule**: the forward difference where the implied saving is positive, the backward difference where it is negative, and ``c = y_j + ra`` at a point where neither is consistent (the drift is zero there). The borrowing constraint never needs to be imposed explicitly: it enters through the *boundary condition* ``v_j'(\underline{a}) = u'(y_j + r\underline{a})`` on the backward difference — the `bc` keyword of `FirstDerivative`.
-2. **The generator under that policy**: assets drift at rate ``y + ra - c`` within each income state (a zero-volatility `DiffusionProcess` per state), and income switches according to `Z` — together, a `SwitchingProcess`.
+1. **The policy from the current guess.** The first-order condition ``u'(c) = v_j'(a)`` pins down consumption, with the finite difference chosen by the **upwind rule**: the forward difference where the implied saving is positive, the backward difference where it is negative, and ``c = y_j + ra`` at a point where neither is consistent (the drift is zero there). The borrowing constraint never needs to be imposed explicitly: it enters through the *boundary condition* ``v_j'(\underline{a}) = u'(y_j + r\underline{a})`` on the backward difference — the `bc` keyword of [`FirstDerivative`](@ref).
+2. **The generator under that policy**: assets drift at rate ``y + ra - c`` within each income state (a zero-volatility [`DiffusionProcess`](@ref) per state), and income switches according to `Z` — together, a [`SwitchingProcess`](@ref).
 3. **One implicit time step**: a single sparse linear solve.
 
 ```@example hjb

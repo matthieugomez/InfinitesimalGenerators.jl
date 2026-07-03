@@ -1,8 +1,16 @@
+function _fd_direction(direction::Symbol)
+    direction ∈ (:forward, :up, :upward) && return :up
+    direction ∈ (:backward, :down, :downward) && return :down
+    throw(ArgumentError("direction must be :forward/:up or :backward/:down"))
+end
+
 """
     FirstDerivative(x, f; direction = :forward, bc = (0, 0))
     FirstDerivative(grid, F, dim; direction = :forward, bc = (0, 0))
 
 Lazily compute first-order derivatives (using finite-difference scheme) on a grid.
+The result is an `AbstractArray` whose entries are computed on demand; use `collect`
+to materialize it.
 
 In one dimension, `x` is a grid vector and `f` is a vector with `length(f) == length(x)`.
 In multiple dimensions, `grid` is a tuple of axis vectors such as `(xs, ys)`,
@@ -10,53 +18,59 @@ In multiple dimensions, `grid` is a tuple of axis vectors such as `(xs, ys)`,
 number to differentiate. `NamedTuple` grids with symbolic dimensions are also
 accepted as a convenience.
 
+`direction` selects the one-sided difference: `:forward` (synonyms `:up`, `:upward`)
+or `:backward` (synonyms `:down`, `:downward`).
+
 `bc` is the value of the first derivative at the lower and upper boundaries.
 """
-struct FirstDerivative{T, X <: AbstractVector{<:Real}, Y <: AbstractVector{<: Real}} <: AbstractVector{T}
-	x::X
-	y::Y
-	bc::NTuple{2, T}
-	direction::Symbol
-	function FirstDerivative(x, y, bc, direction)
-		size(x) == size(y) || throw(DimensionMismatch(
-			"cannot match grid of length $(length(x)) with vector of length $(length(y))"))
-		direction ∈ (:forward, :backward, :upward, :downward) || throw(ArgumentError("direction must be :forward/:upward or :backward/:downward"))
-		return new{float(eltype(y)), typeof(x), typeof(y)}(x, y, bc, direction)
-	end
+struct FirstDerivative{T, N, G <: Tuple, Y <: AbstractArray} <: AbstractArray{T, N}
+    grid::G
+    y::Y
+    dim::Int
+    bc::NTuple{2, T}
+    direction::Symbol   # normalized to :up or :down
+    function FirstDerivative(grid::Tuple, y::AbstractArray, dim::Integer; bc = (0, 0), direction = :forward)
+        _fd_dimension(grid, y, dim)
+        T = float(eltype(y))
+        return new{T, ndims(y), typeof(grid), typeof(y)}(grid, y, Int(dim), NTuple{2, T}(bc), _fd_direction(direction))
+    end
 end
 
-FirstDerivative(x, y; bc = (0, 0), direction = :forward) = FirstDerivative(x, y, bc, direction)
+FirstDerivative(x::AbstractVector, y::AbstractVector; bc = (0, 0), direction = :forward) =
+    FirstDerivative((x,), y, 1; bc = bc, direction = direction)
 
-Base.size(d::FirstDerivative) = (length(d.x),)
+FirstDerivative(grid::NamedTuple, y::AbstractArray, dim::Integer; bc = (0, 0), direction = :forward) =
+    FirstDerivative(Tuple(grid), y, dim; bc = bc, direction = direction)
 
-Base.IndexStyle(d::FirstDerivative) = IndexLinear()
+FirstDerivative(grid::NamedTuple, y::AbstractArray, dim::Symbol; bc = (0, 0), direction = :forward) =
+    FirstDerivative(Tuple(grid), y, _fd_dimension_index(grid, dim); bc = bc, direction = direction)
 
-function Base.getindex(d::FirstDerivative{T}, i::Int) where {T}
-	x, y, bc, direction = d.x, d.y, d.bc, d.direction
-	if direction ∈ (:forward, :upward)
-		if i == length(x)
-			return convert(T, bc[end])
-		else
-			Δxp = x[min(i, length(x)-1)+1] - x[min(i, length(x)-1)]
-			return convert(T, (y[i+1] - y[i]) / Δxp)
-		end
-	else
-		if i == 1
-			return convert(T, bc[1])
-		else
-			Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
-			return convert(T, (y[i] - y[i-1]) / Δxm)
-		end
-	end
+Base.size(d::FirstDerivative) = size(d.y)
+
+Base.IndexStyle(::Type{<:FirstDerivative}) = IndexCartesian()
+
+function Base.getindex(d::FirstDerivative{T, N}, I::Vararg{Int, N}) where {T, N}
+    x, y = d.grid[d.dim], d.y
+    i = I[d.dim]
+    if d.direction === :up
+        i == length(x) && return d.bc[2]
+        Ip = ntuple(k -> k == d.dim ? I[k] + 1 : I[k], Val(N))
+        return convert(T, (y[Ip...] - y[I...]) / (x[i + 1] - x[i]))
+    else
+        i == 1 && return d.bc[1]
+        Im = ntuple(k -> k == d.dim ? I[k] - 1 : I[k], Val(N))
+        return convert(T, (y[I...] - y[Im...]) / (x[i] - x[i - 1]))
+    end
 end
-
 
 """
     SecondDerivative(x, f; bc = (0, 0))
     SecondDerivative(grid, F, dim; bc = (0, 0))
-    SecondDerivative(grid, F, dim1, dim2; direction = :up, bc = (0, 0))
+    SecondDerivative(grid, F, dim1, dim2; direction = :up)
 
-Lazily compute second-order derivatives (using finite-difference scheme) on a grid
+Lazily compute second-order derivatives (using finite-difference scheme) on a grid.
+The result is an `AbstractArray` whose entries are computed on demand; use `collect`
+to materialize it.
 
 In one dimension, `x` is a grid vector and `f` is a vector with `length(f) == length(x)`.
 In multiple dimensions, `grid` is a tuple of axis vectors such as `(xs, ys)`,
@@ -65,74 +79,35 @@ with symbolic dimensions are also accepted as a convenience.
 
 Use `SecondDerivative(grid, F, 1, 1)` for own second derivatives and
 `SecondDerivative(grid, F, 1, 2; direction = :up)` for directional cross
-derivatives. The `:up` direction is the main-diagonal stencil; `:down` is the
+derivatives. The `:up` direction (synonyms `:forward`, `:upward`) is the
+main-diagonal stencil; `:down` (synonyms `:backward`, `:downward`) is the
 anti-diagonal stencil.
+
+For own second derivatives, `bc` is the value of the *first* derivative at the
+lower and upper boundaries. Cross derivatives do not accept boundary conditions
+(the stencil is clamped at the edges of the grid) and throw if a nonzero `bc`
+is passed.
 """
-struct SecondDerivative{T, X <: AbstractVector{<:Real}, Y <: AbstractVector{<: Real}} <: AbstractVector{T}
-	x::X
-	y::Y
-	bc::NTuple{2, T}
-	function SecondDerivative(x, y, bc)
-		length(x) == length(y) || throw(DimensionMismatch(
-			"cannot match grid of length $(length(x)) with vector of length $(length(y))"))
-		return new{float(eltype(y)), typeof(x), typeof(y)}(x, y, bc)
-	end
-end
-
-SecondDerivative(x, y; bc = (0, 0)) = SecondDerivative(x, y, bc)
-
-Base.size(d::SecondDerivative) = (length(d.x),)
-
-Base.IndexStyle(d::SecondDerivative) = IndexLinear()
-
-function Base.getindex(d::SecondDerivative{T}, i::Int) where {T}
-	x, y, bc = d.x, d.y, d.bc
-	Δxp = x[min(i, length(x)-1)+1] - x[min(i, length(x)-1)]
-	Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
-	Δx = (Δxm + Δxp) / 2
-	if i == 1 
-		return convert(T, y[2] / (Δxp * Δx) + (y[1] - bc[1] * Δxm) / (Δxm * Δx) - 2 * y[1] / (Δxp * Δxm))
-	elseif i ==  length(x)
-		return convert(T, (y[end] + bc[end] * Δxp) / (Δxp * Δx) + y[end - 1] / (Δxm * Δx) - 2 * y[end] / (Δxp * Δxm))
-	else
-		return convert(T, y[i + 1] / (Δxp * Δx) + y[i - 1] / (Δxm * Δx) - 2 * y[i] / (Δxp * Δxm))
-	end
-end
-
-
-function FirstDerivative(grid::Tuple, y::AbstractArray, dim::Integer; bc = (0, 0), direction = :forward)
-    direction ∈ (:forward, :backward, :upward, :downward) || throw(ArgumentError("direction must be :forward/:upward or :backward/:downward"))
-    x, d, shape = _fd_dimension(grid, y, dim)
-    dy = Array{float(eltype(y))}(undef, shape)
-
-    for I in CartesianIndices(shape)
-        i = I[d]
-        if direction ∈ (:forward, :upward)
-            if i == length(x)
-                dy[I] = bc[end]
-            else
-                Ip = _fd_replace_index(I, d, i + 1)
-                dxp = x[i + 1] - x[i]
-                dy[I] = (y[Ip] - y[I]) / dxp
-            end
-        else
-            if i == 1
-                dy[I] = bc[1]
-            else
-                Im = _fd_replace_index(I, d, i - 1)
-                dxm = x[i] - x[i - 1]
-                dy[I] = (y[I] - y[Im]) / dxm
-            end
+struct SecondDerivative{T, N, G <: Tuple, Y <: AbstractArray} <: AbstractArray{T, N}
+    grid::G
+    y::Y
+    dim1::Int
+    dim2::Int
+    bc::NTuple{2, T}
+    direction::Symbol   # normalized to :up or :down; only used when dim1 != dim2
+    function SecondDerivative(grid::Tuple, y::AbstractArray, dim1::Integer, dim2::Integer; bc = (0, 0), direction = :up)
+        _fd_dimension(grid, y, dim1)
+        _fd_dimension(grid, y, dim2)
+        if dim1 != dim2 && bc != (0, 0)
+            throw(ArgumentError("cross derivatives do not accept boundary conditions; `bc` only applies to own second derivatives"))
         end
+        T = float(eltype(y))
+        return new{T, ndims(y), typeof(grid), typeof(y)}(grid, y, Int(dim1), Int(dim2), NTuple{2, T}(bc), _fd_direction(direction))
     end
-    return dy
 end
 
-FirstDerivative(grid::NamedTuple, y::AbstractArray, dim::Integer; bc = (0, 0), direction = :forward) =
-    FirstDerivative(Tuple(grid), y, dim; bc = bc, direction = direction)
-
-FirstDerivative(grid::NamedTuple, y::AbstractArray, dim::Symbol; bc = (0, 0), direction = :forward) =
-    FirstDerivative(Tuple(grid), y, _fd_dimension_index(grid, dim); bc = bc, direction = direction)
+SecondDerivative(x::AbstractVector, y::AbstractVector; bc = (0, 0)) =
+    SecondDerivative((x,), y, 1, 1; bc = bc)
 
 SecondDerivative(grid::Tuple, y::AbstractArray, dim::Integer; bc = (0, 0)) =
     SecondDerivative(grid, y, dim, dim; bc = bc)
@@ -143,67 +118,59 @@ SecondDerivative(grid::NamedTuple, y::AbstractArray, dim::Integer; bc = (0, 0)) 
 SecondDerivative(grid::NamedTuple, y::AbstractArray, dim::Symbol; bc = (0, 0)) =
     SecondDerivative(Tuple(grid), y, _fd_dimension_index(grid, dim); bc = bc)
 
-function SecondDerivative(grid::Tuple, y::AbstractArray, dim1::Integer, dim2::Integer; bc = (0, 0), direction = :up)
-    if dim1 != dim2
-        direction ∈ (:up, :down, :upward, :downward) || throw(ArgumentError("direction must be :up/:upward or :down/:downward"))
-        x1, d1, shape = _fd_dimension(grid, y, dim1)
-        x2, d2, _ = _fd_dimension(grid, y, dim2)
-        d12y = Array{float(eltype(y))}(undef, shape)
+SecondDerivative(grid::NamedTuple, y::AbstractArray, dim1::Integer, dim2::Integer; bc = (0, 0), direction = :up) =
+    SecondDerivative(Tuple(grid), y, dim1, dim2; bc = bc, direction = direction)
 
-        for I in CartesianIndices(shape)
-            i1, i2 = I[d1], I[d2]
-            dx1m, dx1p, _ = _fd_grid_steps(x1, i1)
-            dx2m, dx2p, _ = _fd_grid_steps(x2, i2)
+SecondDerivative(grid::NamedTuple, y::AbstractArray, dim1::Symbol, dim2::Symbol; bc = (0, 0), direction = :up) =
+    SecondDerivative(Tuple(grid), y, _fd_dimension_index(grid, dim1), _fd_dimension_index(grid, dim2); bc = bc, direction = direction)
 
-            I00 = I
-            Ip0 = _fd_corner(I, d1, i1 + 1, d2, i2, shape)
-            Im0 = _fd_corner(I, d1, i1 - 1, d2, i2, shape)
-            I0p = _fd_corner(I, d1, i1, d2, i2 + 1, shape)
-            I0m = _fd_corner(I, d1, i1, d2, i2 - 1, shape)
-            Ipp = _fd_corner(I, d1, i1 + 1, d2, i2 + 1, shape)
-            Ipm = _fd_corner(I, d1, i1 + 1, d2, i2 - 1, shape)
-            Imp = _fd_corner(I, d1, i1 - 1, d2, i2 + 1, shape)
-            Imm = _fd_corner(I, d1, i1 - 1, d2, i2 - 1, shape)
+Base.size(d::SecondDerivative) = size(d.y)
 
-            if direction ∈ (:up, :upward)
-                d12y[I] = (y[Ipp] - y[Ip0] - y[I0p] + y[I00]) / (2 * dx1p * dx2p) +
-                    (y[I00] - y[Im0] - y[I0m] + y[Imm]) / (2 * dx1m * dx2m)
-            else
-                d12y[I] = -(y[Ipm] - y[Ip0] - y[I0m] + y[I00]) / (2 * dx1p * dx2m) -
-                    (y[I00] - y[Im0] - y[I0p] + y[Imp]) / (2 * dx1m * dx2p)
-            end
-        end
-        return d12y
-    end
+Base.IndexStyle(::Type{<:SecondDerivative}) = IndexCartesian()
 
-    dim = dim1
-    x, d, shape = _fd_dimension(grid, y, dim)
-    d2y = Array{float(eltype(y))}(undef, shape)
-
-    for I in CartesianIndices(shape)
-        i = I[d]
+function Base.getindex(d::SecondDerivative{T, N}, I::Vararg{Int, N}) where {T, N}
+    y = d.y
+    if d.dim1 == d.dim2
+        x = d.grid[d.dim1]
+        i = I[d.dim1]
         dxm, dxp, dx = _fd_grid_steps(x, i)
         if i == 1
-            Ip = _fd_replace_index(I, d, 2)
-            d2y[I] = y[Ip] / (dxp * dx) + (y[I] - bc[1] * dxm) / (dxm * dx) - 2 * y[I] / (dxp * dxm)
+            Ip = ntuple(k -> k == d.dim1 ? 2 : I[k], Val(N))
+            return convert(T, y[Ip...] / (dxp * dx) + (y[I...] - d.bc[1] * dxm) / (dxm * dx) - 2 * y[I...] / (dxp * dxm))
         elseif i == length(x)
-            Im = _fd_replace_index(I, d, length(x) - 1)
-            d2y[I] = (y[I] + bc[end] * dxp) / (dxp * dx) + y[Im] / (dxm * dx) - 2 * y[I] / (dxp * dxm)
+            Im = ntuple(k -> k == d.dim1 ? length(x) - 1 : I[k], Val(N))
+            return convert(T, (y[I...] + d.bc[2] * dxp) / (dxp * dx) + y[Im...] / (dxm * dx) - 2 * y[I...] / (dxp * dxm))
         else
-            Ip = _fd_replace_index(I, d, i + 1)
-            Im = _fd_replace_index(I, d, i - 1)
-            d2y[I] = y[Ip] / (dxp * dx) + y[Im] / (dxm * dx) - 2 * y[I] / (dxp * dxm)
+            Ip = ntuple(k -> k == d.dim1 ? I[k] + 1 : I[k], Val(N))
+            Im = ntuple(k -> k == d.dim1 ? I[k] - 1 : I[k], Val(N))
+            return convert(T, y[Ip...] / (dxp * dx) + y[Im...] / (dxm * dx) - 2 * y[I...] / (dxp * dxm))
+        end
+    else
+        CI = CartesianIndex(I)
+        shape = size(y)
+        i1, i2 = I[d.dim1], I[d.dim2]
+        x1, x2 = d.grid[d.dim1], d.grid[d.dim2]
+        dx1m, dx1p, _ = _fd_grid_steps(x1, i1)
+        dx2m, dx2p, _ = _fd_grid_steps(x2, i2)
+
+        I00 = CI
+        Ip0 = _fd_corner(CI, d.dim1, i1 + 1, d.dim2, i2, shape)
+        Im0 = _fd_corner(CI, d.dim1, i1 - 1, d.dim2, i2, shape)
+        I0p = _fd_corner(CI, d.dim1, i1, d.dim2, i2 + 1, shape)
+        I0m = _fd_corner(CI, d.dim1, i1, d.dim2, i2 - 1, shape)
+        Ipp = _fd_corner(CI, d.dim1, i1 + 1, d.dim2, i2 + 1, shape)
+        Ipm = _fd_corner(CI, d.dim1, i1 + 1, d.dim2, i2 - 1, shape)
+        Imp = _fd_corner(CI, d.dim1, i1 - 1, d.dim2, i2 + 1, shape)
+        Imm = _fd_corner(CI, d.dim1, i1 - 1, d.dim2, i2 - 1, shape)
+
+        if d.direction === :up
+            return convert(T, (y[Ipp] - y[Ip0] - y[I0p] + y[I00]) / (2 * dx1p * dx2p) +
+                (y[I00] - y[Im0] - y[I0m] + y[Imm]) / (2 * dx1m * dx2m))
+        else
+            return convert(T, -(y[Ipm] - y[Ip0] - y[I0m] + y[I00]) / (2 * dx1p * dx2m) -
+                (y[I00] - y[Im0] - y[I0p] + y[Imp]) / (2 * dx1m * dx2p))
         end
     end
-    return d2y
-end
-
-function SecondDerivative(grid::NamedTuple, y::AbstractArray, dim1::Integer, dim2::Integer; bc = (0, 0), direction = :up)
-    SecondDerivative(Tuple(grid), y, dim1, dim2; bc = bc, direction = direction)
-end
-
-function SecondDerivative(grid::NamedTuple, y::AbstractArray, dim1::Symbol, dim2::Symbol; bc = (0, 0), direction = :up)
-    SecondDerivative(Tuple(grid), y, _fd_dimension_index(grid, dim1), _fd_dimension_index(grid, dim2); bc = bc, direction = direction)
 end
 
 function _fd_dimension_index(grid::NamedTuple, dim::Symbol)
