@@ -68,7 +68,11 @@ end
     @test all(isfinite, g_discounted)
     @test sum(g_discounted) ≈ 1.0 atol = 1e-12
     @test all(g_discounted .>= 0.0)
-    @test_throws ArgumentError stationary_distribution(X; δ = 1e-2, ψ = zeros(length(X)))
+    @test_throws ArgumentError stationary_distribution(X; δ = 1e-2, rebirth = zeros(length(X)))
+    ψ_rebirth = zeros(length(X)); ψ_rebirth[1] = 1.0
+    @test stationary_distribution(X; δ = 1e-2, rebirth = ψ_rebirth) ≈
+          stationary_distribution(X; δ = 1e-2, ψ = ψ_rebirth)   # deprecated keyword still works
+    @test_throws ArgumentError stationary_distribution(X; δ = 1e-2, rebirth = ψ_rebirth, ψ = ψ_rebirth)
     @test_throws ArgumentError DiffusionProcess([0.0], [0.0], [1.0])
     @test_throws ArgumentError DiffusionProcess([0.0, 0.0, 1.0], zeros(3), ones(3))
     @test_throws ArgumentError DiffusionProcess([0.0, 1.0, 0.5], zeros(3), ones(3))
@@ -96,8 +100,8 @@ end
     @test generator(Z) == Q
     @test stationary_distribution(Z) ≈ [2 / 3, 1 / 3]
     @test ContinuousTimeMarkovChain(Q).Q == Q
-    @test_throws ArgumentError ContinuousTimeMarkovChain([-0.1 0.2; 0.1 -0.2])
-    @test_throws ArgumentError ContinuousTimeMarkovChain([-0.1 0.1; -0.2 0.2])
+    @test_logs (:warn, r"row sum") ContinuousTimeMarkovChain([-0.1 0.2; 0.1 -0.2])
+    @test_logs (:warn, r"Metzler") ContinuousTimeMarkovChain([-0.1 0.1; -0.2 0.2])
 
     x_small = range(-0.2, stop = 0.2, length = 40)
     Xbase = DiffusionProcess(x_small, -0.1 .* x_small, 0.02 .* ones(length(x_small)))
@@ -139,6 +143,44 @@ end
           Matrix(jointoperator(sparse.([generator(Xlow), generator(Xhigh)]), Q))
     @test_throws DimensionMismatch SwitchingProcess(Z, [Xlow])
     @test_throws DimensionMismatch SwitchingProcess(Z, [Xlow, DiffusionProcess(range(-0.2, stop = 0.2, length = 41), zeros(41), ones(41))])
+end
+
+@testset "check_generator" begin
+    # every generator the package builds passes, whatever its matrix type
+    A = generator(X)
+    @test check_generator(A) === A                                       # Tridiagonal, chainable
+    Zc = ContinuousTimeMarkovChain([0.5, 1.5], [-0.1 0.1; 0.2 -0.2])
+    @test check_generator(generator(ProductProcess(X, Zc))) isa SparseMatrixCSC
+    @test check_generator(generator(SwitchingProcess(Zc, [X, X]))) isa BandedBlockBandedMatrix
+    @test check_generator(Matrix(generator(Zc))) isa Matrix
+
+    # violations warn (with the size of the violation); structural problems still throw
+    @test_logs (:warn, r"row sum") check_generator([-0.1 0.2; 0.1 -0.2])
+    @test_logs (:warn, r"Metzler") check_generator([0.1 -0.1; 0.2 -0.2])
+    @test_throws ArgumentError check_generator(zeros(2, 1))            # non-square
+    @test_logs (:warn, r"Metzler") check_generator(sparse([1.0 -1.0; -1.0 1.0]))
+    # tolerance override
+    @test_logs (:warn, r"row sum") check_generator([-1e-6 1e-6; 2e-6 -1e-6]; atol = 1e-9)
+    @test check_generator([-1e-6 1e-6; 2e-6 -1e-6]; atol = 1e-5) isa Matrix
+
+    # principal_eigenvalue checks Metzlerity, its Perron–Frobenius hypothesis
+    @test_logs (:warn, r"Metzler") principal_eigenvalue([0.1 -0.1; 0.2 -0.2])
+    @test principal_eigenvalue(A')[1] ≈ 0.0 atol = 1e-8   # transposed generators pass
+end
+
+@testset "SwitchingProcess with a diffusion modulator" begin
+    # modulation by an autonomous diffusion == a MultivariateDiffusionProcess with independent innovations
+    as = collect(range(0.0, 1.0, length = 15))
+    zs = collect(range(-1.0, 1.0, length = 20))
+    Zd = DiffusionProcess(zs, -0.2 .* zs, 0.05 .* ones(length(zs)))
+    S = SwitchingProcess(Zd, [DiffusionProcess(as, (0.1 + 0.05 * z) .- 0.1 .* as, 0.02 .* ones(length(as))) for z in zs])
+    @test size(S) == (length(as), length(zs))
+    Xmv = MultivariateDiffusionProcess((; a = as, z = zs);
+        drift = (; a = [0.1 + 0.05 * z - 0.1 * a for a in as, z in zs],
+                   z = repeat(reshape(-0.2 .* zs, 1, :), length(as), 1)),
+        variance = (; a = 0.02^2, z = 0.05^2))
+    @test Matrix(generator(S)) ≈ Matrix(generator(Xmv)) atol = 1e-10
+    @test stationary_distribution(S) ≈ stationary_distribution(Xmv) atol = 1e-8
 end
 
 @testset "MultivariateDiffusionProcess" begin
@@ -262,38 +304,42 @@ end
 
 @testset "Multiplicative functional: cgf" begin
     # dM/M = x dt
-    m = AdditiveFunctionalDiffusion(X, X.x, zeros(length(X.x)))
-    η, r = cgf(m)(1)
-    @test_throws ArgumentError cgf(m; eigenvector = :middle)(1)
+    m = AdditiveFunctional(X, X.x, zeros(length(X.x)))
+    η, r = cgf_eigenvector(m, 1)
+    @test cgf(m, 1) ≈ η
     @test η ≈ xbar + 0.5 * σ^2 / κ^2 atol = 1e-2
     r_analytic = exp.(X.x ./ κ)
     @test norm(r ./ sum(r) .- r_analytic ./ sum(r_analytic)) <= 2 * 1e-3
     ts = range(0, stop = 200, step = 1/10)
-    u = feynman_kac(generator(m), ts; direction = :forward, ψ = ones(size(generator(m), 1)))
+    u = feynman_kac(tilted_generator(m, 1), ts; direction = :forward, ψ = ones(length(m.X)))
     @test log.(stationary_distribution(X)' * u[:, end]) ./ ts[end] ≈ η atol = 1e-2
+    # deprecated closure form still works
+    η_dep, r_dep = cgf(m)(1)
+    @test η_dep ≈ η
+    @test_throws ArgumentError cgf(m; eigenvector = :middle)(1)
 end
 
 
 @testset "tail_index and speed" begin
     μm = -0.06
-    m = AdditiveFunctionalDiffusion(X, X.x .+ μm, zeros(length(X.x)))
+    m = AdditiveFunctional(X, X.x .+ μm, zeros(length(X.x)))
     ζ = tail_index(m)
     @test μm * ζ + 0.5 * ζ^2 * (σ^2 / κ^2) ≈ 0.0 atol = 1e-2
-    η, r = cgf(m; eigenvector = :right)(ζ)
-    η, l = cgf(m; eigenvector = :left)(ζ)
+    η, r = cgf_eigenvector(m, ζ)
+    η, l = cgf_eigenvector(m, ζ, :left)
     f = exp.(ζ .* X.x ./ κ)
     @test norm(f ./ sum(f) .- r ./ sum(r)) <= 1e-2
     ψ_reaching = r .* l ./ sum(r .* l)
-    speed = sum(ψ_reaching .* m.μm)
+    speed = sum(ψ_reaching .* m.drift)
     @test speed ≈ μm + ζ * (σ^2 / κ^2) atol = 1e-2
 end
 
 
 @testset "left/right eigenvectors (correlated)" begin
-    m = AdditiveFunctionalDiffusion(X, X.x, 0.01 * ones(length(X.x)); ρ = 1)
-    η, r = cgf(m; eigenvector = :right)(1)
-    η, l = cgf(m; eigenvector = :left)(1)
-    ψ_tilde = stationary_distribution(DiffusionProcess(X.x, X.μx .+ m.ρ .* m.σm .* X.σx, X.σx))
+    m = AdditiveFunctional(X, X.x, 0.01 * ones(length(X.x)); ρ = 1)
+    η, r = cgf_eigenvector(m, 1)
+    η, l = cgf_eigenvector(m, 1, :left)
+    ψ_tilde = stationary_distribution(DiffusionProcess(X.x, X.μx .+ m.covariance, X.σx))
     @test (r .* ψ_tilde) ./ sum(r .* ψ_tilde) ≈ l rtol = 1e-3
 end
 
@@ -301,12 +347,12 @@ end
 @testset "Multiplicative functional (ρ = 0)" begin
     μm = -0.01
     σm = 0.1
-    m = AdditiveFunctionalDiffusion(X, μm .+ X.x, σm .* ones(length(X.x)))
+    m = AdditiveFunctional(X, μm .+ X.x, σm .* ones(length(X.x)))
     ζ = tail_index(m)
     ζ_analytic = 2 * (-μm) / (σm^2 + (σ / κ)^2)
     @test ζ ≈ ζ_analytic atol = 1e-2
-    η, r = cgf(m; eigenvector = :right)(ζ)
-    η, l = cgf(m; eigenvector = :left)(ζ)
+    η, r = cgf_eigenvector(m, ζ)
+    η, l = cgf_eigenvector(m, ζ, :left)
     @test η ≈ 0.0 atol = 1e-4
     ψ = stationary_distribution(X)
     @test (r .* ψ) ./ sum(r .* ψ) ≈ l rtol = 1e-3
@@ -318,11 +364,10 @@ end
     Xl = OrnsteinUhlenbeck(; κ = κ, σ = σ, length = 1000)
     μm = -0.01
     σm = 0.1
-    m = AdditiveFunctionalDiffusion(Xl, μm .+ Xl.x .- 0.02, σm .* ones(length(Xl.x)))
+    m = AdditiveFunctional(Xl, μm .+ Xl.x .- 0.02, σm .* ones(length(Xl.x)))
     ψ = stationary_distribution(Xl)
     ζ = tail_index(m)
-    η, r = cgf(m; eigenvector = :right)(ζ)
-    η, l = cgf(m; eigenvector = :left)(ζ)
+    η, r = cgf_eigenvector(m, ζ)
     ψ_cond = stationary_distribution(DiffusionProcess(Xl.x, Xl.μx .+ Xl.σx.^2 .* (InfinitesimalGenerators.∂(Xl) * log.(r)), Xl.σx))
     @test (r.^2 .* ψ) ./ sum(r.^2 .* ψ) ≈ ψ_cond rtol = 1e-1
 end
@@ -332,13 +377,12 @@ end
     Xl = OrnsteinUhlenbeck(; κ = κ, σ = σ, length = 1000)
     μm = -0.01
     σm = 0.1
-    m0 = AdditiveFunctionalDiffusion(Xl, μm .+ Xl.x .- 0.02, σm .* ones(length(Xl.x)))
-    m = AdditiveFunctionalDiffusion(Xl, m0.μm, m0.σm; ρ = 1.0)
+    m = AdditiveFunctional(Xl, μm .+ Xl.x .- 0.02, σm .* ones(length(Xl.x)); ρ = 1.0)
     ζ = tail_index(m)
-    η, r = cgf(m; eigenvector = :right)(ζ)
-    η, l = cgf(m; eigenvector = :left)(ζ)
+    η, r = cgf_eigenvector(m, ζ)
+    η, l = cgf_eigenvector(m, ζ, :left)
     @test η ≈ 0.0 atol = 1e-3
-    ψ_tilde = stationary_distribution(DiffusionProcess(Xl.x, Xl.μx .+ ζ .* m.σm .* m.ρ .* Xl.σx, Xl.σx))
+    ψ_tilde = stationary_distribution(DiffusionProcess(Xl.x, Xl.μx .+ ζ .* m.covariance, Xl.σx))
     @test (r .* ψ_tilde) ./ sum(r .* ψ_tilde) ≈ l rtol = 1e-3
 end
 
@@ -347,9 +391,70 @@ end
     gbar = 0.03
     σ_cir = 0.01
     Xc = CoxIngersollRoss(xbar = gbar, κ = κ, σ = σ_cir)
-    m = AdditiveFunctionalDiffusion(Xc, Xc.x, zeros(length(Xc.x)))
+    m = AdditiveFunctional(Xc, Xc.x, zeros(length(Xc.x)))
     η_analytic = gbar * κ^2 / σ_cir^2 * (1 - sqrt(1 - 2 * σ_cir^2 / κ^2))
-    @test cgf(m)(1.0)[1] ≈ η_analytic rtol = 1e-2
+    @test cgf(m, 1.0) ≈ η_analytic rtol = 1e-2
+end
+
+
+@testset "generic AdditiveFunctional" begin
+    Xs = OrnsteinUhlenbeck(; xbar = xbar, κ = κ, σ = σ, length = 200)
+    m_diff = AdditiveFunctional(Xs, Xs.x, zeros(length(Xs.x)))
+    @test tilted_generator(m_diff, 0) ≈ generator(Xs)
+
+    # keyword and positional forms agree; scalars broadcast
+    m_kw = AdditiveFunctional(Xs; drift = Xs.x, variance = 0.01^2)
+    m_pos = AdditiveFunctional(Xs, Xs.x, 0.01 .* ones(length(Xs.x)))
+    @test tilted_generator(m_kw, 1.3) ≈ tilted_generator(m_pos, 1.3)
+
+    # the legacy AdditiveFunctionalDiffusion type agrees, including ρ ≠ 0
+    m_ρ = AdditiveFunctional(Xs, Xs.x, 0.01 .* ones(length(Xs.x)); ρ = 0.5)
+    m_afd = AdditiveFunctionalDiffusion(Xs, collect(Xs.x), 0.01 .* ones(length(Xs.x)); ρ = 0.5)
+    @test m_ρ.covariance ≈ 0.5 .* 0.01 .* Xs.σx
+    @test tilted_generator(m_ρ, 2.0) ≈ tilted_generator(m_afd, 2.0)
+    @test cgf(m_ρ, 1.0) ≈ cgf(m_afd, 1.0) atol = 1e-10
+
+    # the generic path (raw generator wrapped in a chain) agrees with the diffusion path
+    Zx = ContinuousTimeMarkovChain(collect(Xs.x), Matrix(generator(Xs)))
+    m_generic = AdditiveFunctional(Zx, collect(Xs.x), zeros(length(Xs.x)))
+    @test cgf(m_generic, 1.0) ≈ cgf(m_diff, 1.0) atol = 1e-10
+    @test tail_index(AdditiveFunctional(Zx, collect(Xs.x) .- 0.06, zeros(length(Xs.x)))) ≈
+          tail_index(AdditiveFunctional(Xs, Xs.x .- 0.06, zeros(length(Xs.x)))) atol = 1e-3
+
+    # two-state Markov multiplicative process: tail index satisfies Λ(ζ) = δ
+    Zg = ContinuousTimeMarkovChain([0.0, 0.06], [-0.1 0.1; 0.5 -0.5])
+    ν = 0.1
+    δ_death = 0.05
+    mz = AdditiveFunctional(Zg, [0.0, 0.06], [ν, ν])
+    ζz = tail_index(mz; δ = δ_death)
+    Λz(ξ) = maximum(real, eigvals(Matrix(generator(Zg)) + Diagonal(ξ .* [0.0, 0.06] .+ 0.5 .* ξ .^ 2 .* ν^2)))
+    @test Λz(ζz) ≈ δ_death atol = 1e-4
+
+    # state-shaped arrays for a multivariate process; state-independent growth has a closed form
+    Y2 = ProductProcess(Xs, ContinuousTimeMarkovChain([0.5, 1.5], [-0.1 0.1; 0.2 -0.2]))
+    mY = AdditiveFunctional(Y2, zeros(size(Y2)), fill(ν, size(Y2)))
+    @test tail_index(mY; δ = δ_death) ≈ tail_index(ν^2 / 2, ν; δ = δ_death) atol = 1e-3
+
+    # a covariance loading on one axis of a multivariate diffusion matches the univariate functional
+    xs2 = collect(range(-0.5, 0.5, length = 30))
+    ys2 = collect(range(-0.5, 0.5, length = 10))
+    Xmv = MultivariateDiffusionProcess((; x = xs2, y = ys2);
+        drift = (; x = repeat(-κ .* xs2, 1, length(ys2)), y = repeat(reshape(-0.2 .* ys2, 1, :), length(xs2), 1)),
+        variance = (; x = σ^2, y = 0.03^2))
+    X1 = DiffusionProcess(xs2, -κ .* xs2, σ .* ones(length(xs2)))
+    σm2, c2 = 0.1, 0.5 * 0.1 * σ
+    m_mv = AdditiveFunctional(Xmv; drift = repeat(xs2, 1, length(ys2)), variance = σm2^2, covariance = (; x = c2))
+    m_1d = AdditiveFunctional(X1; drift = xs2, variance = σm2^2, covariance = c2)
+    @test cgf(m_mv, 1.0) ≈ cgf(m_1d, 1.0) rtol = 1e-6
+
+    # validation
+    @test_throws ArgumentError AdditiveFunctional(Zg; drift = 0.0, variance = ν^2, covariance = [0.1, 0.1])
+    @test_throws ArgumentError AdditiveFunctional(Xs; drift = 0.0, variance = 0.01^2, covariance = 1.0)
+    @test_throws ArgumentError AdditiveFunctional(Xmv; drift = 0.0, variance = σm2^2, covariance = (; x = 1.0))
+    @test_throws ArgumentError AdditiveFunctional(Xmv; drift = 0.0, variance = σm2^2, covariance = (; z = 0.0))
+    @test_throws ArgumentError AdditiveFunctional(Xs; drift = 0.0, variance = -1.0)
+    @test_throws DimensionMismatch AdditiveFunctional(Zg, [0.0], [ν, ν])
+    @test_throws DimensionMismatch AdditiveFunctional(Y2, zeros(reverse(size(Y2))), fill(ν, size(Y2)))
 end
 
 
@@ -398,6 +503,22 @@ end
     @test_throws ArgumentError FirstDerivative(named_grid, f, :z)
     @test_throws DimensionMismatch SecondDerivative(grid, f[1:end-1, :], 1, 1)
     @test_throws ArgumentError SecondDerivative(grid, f, 1, 2; direction = :sideways)
+
+    # multi-dimensional operators are lazy, like the one-dimensional ones
+    @test !(fx isa Array)
+    @test fx isa AbstractMatrix
+    @test collect(fx) == fx
+
+    # :up/:down and :forward/:backward are synonyms everywhere
+    @test FirstDerivative(x, y; direction = :up) == dy
+    @test FirstDerivative(x, y; direction = :down) == dy_back
+    @test FirstDerivative(grid, f, 1; direction = :up) == fx
+    @test SecondDerivative(grid, f, 1, 2; direction = :forward) == fxy_up
+    @test SecondDerivative(grid, f, 1, 2; direction = :backward) == fxy_down
+    @test_throws ArgumentError FirstDerivative(x, y; direction = :sideways)
+
+    # cross derivatives do not take boundary conditions
+    @test_throws ArgumentError SecondDerivative(grid, f, 1, 2; bc = (1, 0))
 end
 
 

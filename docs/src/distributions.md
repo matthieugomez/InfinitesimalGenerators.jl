@@ -1,6 +1,6 @@
 # Distribution dynamics: the Kolmogorov forward equation
 
-The previous tutorial computed expectations, which march *backward* in time. Cross-sectional distributions march *forward*: given today's distribution of income, wealth, or firm size across agents, where is the distribution next year, and where does it settle in the long run? This tutorial computes both by hand from the generator matrix, and then introduces the helper `stationary_distribution`.
+The previous tutorial computed expectations, which march *backward* in time. Cross-sectional distributions march *forward*: given today's distribution of income, wealth, or firm size across agents, where is the distribution next year, and where does it settle in the long run? This tutorial computes both by hand from the generator matrix, and then introduces the helper [`stationary_distribution`](@ref).
 
 Take the same Ornstein–Uhlenbeck process as before — now interpreted as the log productivity of a cross-section of firms:
 
@@ -107,7 +107,7 @@ maximum(abs, g - g∞)
 Two variations are worth knowing:
 
 - **Convergence check.** The evolved distribution approaches the stationary one at the speed of mean reversion: `maximum(abs, evolve(𝔸, g0, 100) - g)` is of the order of the autocorrelation ``e^{-\kappa \cdot 100} \approx 5 \times 10^{-5}``, and by ``t = 300`` the two agree to machine precision.
-- **Death and rebirth.** `stationary_distribution(X; δ = δ, ψ = ψ)` computes the stationary distribution when agents die at rate ``\delta`` and are reborn with distribution ``\psi`` — the resolvent ``(\delta I - \mathbb{A}')^{-1} \delta \psi`` — which is the relevant object in perpetual-youth and firm-entry models.
+- **Death and rebirth.** `stationary_distribution(X; δ = δ, rebirth = ψ)` computes the stationary distribution when agents die at rate ``\delta`` and are reborn with distribution ``\psi`` — the resolvent ``(\delta I - \mathbb{A}')^{-1} \delta \psi`` — which is the relevant object in perpetual-youth and firm-entry models.
 
 ```@example distributions
 @assert abs(sum(evolve(𝔸, g0, 100)) - 1) <= 1e-10 # hide

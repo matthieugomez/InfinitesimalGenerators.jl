@@ -1,6 +1,6 @@
 # Expected values: the Kolmogorov backward equation
 
-Many objects in economics are conditional expectations over the path of a Markov process: forecasts, present values, survival probabilities, option values. This tutorial computes them *by hand* from the generator matrix — each is a few lines of linear algebra — and then introduces `feynman_kac`, the helper function that packages the computation.
+Many objects in economics are conditional expectations over the path of a Markov process: forecasts, present values, survival probabilities, option values. This tutorial computes them *by hand* from the generator matrix — each is a few lines of linear algebra — and then introduces [`feynman_kac`](@ref), the helper function that packages the computation.
 
 Throughout, take a cash flow ``y_t`` that follows an Ornstein–Uhlenbeck process
 
@@ -8,7 +8,7 @@ Throughout, take a cash flow ``y_t`` that follows an Ornstein–Uhlenbeck proces
 dy_t = \kappa (\bar y - y_t) \, dt + \sigma \, dZ_t,
 ```
 
-a natural model of a mean-reverting dividend or income stream. The convenience constructor `OrnsteinUhlenbeck` chooses a grid spanning the stationary distribution and returns the discretized process:
+a natural model of a mean-reverting dividend or income stream. The convenience constructor [`OrnsteinUhlenbeck`](@ref) chooses a grid spanning the stationary distribution and returns the discretized process:
 
 ```@example expectations
 using InfinitesimalGenerators, LinearAlgebra
@@ -92,12 +92,13 @@ P = (r * I - 𝔸) \ collect(ys)
 nothing # hide
 ```
 
-The closed form ``P(y) = \bar y / r + (y - \bar y)/(r + \kappa)`` — mean-reverting cash flows are discounted at ``r + \kappa``, not ``r`` — again gives a check, and this time it also reveals the one systematic error of the discretization. The package always imposes reflecting boundaries, i.e. a zero derivative at the edges of the grid, while the true ``P`` has slope ``1/(r+\kappa)`` everywhere. The result is a boundary layer: the error is visible at the very edge of the grid, dies out within a couple of standard deviations, and is negligible where the process actually spends time:
+The closed form ``P(y) = \bar y / r + (y - \bar y)/(r + \kappa)`` — mean-reverting cash flows are discounted at ``r + \kappa``, not ``r`` — again gives a check, and this time it also reveals the one systematic error of the discretization. The package always imposes reflecting boundaries, i.e. a zero derivative at the edges of the grid, while the true ``P`` has slope ``1/(r+\kappa)`` everywhere. The result is a boundary layer: the error is visible at the very edge of the grid, dies out within a few standard deviations, and is negligible where the process actually spends time:
 
 ```@example expectations
 closedP = ȳ / r .+ (ys .- ȳ) ./ (r + κ)
 err = abs.(P - closedP)
-(edge = maximum(err), interior = maximum(err[26:end-25]), average = sum(stationary_distribution(Y) .* err))
+interior = abs.(ys .- ȳ) .<= 3 * σ / sqrt(2κ)   # within three sd of the stationary mean
+(edge = maximum(err), interior = maximum(err[interior]), average = sum(stationary_distribution(Y) .* err))
 ```
 
 This is why the grids chosen by `OrnsteinUhlenbeck` and `CoxIngersollRoss` span far into the tails (by default, the ``10^{-10}`` quantiles of the stationary distribution): the boundary distortion then sits where the process essentially never goes.
@@ -123,7 +124,7 @@ The state-dependent discount `v` is what makes the helper more general than the 
 ```@example expectations
 @assert maximum(abs, u2[:, 1] - u) <= 1e-10 # hide
 @assert maximum(abs, u - (ȳ .+ exp(-κ * 10.0) .* (ys .- ȳ))) <= 1e-2 # hide
-@assert maximum(err[26:end-25]) <= 1e-4 # hide
+@assert maximum(err[interior]) <= 1e-4 # hide
 @assert sum(stationary_distribution(Y) .* err) <= 1e-6 # hide
 @assert maximum(abs, P2[:, 1] - P) <= 1e-2 # hide
 nothing # hide

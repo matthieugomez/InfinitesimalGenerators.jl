@@ -17,30 +17,33 @@ SwitchingProcess
 
 Every process implements the same small shape interface:
 
-- `state_space(X)` returns the state-space axes as a tuple, including for one-dimensional processes.
-- `size(X)` returns the tensor shape used for state-shaped arrays.
-- `length(X)` returns the number of flattened states, equal to `prod(size(X))`.
-- `ndims(X)` returns the number of state-space axes.
-
 ```@docs
 state_space
+Base.size(::ContinuousTimeMarkovProcess)
+Base.length(::ContinuousTimeMarkovProcess)
+Base.ndims(::ContinuousTimeMarkovProcess)
 ```
 
 ## The generator and its operators
 
 ```@docs
 generator
+check_generator
 stationary_distribution
 feynman_kac
-InfinitesimalGenerators.principal_eigenvalue
+jointoperator
+principal_eigenvalue
 ```
 
 ## Additive functionals and tail indices
 
 ```@docs
-AdditiveFunctionalDiffusion
+AdditiveFunctional
+tilted_generator
 cgf
+cgf_eigenvector
 tail_index
+AdditiveFunctionalDiffusion
 ```
 
 ## Finite differences

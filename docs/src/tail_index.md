@@ -12,7 +12,7 @@ The exponent ``\zeta`` is pinned down by a simple condition. Let ``m_t = \log w_
 \Lambda(\xi) = \lim_{t \to \infty} \frac{1}{t} \log E\left[e^{\xi m_t}\right] = \lim_{t \to \infty} \frac{1}{t} \log E\left[w_t^{\xi}\right].
 ```
 
-Then ``\zeta`` solves ``\Lambda(\zeta) = \delta``: in the stationary distribution, the ``\zeta``-th moment explodes at exactly the rate at which death truncates it. When the growth rate depends on a persistent Markov state — heterogeneous returns, firm productivity, entrepreneurial skill — ``\Lambda`` is no longer a simple quadratic, but it remains computable: it is the **principal eigenvalue** of a tilted generator matrix (Hansen and Scheinkman 2009; Beare and Toda 2022; Gouin-Bonenfant and Toda 2023). This tutorial computes it by hand, and then with the helpers `cgf` and `tail_index`.
+Then ``\zeta`` solves ``\Lambda(\zeta) = \delta``: in the stationary distribution, the ``\zeta``-th moment explodes at exactly the rate at which death truncates it. When the growth rate depends on a persistent Markov state — heterogeneous returns, firm productivity, entrepreneurial skill — ``\Lambda`` is no longer a simple quadratic, but it remains computable: it is the **principal eigenvalue** of a tilted generator matrix (Hansen and Scheinkman 2009; Beare and Toda 2022; Gouin-Bonenfant and Toda 2023). This tutorial computes it by hand, and then with the helpers [`cgf`](@ref) and [`tail_index`](@ref).
 
 ## Setup: growth with a persistent state
 
@@ -69,10 +69,17 @@ scatter!([ζ_hand], [δ]; label = "tail index ζ")
 
 ## ... and with the helpers
 
-`AdditiveFunctionalDiffusion(X, μm, σm)` represents the pair (state, cumulative growth); `cgf(m)` returns the function ``\xi \mapsto \Lambda(\xi)`` computed by inverse iteration rather than a full eigendecomposition, and `tail_index(m; δ)` performs the root-finding:
+[`AdditiveFunctional`](@ref)`(X, μm, σm)` represents the pair (state, cumulative growth). [`cgf`](@ref)`(m, ξ)` returns ``\Lambda(\xi)``, computed as the principal eigenvalue of the tilted generator [`tilted_generator`](@ref)`(m, ξ)` by inverse iteration rather than a full eigendecomposition (use [`cgf_eigenvector`](@ref)`(m, ξ, :right)` — or `:left` — when you also need the associated eigenvector):
 
 ```@example tail
-m = AdditiveFunctionalDiffusion(X, μm, σm)
+m = AdditiveFunctional(X, μm, σm)
+Λ1 = cgf(m, 1.0)
+Λ1 - Λ(1.0)
+```
+
+[`tail_index`](@ref)`(m; δ)` performs the root-finding:
+
+```@example tail
 ζ = tail_index(m; δ = δ)
 (ζ, ζ_hand)
 ```
@@ -83,7 +90,7 @@ With *constant* growth ``d\log w = \bar\mu \, dt + \bar\sigma \, dZ``, the CGF i
 
 ```@example tail
 ζ_const = tail_index(0.0 + ν^2 / 2, ν; δ = δ)
-(ζ_const, tail_index(AdditiveFunctionalDiffusion(X, zeros(length(xs)), σm); δ = δ))
+(ζ_const, tail_index(AdditiveFunctional(X, zeros(length(xs)), σm); δ = δ))
 ```
 
 Now compare: the persistent economy has the *same* average growth rate (zero) and the same idiosyncratic volatility as this constant benchmark, yet its tail is markedly fatter (a smaller ``\zeta``):
@@ -92,14 +99,32 @@ Now compare: the persistent economy has the *same* average growth rate (zero) an
 (persistent = ζ, constant = ζ_const)
 ```
 
-The reason is that a persistent growth state adds long-run variance: individuals who draw a high ``x`` keep growing fast for ``1/\kappa \approx 10`` years, and it is precisely those lucky histories that populate the far tail. Quantitatively, the persistent component contributes ``2 \, \text{Var}(x)/\kappa`` to the long-run variance of ``m_t/\sqrt{t}``, so the tail behaves roughly like a constant economy with total variance ``\nu^2 + 2\sigma_x^2/(2\kappa)/\kappa``:
+The reason is that a persistent growth state adds long-run variance: individuals who draw a high ``x`` keep growing fast for ``1/\kappa \approx 10`` years, and it is precisely those lucky histories that populate the far tail. Quantitatively, the persistent component contributes ``2 \, \text{Var}(x)/\kappa = \sigma_x^2/\kappa^2`` to the long-run variance of ``m_t/\sqrt{t}``, so the tail behaves roughly like a constant economy with total variance ``\nu^2 + \sigma_x^2/\kappa^2``:
 
 ```@example tail
-ζ_approx = tail_index(0.0 + (ν^2 + 2 * (σx^2 / (2κ)) / κ) / 2, sqrt(ν^2 + 2 * (σx^2 / (2κ)) / κ); δ = δ)
+σ2_longrun = ν^2 + σx^2 / κ^2    # long-run variance of m_t / √t
+ζ_approx = tail_index(σ2_longrun / 2, sqrt(σ2_longrun); δ = δ)
 (exact = ζ, gaussian_approximation = ζ_approx)
 ```
 
 The approximation is close but not exact — the exact ``\Lambda`` is *not* quadratic, and its curvature beyond the second cumulant is part of what the eigenvalue computation captures. This matters in applications: as Gouin-Bonenfant and Toda (2023) emphasize, treating the tail exponent with a two-moment approximation can misstate tail inequality substantially when growth rates are persistent.
+
+## Beyond diffusions: growth driven by a discrete state
+
+`AdditiveFunctional` accepts any process in the package, not just diffusions. The leading case is growth driven by a *discrete* type — the Markov multiplicative processes of Beare and Toda (2022) — for example units that alternate between a normal and a high-growth regime:
+
+```@example tail
+Zg = ContinuousTimeMarkovChain([0.0, 0.06], [-0.1 0.1; 0.5 -0.5])   # states = growth rates
+mz = AdditiveFunctional(Zg, [0.0, 0.06], [ν, ν])
+ζz = tail_index(mz; δ = δ)
+```
+
+The computation is the same principal-eigenvalue problem, now on a ``2 \times 2`` tilted matrix — small enough to verify by hand against the defining condition ``\Lambda(\zeta) = \delta``:
+
+```@example tail
+Λz(ξ) = maximum(real, eigvals(Matrix(generator(Zg)) + Diagonal(ξ .* [0.0, 0.06] .+ 0.5 .* ξ .^ 2 .* ν^2)))
+Λz(ζz) - δ
+```
 
 ## References
 
@@ -108,6 +133,8 @@ The approximation is close but not exact — the exact ``\Lambda`` is *not* quad
 - Gouin-Bonenfant, É., and A. A. Toda (2023): *Pareto Extrapolation: An Analytical Framework for Studying Tail Inequality*, Quantitative Economics — using the tail exponent to discipline heterogeneous-agent models.
 
 ```@example tail
+@assert abs(Λ1 - Λ(1.0)) <= 1e-8 # hide
+@assert abs(Λz(ζz) - δ) <= 1e-4 # hide
 @assert abs(ζ - ζ_hand) <= 1e-3 # hide
 @assert ζ < ζ_const # hide
 @assert abs(ζ_const - tail_index(AdditiveFunctionalDiffusion(X, zeros(length(xs)), σm); δ = δ)) <= 1e-3 # hide
