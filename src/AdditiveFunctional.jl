@@ -34,22 +34,24 @@ function tilted_generator end
 tilted_generator(m::AdditiveFunctional, ξ::Number) = tilted_generator(m)(ξ)
 
 """
-    cgf(m::AdditiveFunctional, ξ; r0 = Ones(length(m.X)), η0 = nothing)
+    cgf(m::AdditiveFunctional, ξ; r0 = nothing, η0 = nothing)
 
 Return the long-run scaled cumulant generating function of `m` evaluated at `ξ`,
 
     Λ(ξ) = lim_{t→∞} log(E[e^{ξ mₜ}]) / t,
 
 computed as the principal eigenvalue of the tilted generator [`tilted_generator`](@ref)`(m, ξ)`
-by inverse iteration (Hansen and Scheinkman 2009). Use [`cgf_eigenvector`](@ref) to also
-obtain the associated eigenvector.
+by inverse iteration (Hansen and Scheinkman 2009). `r0` is an initial guess for the
+eigenvector (defaults to a vector of ones) and `η0` an initial guess for the eigenvalue.
+Use [`cgf_eigenvector`](@ref) to also obtain the associated eigenvector.
 """
-function cgf(m::AdditiveFunctional, ξ::Number; r0 = Ones(length(m.X)), η0 = nothing)
-    principal_eigenvalue(tilted_generator(m, ξ); r0 = r0, η0 = η0)[1]
+function cgf(m::AdditiveFunctional, ξ::Number; r0 = nothing, η0 = nothing)
+    𝔸 = tilted_generator(m, ξ)
+    principal_eigenvalue(𝔸; r0 = r0 === nothing ? Ones(size(𝔸, 1)) : r0, η0 = η0)[1]
 end
 
 """
-    cgf_eigenvector(m::AdditiveFunctional, ξ, side = :right; r0 = Ones(length(m.X)), η0 = nothing)
+    cgf_eigenvector(m::AdditiveFunctional, ξ, side = :right; r0 = nothing, η0 = nothing)
 
 Return the pair `(Λ(ξ), vector)`: the long-run scaled cumulant generating function of `m`
 at `ξ` (as in [`cgf`](@ref)) together with the associated principal eigenvector of the
@@ -60,11 +62,13 @@ With `side = :right`, the right eigenvector — the Hansen–Scheinkman eigenfun
 distribution of the twisted process, i.e. the distribution over states from which the
 long-run growth of `E[e^{ξ mₜ}]` is achieved.
 """
-function cgf_eigenvector(m::AdditiveFunctional, ξ::Number, side::Symbol = :right; r0 = Ones(length(m.X)), η0 = nothing)
+function cgf_eigenvector(m::AdditiveFunctional, ξ::Number, side::Symbol = :right; r0 = nothing, η0 = nothing)
+    𝔸 = tilted_generator(m, ξ)
+    r0 = r0 === nothing ? Ones(size(𝔸, 1)) : r0
     if side == :right
-        return principal_eigenvalue(tilted_generator(m, ξ); r0 = r0, η0 = η0)
+        return principal_eigenvalue(𝔸; r0 = r0, η0 = η0)
     elseif side == :left
-        η, l = principal_eigenvalue(tilted_generator(m, ξ)'; r0 = r0, η0 = η0)
+        η, l = principal_eigenvalue(𝔸'; r0 = r0, η0 = η0)
         return η, l ./ sum(l)
     else
         throw(ArgumentError("side must be :right or :left"))
@@ -72,7 +76,7 @@ function cgf_eigenvector(m::AdditiveFunctional, ξ::Number, side::Symbol = :righ
 end
 
 # deprecated closure form: cgf(m)(ξ) returning (η, eigenvector)
-function cgf(m::AdditiveFunctional; eigenvector = :right, r0 = Ones(length(m.X)), η0 = nothing)
+function cgf(m::AdditiveFunctional; eigenvector = :right, r0 = nothing, η0 = nothing)
     Base.depwarn("`cgf(m)(ξ)` is deprecated; use `cgf(m, ξ)` for the value and " *
         "`cgf_eigenvector(m, ξ, :right)` or `cgf_eigenvector(m, ξ, :left)` for eigenvectors", :cgf)
     ξ -> begin
@@ -83,18 +87,29 @@ function cgf(m::AdditiveFunctional; eigenvector = :right, r0 = Ones(length(m.X))
 end
 
 """
-    tail_index(m::AdditiveFunctional; δ = 0)
+    tail_index(m::AdditiveFunctional; δ = 0, bracket = (1e-5, 1e3), xatol = 1e-4)
 
 Compute the tail index of the stationary distribution of `e^m` when units die (are reset) at
 rate `δ`, i.e. the ζ such that `cgf(m, ζ) = δ`.
+
+The root is searched for in `bracket`; if `cgf(m, ξ) - δ` has the same sign at both ends,
+an `ArgumentError` reports the two values so the bracket can be moved. Remaining keyword
+arguments are passed to `Roots.fzero`.
 """
-function tail_index(m::AdditiveFunctional; δ = 0, verbose = false, r0 = nothing, xatol = 1e-4, kwargs...)
+function tail_index(m::AdditiveFunctional; δ = 0, verbose = false, r0 = nothing, xatol = 1e-4, bracket = (1e-5, 1e3), kwargs...)
     r0 !== nothing && Base.depwarn("the `r0` keyword argument is deprecated and has no effect", :tail_index)
-    fzero((1e-5, 1e3); xatol = xatol, kwargs...) do ξ
+    Λ = ξ -> begin
         η = cgf(m, ξ)
         verbose && @show (:LR, ξ, η)
         return η - δ
     end
+    ξlo, ξhi = bracket
+    flo, fhi = Λ(ξlo), Λ(ξhi)
+    flo * fhi <= 0 ||
+        throw(ArgumentError("`cgf(m, ξ) - δ` has the same sign at both ends of `bracket = $bracket` " *
+            "($flo at ξ = $ξlo and $fhi at ξ = $ξhi), so no tail index was bracketed. " *
+            "Pass a `bracket` whose endpoints straddle the root of `cgf(m, ξ) = δ`."))
+    fzero(Λ, ξlo, ξhi; xatol = xatol, kwargs...)
 end
 
 """
@@ -161,21 +176,23 @@ function _af_covariance(c::NamedTuple, X::MultivariateDiffusionProcess, variance
     end)
     # positive semidefiniteness of the joint covariance matrix of (dx, dm)
     N = length(names)
+    covpairs = _mvd_covariance_pairs(names)
     varm = reshape(variance, shape)
+    TΣ = promote_type(eltype(varm), map(eltype, Tuple(arrays))...,
+        map(eltype, Tuple(X.variance))..., map(eltype, Tuple(X.covariance))...)
+    Σ = zeros(TΣ, N + 1, N + 1)
     for I in CartesianIndices(shape)
-        Σ = zeros(Float64, N + 1, N + 1)
         for d in 1:N
             Σ[d, d] = X.variance[names[d]][I]
         end
-        for (d1, d2, key) in _mvd_covariance_pairs(names)
+        for (d1, d2, key) in covpairs
             Σ[d1, d2] = Σ[d2, d1] = X.covariance[key][I]
         end
         for d in 1:N
             Σ[d, N + 1] = Σ[N + 1, d] = arrays[names[d]][I]
         end
         Σ[N + 1, N + 1] = varm[I]
-        scale = max(1.0, maximum(abs, Σ))
-        eigmin(Symmetric(Σ)) >= -sqrt(eps(Float64)) * scale ||
+        _check_psd(Σ) ||
             throw(ArgumentError("the joint covariance matrix of (dx, dm) must be positive semidefinite at grid index $I"))
     end
     arrays

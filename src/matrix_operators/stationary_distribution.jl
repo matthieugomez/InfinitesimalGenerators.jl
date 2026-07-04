@@ -28,7 +28,9 @@ function stationary_distribution(𝔸::AbstractMatrix; δ = 0.0, rebirth = nothi
         g = abs.((δ * I - 𝔸') \ (δ * collect(rebirth)))
     else
         η, g = principal_eigenvalue(𝔸')
-        abs(η) <= 1e-5 || @warn "Principal Eigenvalue does not seem to be zero"
+        # tolerance scaled by the size of the diagonal, as in `check_generator`
+        abs(η) <= _default_atol(𝔸) ||
+            @warn "Principal Eigenvalue does not seem to be zero (η = $η); `𝔸` may not be a generator (transition-rate) matrix"
     end
     total_mass = sum(g)
     isfinite(total_mass) && total_mass > 0 || throw(ArgumentError("stationary distribution has zero or non-finite mass; pass a positive rebirth distribution when δ > 0"))

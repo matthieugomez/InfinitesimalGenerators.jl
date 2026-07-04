@@ -1,5 +1,6 @@
 using InfinitesimalGenerators, Test, Statistics, LinearAlgebra, SparseArrays, Expokit
 using BlockBandedMatrices: BandedBlockBandedMatrix
+import Aqua, ForwardDiff
 
 # Shared Ornstein–Uhlenbeck process used across several test sets
 xbar = 0.0
@@ -11,6 +12,17 @@ struct CustomMarkovProcess <: ContinuousTimeMarkovProcess{1} end
 
 InfinitesimalGenerators.state_space(::CustomMarkovProcess) = (1:2,)
 InfinitesimalGenerators.generator(::CustomMarkovProcess) = [-1.0 1.0; 2.0 -2.0]
+
+# custom additive functionals only need `tilted_generator`, not an `X` field; the constant
+# tilt also makes the Gershgorin bound exactly the principal eigenvalue
+struct CustomAdditiveFunctional <: AdditiveFunctional end
+
+InfinitesimalGenerators.tilted_generator(::CustomAdditiveFunctional, ξ::Number) = [-1.0 1.0; 1.0 -1.0] + (0.3 * ξ) * I
+
+
+@testset "Aqua" begin
+    Aqua.test_all(InfinitesimalGenerators)
+end
 
 
 @testset "Feynman-Kac" begin
@@ -46,6 +58,12 @@ InfinitesimalGenerators.generator(::CustomMarkovProcess) = [-1.0 1.0; 2.0 -2.0]
     @test u_matrix_f ≈ feynman_kac(𝔸_scalar, ts_scalar; f = f_scalar, ψ = [0.0], v = zeros(1, length(ts_scalar)))
     u_matrix_v = feynman_kac(𝔸_scalar, ts_scalar; f = [1.0], ψ = [0.0], v = v_scalar)
     @test u_matrix_v ≈ feynman_kac(𝔸_scalar, ts_scalar; f = ones(1, length(ts_scalar)), ψ = [0.0], v = v_scalar)
+
+    # `ts` must be increasing (a decreasing grid would silently flip implicit Euler)
+    @test_throws ArgumentError feynman_kac(𝔸_sparse, [2.0, 1.0, 0.0]; ψ = ones(2))
+    # one-column f/v matrices are held constant over time (used to error past the first step)
+    u_col = feynman_kac(𝔸_scalar, ts_scalar; f = ones(1, 1), ψ = [0.0], v = zeros(1, 1))
+    @test u_col ≈ feynman_kac(𝔸_scalar, ts_scalar; f = [1.0], ψ = [0.0], v = [0.0])
 end
 
 
@@ -273,6 +291,13 @@ end
     @test Gnonmonotone_warn == Gnonmonotone
     @test minimum([Gnonmonotone[i, j] for i in axes(Gnonmonotone, 1), j in axes(Gnonmonotone, 2) if i != j]) < 0
     @test_throws ArgumentError generator(Xnonmonotone; check = :invalid)
+
+    # `check` forwards from the process-level operators to `generator`
+    @test_throws ArgumentError stationary_distribution(Xnonmonotone)
+    g_nm = @test_logs (:warn, r"Metzler") stationary_distribution(Xnonmonotone; check = false)
+    @test size(g_nm) == size(Xnonmonotone)
+    u_nm = feynman_kac(Xnonmonotone, 0.0:0.5:1.0; ψ = ones(size(Xnonmonotone)), check = false)
+    @test size(u_nm) == (size(Xnonmonotone)..., 3)
 
     @test_throws ArgumentError MultivariateDiffusionProcess(grid; drift = drift,
         variance = variance, covariance = (; x = ones(length(xs), length(ys))))
@@ -559,4 +584,76 @@ end
     @test_throws DimensionMismatch jointoperator([𝔸1], Q)
     @test_throws DimensionMismatch jointoperator([𝔸1, generator(OrnsteinUhlenbeck(; κ = 0.1, σ = 0.02, length = 60))], Q)
     @test_throws DimensionMismatch jointoperator([𝔸1, 𝔸2], [-0.1 0.1 0.0; 0.2 -0.2 0.0])
+end
+
+
+@testset "principal_eigenvalue robustness" begin
+    # exactly constant row sums: the Gershgorin shift is exactly the principal eigenvalue
+    η_c, r_c = principal_eigenvalue([-0.5 1.0; 1.0 -0.5])
+    @test η_c ≈ 0.5 atol = 1e-10
+    @test r_c ≈ [1, 1] ./ sqrt(2) rtol = 1e-6
+    # same situation reached through the package: a constant tilt of an exact chain
+    Zconst = ContinuousTimeMarkovChain([0.0, 1.0], [-1.0 1.0; 1.0 -1.0])
+    mconst = AdditiveFunctional(Zconst, [0.02, 0.02], [0.1, 0.1])
+    @test cgf(mconst, 1.0) ≈ 0.02 + 0.5 * 0.1^2 atol = 1e-10
+    # custom subtypes only need `tilted_generator`, not an `X` field
+    @test cgf(CustomAdditiveFunctional(), 0.7) ≈ 0.3 * 0.7 atol = 1e-10
+    η_r, r_r = cgf_eigenvector(CustomAdditiveFunctional(), 0.7)
+    @test η_r ≈ 0.21 atol = 1e-10
+    η_l, l_l = cgf_eigenvector(CustomAdditiveFunctional(), 0.7, :left)
+    @test sum(l_l) ≈ 1.0
+    # reducible generator: informative error instead of a bare SingularException
+    Ared = [-1.0 1.0 0.0 0.0; 1.0 -1.0 0.0 0.0; 0.0 0.0 -1.0 1.0; 0.0 0.0 1.0 -1.0]
+    err = try
+        principal_eigenvalue(Ared)
+        nothing
+    catch err
+        err
+    end
+    @test err isa ArgumentError
+    @test occursin("reducible", sprint(showerror, err))
+end
+
+
+@testset "tail_index bracket" begin
+    m_br = AdditiveFunctional(X, X.x .- 0.06, zeros(length(X.x)))
+    ζ_br = tail_index(m_br)
+    @test tail_index(m_br; bracket = (0.5 * ζ_br, 2 * ζ_br)) ≈ ζ_br atol = 1e-3
+    # both endpoints above the root: cgf - δ is positive at both, so no root is bracketed
+    err = try
+        tail_index(m_br; bracket = (5.0, 8.0))
+        nothing
+    catch err
+        err
+    end
+    @test err isa ArgumentError
+    @test occursin("bracket", sprint(showerror, err))
+end
+
+
+@testset "automatic differentiation" begin
+    # d/dκ of a stationary moment: AD equals finite differences of the same discretized object
+    stat_var = κd -> begin
+        xg = range(-1.0, 1.0, length = 200)
+        Xd = DiffusionProcess(xg, -κd .* xg, 0.1 .* ones(200))
+        g = stationary_distribution(Xd)
+        sum(g .* xg .^ 2)
+    end
+    h = 1e-6
+    @test ForwardDiff.derivative(stat_var, 0.5) ≈ (stat_var(0.5 + h) - stat_var(0.5 - h)) / (2h) rtol = 1e-6
+    # sanity against the continuous-limit values Var = σ²/2κ (≈2% discretization error on this grid)
+    @test stat_var(0.5) ≈ 0.1^2 / (2 * 0.5) rtol = 5e-2
+    @test ForwardDiff.derivative(stat_var, 0.5) ≈ -0.1^2 / (2 * 0.5^2) rtol = 5e-2
+
+    # d/dξ of the cgf, through the Metzler check and the inverse iteration
+    m_ad = AdditiveFunctional(X, X.x .+ 0.01, 0.05 .* ones(length(X.x)))
+    Λad = ξ -> cgf(m_ad, ξ)
+    @test ForwardDiff.derivative(Λad, 1.0) ≈ (Λad(1.0 + h) - Λad(1.0 - h)) / (2h) rtol = 1e-4
+
+    # generator assembly is generic in eltype
+    d1 = ForwardDiff.Dual(1.0, 1.0)
+    @test eltype(generator(DiffusionProcess([0.0, 0.5, 1.0], fill(d1, 3), ones(3)))) <: ForwardDiff.Dual
+    Xmv_dual = MultivariateDiffusionProcess((; x = [0.0, 1.0], y = [0.0, 1.0]);
+        drift = (; x = d1, y = 0.0), variance = (; x = 1.0, y = 1.0))
+    @test eltype(generator(Xmv_dual)) <: ForwardDiff.Dual
 end

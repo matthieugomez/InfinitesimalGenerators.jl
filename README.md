@@ -46,6 +46,5 @@ The [documentation](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/
 
 # Related packages
 
-- [EconPDEs](https://github.com/matthieugomez/EconPDEs.jl) is focused on nonlinear PDEs resulting from optimization problems (HJB equations), while this package is focused on linear problems. Still, there is substantial overlap between the two packages: see [this worked example](https://matthieugomez.com/EconPDEs.jl/dev/infinitesimal_generators/) in the EconPDEs documentation and the [HJB tutorial](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/hjb/) in this one for examples.
-whose solutions this package takes as inputs. The two packages are designed to be used together.
+- [EconPDEs](https://github.com/matthieugomez/EconPDEs.jl) is focused on nonlinear PDEs resulting from optimization problems (HJB equations), whose solutions this package takes as inputs — the two packages are designed to be used together. See [this worked example](https://matthieugomez.com/EconPDEs.jl/dev/infinitesimal_generators/) in the EconPDEs documentation and the [HJB tutorial](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/hjb/) in this one.
 - [SimpleDifferentialOperators](https://github.com/QuantEcon/SimpleDifferentialOperators.jl) contains more general tools to define operators with different boundary conditions. In contrast, InfinitesimalGenerators always assumes reflecting boundaries.

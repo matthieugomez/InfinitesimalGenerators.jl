@@ -1,5 +1,58 @@
 # Changelog
 
+## 3.2.0
+
+### Fixed
+- `principal_eigenvalue` no longer throws a `SingularException` when the initial shift
+  lands exactly on an eigenvalue — which happens whenever the row sums of the Metzler
+  matrix are exactly constant, so that the Gershgorin bound used as the initial shift is
+  attained (e.g. the tilted generator of a state-independent additive functional over an
+  exact chain). The shift is nudged by `tol` and the Rayleigh quotient recovers the exact
+  eigenvalue.
+- `principal_eigenvalue` on a reducible generator (states that do not communicate) now
+  throws an `ArgumentError` explaining that the stationary eigenvector is not unique,
+  instead of a bare `SingularException`.
+- `feynman_kac` no longer errors when `f` or `v` is a one-column matrix (e.g. a
+  state-shaped array with a trailing time dimension of length 1 in the process form);
+  a single column is held constant over time.
+- `feynman_kac` now throws if `ts` is not increasing; a decreasing grid previously
+  flipped implicit Euler into an unstable scheme silently.
+
+### Added
+- `tail_index` accepts a `bracket` keyword (default `(1e-5, 1e3)`); if `cgf(m, ξ) - δ`
+  has the same sign at both ends, an `ArgumentError` reports the two values instead of a
+  cryptic root-finding error.
+- The process-level `stationary_distribution(X; ...)` and `feynman_kac(X, ts; ...)`
+  forward remaining keyword arguments to `generator(X)`, so `check = :warn` /
+  `check = false` reach a `MultivariateDiffusionProcess` without assembling the matrix
+  by hand.
+- Generator assembly (`generator`, `∂`) now uses the promoted element type of its inputs
+  instead of hard-coding `Float64`, so dual numbers flow through: univariate stationary
+  distributions, `cgf`, and other spectral objects can be differentiated with
+  ForwardDiff with respect to model parameters (multivariate processes assemble
+  generically too, but sparse factorization of dual matrices is not supported by the
+  ecosystem). Tested against finite differences.
+- `cgf` and `cgf_eigenvector` no longer assume that a custom `AdditiveFunctional`
+  subtype has an `X` field: the default eigenvector guess is derived from the tilted
+  generator, so `tilted_generator` is the only method a custom subtype must define, as
+  documented.
+- Aqua.jl quality checks (method ambiguities, unbound type parameters, compat bounds,
+  stale dependencies) run as part of the test suite; compat entries added for the
+  standard libraries and test dependencies.
+
+### Changed
+- The zero-row-sum test in `principal_eigenvalue` and the zero-eigenvalue warning in
+  `stationary_distribution` now use tolerances scaled by the size of the diagonal (as
+  `check_generator` already did), instead of absolute constants — robust to generators
+  with very large transition rates (fine grids).
+- `feynman_kac` factorizes the implicit-Euler matrix once whenever the time grid is
+  uniform and `v` is time-invariant, even when `f` varies over time (previously a
+  time-varying `f` forced one factorization per step).
+- The positive-semidefiniteness validation in `MultivariateDiffusionProcess` and
+  `AdditiveFunctional` reuses a single buffer across grid points and uses a closed form
+  instead of `eigmin` for 2×2 problems — faster on large grids, and generic in the
+  element type.
+
 ## 3.1.0
 
 ### Added

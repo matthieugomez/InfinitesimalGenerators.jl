@@ -1,6 +1,7 @@
 function _default_atol(𝔸::AbstractMatrix)
-    T = float(real(eltype(𝔸)))
-    sqrt(eps(T)) * max(one(T), maximum(abs, diag(𝔸)))
+    # eps on an instance rather than the type so that generic eltypes (e.g. dual numbers) work
+    o = float(real(one(eltype(𝔸))))
+    sqrt(eps(o)) * max(o, maximum(abs, diag(𝔸)))
 end
 
 """

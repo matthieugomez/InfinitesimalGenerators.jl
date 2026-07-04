@@ -106,31 +106,34 @@ function _reshape_state_time_output(X::ContinuousTimeMarkovProcess, x::AbstractM
 end
 
 """
-    stationary_distribution(X::ContinuousTimeMarkovProcess; δ = 0.0, rebirth = Ones(length(X)))
+    stationary_distribution(X::ContinuousTimeMarkovProcess; δ = 0.0, rebirth = Ones(length(X)), kwargs...)
 
 Compute the stationary distribution of the Markov process `X`, returned as an array of
 probability masses shaped like `size(X)`. The keywords `δ` and `rebirth` have the same
-meaning as in the matrix form; `rebirth` is an array shaped like `size(X)`.
+meaning as in the matrix form; `rebirth` is an array shaped like `size(X)`. Remaining
+keyword arguments are forwarded to `generator(X)` — e.g. `check = :warn` for a
+[`MultivariateDiffusionProcess`](@ref).
 """
-function stationary_distribution(X::ContinuousTimeMarkovProcess; δ = 0.0, rebirth = nothing, ψ = nothing)
+function stationary_distribution(X::ContinuousTimeMarkovProcess; δ = 0.0, rebirth = nothing, ψ = nothing, kwargs...)
     rebirth = _resolve_rebirth_argument(rebirth, ψ, Ones(length(X)))
     size(rebirth) == size(X) || size(rebirth) == (length(X),) ||
         throw(DimensionMismatch("`rebirth` has size $(size(rebirth)) but the state space has size $(size(X))"))
-    _reshape_state_output(X, stationary_distribution(generator(X); δ = δ, rebirth = vec(rebirth)))
+    _reshape_state_output(X, stationary_distribution(generator(X; kwargs...); δ = δ, rebirth = vec(rebirth)))
 end
 
 """
-    feynman_kac(X::ContinuousTimeMarkovProcess, ts; f = nothing, ψ = nothing, v = nothing, direction = :backward)
+    feynman_kac(X::ContinuousTimeMarkovProcess, ts; f = nothing, ψ = nothing, v = nothing, direction = :backward, kwargs...)
 
 Solve the Feynman–Kac PDE associated with a Markov process `X` on the time grid
 `ts`, using implicit Euler time steps.
 
 For the process form, `f`, `ψ`, and `v` are arrays shaped like the state space (`size(X)`);
 `f` and `v` may also carry a trailing time dimension of length `length(ts)`. The result has
-one slice per date in `ts`.
+one slice per date in `ts`. Remaining keyword arguments are forwarded to `generator(X)` —
+e.g. `check = :warn` for a [`MultivariateDiffusionProcess`](@ref).
 """
-function feynman_kac(X::ContinuousTimeMarkovProcess, ts; f = nothing, ψ = nothing, v = nothing, direction = :backward)
-    𝔸 = generator(X)
+function feynman_kac(X::ContinuousTimeMarkovProcess, ts; f = nothing, ψ = nothing, v = nothing, direction = :backward, kwargs...)
+    𝔸 = generator(X; kwargs...)
     f_flat = f === nothing ? zeros(eltype(𝔸), length(X)) :
         _flatten_state_time_argument(X, f, ts, :f)
     ψ_flat = ψ === nothing ? zeros(eltype(𝔸), length(X)) :

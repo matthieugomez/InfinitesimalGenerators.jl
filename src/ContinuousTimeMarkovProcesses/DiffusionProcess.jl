@@ -44,8 +44,9 @@ function generator(X::DiffusionProcess)
 end
 
 function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
+    T = float(promote_type(eltype(x), eltype(μx), eltype(σx)))
     n = length(x)
-    𝔸 = Tridiagonal(zeros(n-1), zeros(n), zeros(n-1))
+    𝔸 = Tridiagonal(zeros(T, n-1), zeros(T, n), zeros(T, n-1))
     @inbounds for i in 1:n
         Δxp = x[min(i, n-1)+1] - x[min(i, n-1)]
         Δxm = x[max(i-1, 1) + 1] - x[max(i-1, 1)]
@@ -73,21 +74,22 @@ function generator(x::AbstractVector, μx::AbstractVector, σx::AbstractVector)
 end
 
 """
-    Returns the discretized version of the operator ∂
+    ∂(X::DiffusionProcess)
 
-        ∂: f ↦ ∂f
+Return the discretized version of the first-derivative operator `∂: f ↦ ∂f`. Not exported.
 
-    The scheme is upwind with respect to the drift (forward where μx ≥ 0,
-    backward where μx < 0), matching the discretization used in `generator`.
-    At interior nodes where the drift is exactly zero — where upwinding has no
-    preferred direction — a central difference is used instead. (Building the
-    matrix directly avoids the `Diagonal(μx) \\ generator(…)` division, which
-    would produce `NaN` rows wherever μx = 0.)
+The scheme is upwind with respect to the drift (forward where `μx ≥ 0`,
+backward where `μx < 0`), matching the discretization used in [`generator`](@ref).
+At interior nodes where the drift is exactly zero — where upwinding has no
+preferred direction — a central difference is used instead. (Building the
+matrix directly avoids the `Diagonal(μx) \\ generator(…)` division, which
+would produce `NaN` rows wherever `μx = 0`.)
 """
 function ∂(X::DiffusionProcess)
     x, μx = X.x, X.μx
+    T = float(promote_type(eltype(x), eltype(μx)))
     n = length(x)
-    D = Tridiagonal(zeros(n - 1), zeros(n), zeros(n - 1))
+    D = Tridiagonal(zeros(T, n - 1), zeros(T, n), zeros(T, n - 1))
     @inbounds for i in 1:n
         Δxp = x[min(i, n - 1) + 1] - x[min(i, n - 1)]
         Δxm = x[max(i - 1, 1) + 1] - x[max(i - 1, 1)]

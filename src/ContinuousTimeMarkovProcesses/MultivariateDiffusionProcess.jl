@@ -50,8 +50,9 @@ struct MultivariateDiffusionProcess{N, G, D, V, C} <: ContinuousTimeMarkovProces
         end
 
         if length(names) > 1
+            TΣ = promote_type(map(eltype, Tuple(variance_arrays))..., map(eltype, Tuple(covariance_arrays))...)
+            Σ = zeros(TΣ, length(names), length(names))
             for I in CartesianIndices(shape)
-                Σ = zeros(Float64, length(names), length(names))
                 for d in eachindex(names)
                     Σ[d, d] = variance_arrays[names[d]][I]
                 end
@@ -59,8 +60,7 @@ struct MultivariateDiffusionProcess{N, G, D, V, C} <: ContinuousTimeMarkovProces
                     Σ[d1, d2] = covariance_arrays[key][I]
                     Σ[d2, d1] = covariance_arrays[key][I]
                 end
-                scale = max(1.0, maximum(abs, Σ))
-                eigmin(Symmetric(Σ)) >= -sqrt(eps(Float64)) * scale ||
+                _check_psd(Σ) ||
                     throw(ArgumentError("instantaneous covariance matrix must be positive semidefinite at grid index $I"))
             end
         end
@@ -95,6 +95,22 @@ _mvd_coefficient_array(x::Number, shape, label::Symbol) = fill(float(x), shape)
 function _mvd_coefficient_array(x, shape, label::Symbol)
     size(x) == shape || throw(ArgumentError("coefficient `$label` has size $(size(x)) but the state grid has size $shape"))
     collect(float.(x))
+end
+
+# positive semidefiniteness up to the same relative tolerance as eigmin(Σ) >= -√eps * scale;
+# closed forms for 1×1 and 2×2 avoid eigmin (cheaper, and they work for generic eltypes
+# such as dual numbers). The buffer Σ can be reused across grid points by the caller.
+function _check_psd(Σ::AbstractMatrix)
+    tol = sqrt(eps(Float64)) * max(1.0, maximum(abs, Σ))
+    n = size(Σ, 1)
+    if n == 1
+        return Σ[1, 1] >= -tol
+    elseif n == 2
+        return Σ[1, 1] >= -tol && Σ[2, 2] >= -tol &&
+            (Σ[1, 1] + tol) * (Σ[2, 2] + tol) >= Σ[1, 2]^2
+    else
+        return eigmin(Symmetric(Σ)) >= -tol
+    end
 end
 
 function _mvd_covariance_pairs(names)
@@ -216,9 +232,11 @@ function generator(X::MultivariateDiffusionProcess; check = :throw, check_tol = 
     linear_indices = LinearIndices(shape)
     n = length(cartesian_indices)
 
+    covpairs = _mvd_covariance_pairs(names)
+    T = float(promote_type(map(eltype, Tuple(X.drift))..., map(eltype, Tuple(X.variance))..., map(eltype, Tuple(X.covariance))...))
     rows = Int[]
     cols = Int[]
-    vals = Float64[]
+    vals = T[]
 
     for I in cartesian_indices
         row = linear_indices[I]
@@ -227,7 +245,7 @@ function generator(X::MultivariateDiffusionProcess; check = :throw, check_tol = 
             _mvd_add_first_derivative!(rows, cols, vals, linear_indices, row, I, d, grid[name], X.drift[name][I])
             _mvd_add_second_derivative!(rows, cols, vals, linear_indices, row, I, d, grid[name], 0.5 * X.variance[name][I])
         end
-        for (d1, d2, key) in _mvd_covariance_pairs(names)
+        for (d1, d2, key) in covpairs
             _mvd_add_cross_derivative!(rows, cols, vals, linear_indices, row, I, d1, d2, grid[names[d1]], grid[names[d2]], shape, X.covariance[key][I])
         end
     end
