@@ -1,0 +1,4 @@
+/* Hide the current page's internal section headings in the sidebar menu. */
+#documenter .docs-sidebar ul.internal {
+    display: none;
+}
