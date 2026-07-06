@@ -90,16 +90,17 @@ nothing # hide
 ```
 
 For the Ornstein–Uhlenbeck process this should be the ``N(0, \sigma^2/2\kappa)`` density.
-The maximum gap, relative to the density's peak:
+The total variation distance — the share of probability mass the discretized chain
+misplaces relative to the exact distribution:
 
 ```@example distributions
 s2∞ = σ^2 / (2κ)
 closed∞ = @. exp(-xs^2 / (2s2∞)) / sqrt(2π * s2∞)
-maximum(abs, g∞ ./ Δx - closed∞) / maximum(closed∞)
+sum(abs, g∞ - closed∞ .* Δx) / 2
 ```
 
-The same couple of percent as the variance check above — upwinding's numerical diffusion —
-and it halves with each doubling of the grid.
+About one percent — upwinding's numerical diffusion again, as in the variance check
+above — and it halves with each doubling of the grid.
 
 ## ... and with the helper
 
