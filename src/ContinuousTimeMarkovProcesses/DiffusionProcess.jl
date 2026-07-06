@@ -129,7 +129,7 @@ reflecting boundaries distort solutions near the edges of the grid, and a wide g
 that distortion where the process never goes — which matters especially for [`tail_index`](@ref).
 """
 function OrnsteinUhlenbeck(; xbar = 0.0, κ = 0.1, σ = 1.0, p = 1e-10, length = 100,
-    xmin = quantile(Normal(xbar, σ / sqrt(2 * κ)), p), xmax = quantile(Normal(xbar, σ / sqrt(2 * κ)), 1 - p), pow = 1)
+    xmin = xbar - σ / sqrt(κ) * erfcinv(2 * p), xmax = xbar + σ / sqrt(κ) * erfcinv(2 * p), pow = 1)
     # it's important to take low p to have the right tail index of Additive functional
     if xmin > 0
         x = range(xmin^(1/pow), stop = xmax^(1/pow), length = length).^pow
@@ -154,7 +154,7 @@ stationary Gamma distribution; pass `xmin` and `xmax` to override the limits. `p
 the grid spacing (points are uniform in `x^(1/pow)`, so the default `pow = 2` concentrates
 points near zero, where the volatility is smallest).
 """
-function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, α = 2 * κ * xbar / σ^2, β = σ^2 / (2 * κ), xmin = quantile(Gamma(α, β), p), xmax = quantile(Gamma(α, β), 1 - p), pow = 2)
+function CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 1.0, p = 1e-10, length = 100, α = 2 * κ * xbar / σ^2, β = σ^2 / (2 * κ), xmin = β * gamma_inc_inv(α, p, 1 - p), xmax = β * gamma_inc_inv(α, 1 - p, p), pow = 2)
     # check 0 is not attainable
     (2 * κ * xbar) / σ^2 > 1 || throw(ArgumentError("Feller condition not satisfied: 2κx̄/σ² must be > 1"))
     x = range(xmin^(1/pow), stop = xmax^(1/pow), length = length).^pow

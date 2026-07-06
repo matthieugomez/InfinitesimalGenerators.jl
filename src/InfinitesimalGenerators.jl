@@ -1,6 +1,6 @@
 module InfinitesimalGenerators
 
-using Distributions: Normal, Gamma, quantile
+using SpecialFunctions: erfcinv, gamma_inc_inv
 using FillArrays: Ones
 using LinearAlgebra: LinearAlgebra, Adjoint, Diagonal, LAPACKException, SingularException, Transpose, Tridiagonal, I, Symmetric, diag, eigmin, factorize, kron, ldiv!
 using PrecompileTools: @compile_workload
