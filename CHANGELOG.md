@@ -10,6 +10,7 @@
   `factorize`/`\`, where the sparse UMFPACK LU is much faster than the
   block-banded QR (on a 5-regime × 1000-point switching diffusion: ~9× for
   `stationary_distribution`, ~460× for `feynman_kac`). The BlockBandedMatrices
+  dependency is dropped.
 
 ## 3.2.0
 
