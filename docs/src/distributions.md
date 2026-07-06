@@ -89,13 +89,17 @@ g∞ = B \ [zeros(length(xs) - 1); 1.0]
 nothing # hide
 ```
 
-For the Ornstein–Uhlenbeck process this should be the ``N(0, \sigma^2/2\kappa)`` density:
+For the Ornstein–Uhlenbeck process this should be the ``N(0, \sigma^2/2\kappa)`` density.
+The maximum gap, relative to the density's peak:
 
 ```@example distributions
 s2∞ = σ^2 / (2κ)
 closed∞ = @. exp(-xs^2 / (2s2∞)) / sqrt(2π * s2∞)
-maximum(abs, g∞ ./ Δx - closed∞)
+maximum(abs, g∞ ./ Δx - closed∞) / maximum(closed∞)
 ```
+
+The same couple of percent as the variance check above — upwinding's numerical diffusion —
+and it halves with each doubling of the grid.
 
 ## ... and with the helper
 
