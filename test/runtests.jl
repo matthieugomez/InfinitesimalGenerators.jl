@@ -1,5 +1,4 @@
 using InfinitesimalGenerators, Test, Statistics, LinearAlgebra, SparseArrays, Expokit
-using BlockBandedMatrices: BandedBlockBandedMatrix
 import Aqua, ForwardDiff
 
 # Shared Ornstein–Uhlenbeck process used across several test sets
@@ -155,10 +154,8 @@ end
     @test Yswitch isa ContinuousTimeMarkovProcess{2}
     @test ndims(Yswitch) == 2
     Gswitch = generator(Yswitch)
-    @test Gswitch isa BandedBlockBandedMatrix
+    @test Gswitch isa SparseMatrixCSC
     @test Matrix(Gswitch) ≈ Matrix(jointoperator([generator(Xlow), generator(Xhigh)], Q))
-    @test Matrix(jointoperator([generator(Xlow), generator(Xhigh)], Q)) ≈
-          Matrix(jointoperator(sparse.([generator(Xlow), generator(Xhigh)]), Q))
     @test_throws DimensionMismatch SwitchingProcess(Z, [Xlow])
     @test_throws DimensionMismatch SwitchingProcess(Z, [Xlow, DiffusionProcess(range(-0.2, stop = 0.2, length = 41), zeros(41), ones(41))])
 end
@@ -169,7 +166,7 @@ end
     @test check_generator(A) === A                                       # Tridiagonal, chainable
     Zc = ContinuousTimeMarkovChain([0.5, 1.5], [-0.1 0.1; 0.2 -0.2])
     @test check_generator(generator(ProductProcess(X, Zc))) isa SparseMatrixCSC
-    @test check_generator(generator(SwitchingProcess(Zc, [X, X]))) isa BandedBlockBandedMatrix
+    @test check_generator(generator(SwitchingProcess(Zc, [X, X]))) isa SparseMatrixCSC
     @test check_generator(Matrix(generator(Zc))) isa Matrix
 
     # violations warn (with the size of the violation); structural problems still throw

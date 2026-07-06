@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.3.0
+
+### Changed
+- `generator(::SwitchingProcess)` and `jointoperator` now return a `SparseMatrixCSC`
+  instead of a `BandedBlockBandedMatrix`, matching `ProductProcess` and
+  `MultivariateDiffusionProcess`. Nothing downstream exploited the block structure —
+  `feynman_kac`, `stationary_distribution`, and `principal_eigenvalue` all go through
+  `factorize`/`\`, where the sparse UMFPACK LU is much faster than the
+  block-banded QR (on a 5-regime × 1000-point switching diffusion: ~9× for
+  `stationary_distribution`, ~460× for `feynman_kac`). The BlockBandedMatrices
+
 ## 3.2.0
 
 ### Fixed
