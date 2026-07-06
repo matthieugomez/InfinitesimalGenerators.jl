@@ -13,6 +13,11 @@ end
 Compute the stationary distribution corresponding to the generator matrix `𝔸` — the
 solution of the Kolmogorov forward equation `𝔸'g = 0`, normalized to sum to one.
 
+The result is a vector of probability *masses*, one per state — `sum(g) == 1` with no
+grid weights — so expectations are unweighted dot products `sum(g .* f)`. To get a
+*density* for a discretized diffusion, divide the masses by the cell widths of the
+grid.
+
 With a death rate `δ > 0` and a rebirth distribution `ψ` given by `rebirth`, returns
 instead the resolvent `(δI - 𝔸')⁻¹ δψ` — the stationary distribution when units die at
 rate `δ` and are reborn with distribution `ψ`.

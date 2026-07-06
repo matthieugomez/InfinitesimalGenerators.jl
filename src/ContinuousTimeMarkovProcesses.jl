@@ -109,10 +109,14 @@ end
     stationary_distribution(X::ContinuousTimeMarkovProcess; δ = 0.0, rebirth = Ones(length(X)), kwargs...)
 
 Compute the stationary distribution of the Markov process `X`, returned as an array of
-probability masses shaped like `size(X)`. The keywords `δ` and `rebirth` have the same
-meaning as in the matrix form; `rebirth` is an array shaped like `size(X)`. Remaining
-keyword arguments are forwarded to `generator(X)` — e.g. `check = :warn` for a
-[`MultivariateDiffusionProcess`](@ref).
+probability *masses* shaped like `size(X)`: the array sums to one with no grid
+weights, and expectations are unweighted dot products `sum(g .* f)`. To get a
+*density* for a diffusion, divide by the cell widths of the grid — essential when the
+grid is non-uniform.
+
+The keywords `δ` and `rebirth` have the same meaning as in the matrix form; `rebirth`
+is an array shaped like `size(X)`. Remaining keyword arguments are forwarded to
+`generator(X)` — e.g. `check = :warn` for a [`MultivariateDiffusionProcess`](@ref).
 """
 function stationary_distribution(X::ContinuousTimeMarkovProcess; δ = 0.0, rebirth = nothing, ψ = nothing, kwargs...)
     rebirth = _resolve_rebirth_argument(rebirth, ψ, Ones(length(X)))

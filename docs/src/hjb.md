@@ -109,6 +109,8 @@ plot(as[idx], (g ./ Δa)[idx, :];
     label = ["low income" "high income"], xlabel = "assets a", ylabel = "stationary density")
 ```
 
+As everywhere in the package, `g` holds probability *masses* — `sum(g) == 1` with no grid weights — so aggregates are unweighted dot products like `sum(g .* c)` below. Plotting is the one place masses are the wrong units: on a non-uniform grid, raw masses trace the grid spacing rather than the shape of the distribution, so the plot divides by the cell widths to convert to a *density*. (Moll's codes use the opposite convention: there `g` holds density values, normalized and aggregated with `da` weights.)
+
 Low-income households dissave toward the borrowing limit; high-income households accumulate. And because the same discretized generator prices the value function and transports the distribution, accounting identities hold to machine precision rather than up to discretization error — aggregate consumption equals aggregate income exactly:
 
 ```@example hjb
@@ -129,7 +131,6 @@ The unknown now appears inside the policy, so each time step is a genuine **nonl
 
 - **Robustness.** With the lagged policy and a fixed ``\Delta``, nothing forces the update to make progress: in highly nonlinear models the policy and the value can chase each other, and the iteration oscillates or diverges unless ``\Delta`` and the initial guess are hand-tuned. The fully implicit step always converges for ``\Delta`` small enough, so adapting ``\Delta`` — shrinking it when a Newton step fails, growing it when it succeeds — converges without tuning. This adaptive scheme is *pseudo-transient continuation*, a standard method for stiff nonlinear PDEs in fluid dynamics; [Kelley and Keyes (1998)](https://doi.org/10.1137/S0036142996304796) give formal convergence conditions.
 - **Speed.** As ``\Delta \to \infty`` the step becomes a pure Newton solve of the stationary equation, with quadratic convergence near the solution — against the linear convergence of the lagged iteration.
-- **Accuracy where it matters.** Newton drives the *residual* of the equation to zero, rather than the change in ``v`` between iterations. Near the borrowing constraint the residual is so stiff that a value function converged to ``10^{-8}`` in sup norm can still leave a large equation error at a handful of grid points.
 - **Convenience.** The sparse Jacobian is assembled automatically from the grid stencil, so none of the matrices above have to be derived by hand — the same code path handles multiple value functions, algebraic equations, and two- or three-dimensional state spaces.
 
 You write only the equation at a single grid point, with named upwind derivatives — note that the policy inside is a function of the *same* `value` bundle being solved for:

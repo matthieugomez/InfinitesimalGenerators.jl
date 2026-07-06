@@ -22,7 +22,7 @@ nothing # hide
 
 ## Stationary distributions
 
-[`stationary_distribution(X)`](@ref stationary_distribution) solves the Kolmogorov forward equation ``\mathbb{A}' g = 0`` and returns the probability mass at each grid point, shaped like `size(X)` — see the [distribution dynamics tutorial](distributions.md) for the computation by hand:
+[`stationary_distribution(X)`](@ref stationary_distribution) solves the Kolmogorov forward equation ``\mathbb{A}' g = 0`` and returns the probability *mass* at each grid point, shaped like `size(X)`; to get a *density*, divide by the cell widths. See the [distribution dynamics tutorial](distributions.md) for the computation by hand:
 
 ```@example operators
 g = stationary_distribution(X)

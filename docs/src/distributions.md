@@ -51,6 +51,8 @@ end
 current()
 ```
 
+The division by `Δx` converts masses to a *density* for plotting: `g` sums to one without grid weights, so the density at a grid point is the mass divided by the cell width. On this uniform grid the two differ only by a constant factor; on a non-uniform grid (as in the [HJB tutorial](hjb.md)) the distinction matters, since raw masses would trace the grid spacing rather than the shape of the distribution.
+
 The discretized process is an honest Markov chain — rows of ``\mathbb{A}`` sum to zero and off-diagonals are non-negative — so the masses stay non-negative and sum to one at every date, with no renormalization needed:
 
 ```@example distributions
