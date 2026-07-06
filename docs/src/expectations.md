@@ -57,7 +57,7 @@ For the Ornstein–Uhlenbeck process the conditional mean is known in closed for
 maximum(abs, u - (ȳ .+ exp(-κ * 10.0) .* (ys .- ȳ)))
 ```
 
-The error has two sources — the ``O(dt)`` bias of implicit Euler and the reflecting boundaries of the grid — and both are small because the time step is short and the grid is wide relative to the stationary distribution.
+The error has two sources: the ``O(dt)`` bias of implicit Euler, which shrinks with the time step, and the reflecting boundaries of the grid, examined below.
 
 ## ... and with the helper
 
@@ -92,7 +92,7 @@ P = (r * I - 𝔸) \ collect(ys)
 nothing # hide
 ```
 
-The closed form ``P(y) = \bar y / r + (y - \bar y)/(r + \kappa)`` — mean-reverting cash flows are discounted at ``r + \kappa``, not ``r`` — again gives a check, and this time it also reveals the one systematic error of the discretization. The package always imposes reflecting boundaries, i.e. a zero derivative at the edges of the grid, while the true ``P`` has slope ``1/(r+\kappa)`` everywhere. The result is a boundary layer: the error is visible at the very edge of the grid, dies out within a few standard deviations, and is negligible where the process actually spends time:
+The closed form ``P(y) = \bar y / r + (y - \bar y)/(r + \kappa)`` — mean-reverting cash flows are discounted at ``r + \kappa``, not ``r`` — again gives a check, and this time it also reveals a systematic error of the discretization. The package always imposes reflecting boundaries, i.e. a zero derivative at the edges of the grid, while the true ``P`` has slope ``1/(r+\kappa)`` everywhere. The result is a boundary layer: the error is visible at the very edge of the grid, dies out within a few standard deviations, and is negligible where the process actually spends time:
 
 ```@example expectations
 closedP = ȳ / r .+ (ys .- ȳ) ./ (r + κ)

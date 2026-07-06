@@ -92,11 +92,11 @@ nothing # hide
 
 At a fixed point ``v_{n+1} = v_n``, the ``\Delta`` terms cancel and the exact discretized HJB holds, with a policy consistent with the value function.
 
-The function above is, almost line for line, the reference Matlab implementation [`huggett_partialeq.m`](https://benjaminmoll.com/wp-content/uploads/2020/06/huggett_partialeq.m) from [Ben Moll's code library](https://benjaminmoll.com/codes/) — and the correspondence is exact: run with the same parameters and grid, the two produce the same value function and stationary distribution to within ``10^{-8}``.
+The function above closely follows the reference Matlab implementation [`huggett_partialeq.m`](https://benjaminmoll.com/wp-content/uploads/2020/06/huggett_partialeq.m) from [Ben Moll's code library](https://benjaminmoll.com/codes/): the same upwind rule, the same implicit step, the same treatment of the borrowing constraint.
 
-## The distribution, for free
+## The stationary distribution
 
-Notice what step 2 of the solver builds: not just a matrix of finite-difference coefficients, but a bona fide Markov process for the household's state ``(a, y)`` — a `SwitchingProcess` over two zero-volatility `DiffusionProcess`es, the same objects as in the previous tutorials. The `X` returned by `solve_implicit` is that process evaluated at the *solved* policy: the **equilibrium wealth process**. The matrix that was just used to solve the HJB is, at the fixed point, the generator of the model's cross-sectional dynamics, so everything from the previous tutorials applies to it directly — in particular the stationary wealth distribution is one more linear solve:
+Step 2 of the solver builds a Markov process for the household's state ``(a, y)`` — a `SwitchingProcess` over two zero-volatility `DiffusionProcess`es, the same objects as in the previous tutorials. The `X` returned by `solve_implicit` is that process evaluated at the *solved* policy: the **equilibrium wealth process**. The matrix that was just used to solve the HJB is, at the fixed point, the generator of the model's cross-sectional dynamics, so everything from the previous tutorials applies to it directly — in particular the stationary wealth distribution is one more linear solve:
 
 ```@example hjb
 using Plots
@@ -111,7 +111,7 @@ plot(as[idx], (g ./ Δa)[idx, :];
 
 As everywhere in the package, `g` holds probability *masses* — `sum(g) == 1` with no grid weights — so aggregates are unweighted dot products like `sum(g .* c)` below. Plotting is the one place masses are the wrong units: on a non-uniform grid, raw masses trace the grid spacing rather than the shape of the distribution, so the plot divides by the cell widths to convert to a *density*. (Moll's codes use the opposite convention: there `g` holds density values, normalized and aggregated with `da` weights.)
 
-Low-income households dissave toward the borrowing limit; high-income households accumulate. And because the same discretized generator prices the value function and transports the distribution, accounting identities hold to machine precision rather than up to discretization error — aggregate consumption equals aggregate income exactly:
+Low-income households dissave toward the borrowing limit; high-income households accumulate. And because the same discretized generator prices the value function and transports the distribution, aggregate consumption equals aggregate income to machine precision rather than up to discretization error:
 
 ```@example hjb
 C = sum(g .* c)
@@ -127,11 +127,11 @@ The scheme above buys linearity by evaluating the policy at the *lagged* guess: 
 \left(\left(\rho + \tfrac{1}{\Delta}\right) I - \mathbb{A}(c(v_{n+1}))\right) v_{n+1} = u(c(v_{n+1})) + \tfrac{1}{\Delta} v_n.
 ```
 
-The unknown now appears inside the policy, so each time step is a genuine **nonlinear system**, solved with Newton's method. This is what [EconPDEs.jl](https://github.com/matthieugomez/EconPDEs.jl) implements, and it is what you want once the equation is more nonlinear than this tutorial's:
+The unknown now appears inside the policy, so each time step is a genuine **nonlinear system**, solved with Newton's method. This is what [EconPDEs.jl](https://github.com/matthieugomez/EconPDEs.jl) implements, and it is what you want once the equation is more nonlinear than this tutorial's.
 
-- **Robustness.** With the lagged policy and a fixed ``\Delta``, nothing forces the update to make progress: in highly nonlinear models the policy and the value can chase each other, and the iteration oscillates or diverges unless ``\Delta`` and the initial guess are hand-tuned. The fully implicit step always converges for ``\Delta`` small enough, so adapting ``\Delta`` — shrinking it when a Newton step fails, growing it when it succeeds — converges without tuning. This adaptive scheme is *pseudo-transient continuation*, a standard method for stiff nonlinear PDEs in fluid dynamics; [Kelley and Keyes (1998)](https://doi.org/10.1137/S0036142996304796) give formal convergence conditions.
-- **Speed.** As ``\Delta \to \infty`` the step becomes a pure Newton solve of the stationary equation, with quadratic convergence near the solution — against the linear convergence of the lagged iteration.
-- **Convenience.** The sparse Jacobian is assembled automatically from the grid stencil, so none of the matrices above have to be derived by hand — the same code path handles multiple value functions, algebraic equations, and two- or three-dimensional state spaces.
+With the lagged policy and a fixed ``\Delta``, nothing forces the update to make progress: in highly nonlinear models the policy and the value can chase each other, and the iteration oscillates or diverges unless ``\Delta`` and the initial guess are hand-tuned. The fully implicit step behaves better at both ends: for small ``\Delta`` it tracks the time-dependent equation, which converges whenever the stationary solution is stable, and as ``\Delta \to \infty`` it becomes a pure Newton solve of the stationary equation, with quadratic convergence near the solution. Adapting ``\Delta`` — shrinking it when a Newton step fails, growing it when it succeeds — therefore converges without hand-tuning in practice. This adaptive scheme is *pseudo-transient continuation*, a standard method for stiff nonlinear PDEs in fluid dynamics; [Kelley and Keyes (1998)](https://doi.org/10.1137/S0036142996304796) give formal convergence conditions.
+
+EconPDEs also assembles the sparse Jacobian automatically from the grid stencil, so none of the matrices above have to be derived by hand, and the same code path handles multiple value functions, algebraic equations, and two- or three-dimensional state spaces.
 
 You write only the equation at a single grid point, with named upwind derivatives — note that the policy inside is a function of the *same* `value` bundle being solved for:
 

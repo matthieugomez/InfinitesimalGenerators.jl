@@ -17,7 +17,7 @@ generator(Z)
 
 ## Diffusions
 
-[`DiffusionProcess`](@ref)`(x, μx, σx)` represents ``dx_t = \mu(x_t)dt + \sigma(x_t)dZ_t``, given a strictly increasing grid `x` (possibly non-uniform) and the drift and volatility evaluated on it. Discretizing turns the diffusion into exactly the object above — a finite-state chain jumping between neighboring grid points. The drift is discretized by upwinding — forward differences where it is positive, backward where it is negative — and the boundaries are reflecting, so the discretized operator is always a valid generator matrix (rows sum to zero, non-negative off-diagonals):
+[`DiffusionProcess`](@ref)`(x, μx, σx)` represents ``dx_t = \mu(x_t)dt + \sigma(x_t)dZ_t``, given a strictly increasing grid `x` (possibly non-uniform) and the drift and volatility evaluated on it. Discretizing turns the diffusion into the object above — a finite-state chain jumping between neighboring grid points. The drift is discretized by upwinding — forward differences where it is positive, backward where it is negative — and the boundaries are reflecting, so the discretized operator is always a valid generator matrix (rows sum to zero, non-negative off-diagonals):
 
 ```@example univariate
 x = range(-1, 1, length = 100)
@@ -26,7 +26,7 @@ X = DiffusionProcess(x, -0.03 .* x, 0.01 .* ones(100))
 generator(X)
 ```
 
-In the finite-difference literature, a discretization with non-negative off-diagonal weights is called a *monotone* scheme — the property that guarantees convergence to the right (viscosity) solution of HJB equations, and the reason upwinding is the standard discretization there (see [EconPDEs' discussion of upwinding](https://matthieugomez.github.io/EconPDEs.jl/dev/getting_started/#Upwinding)). "Monotone scheme" and "valid Markov generator" are the same condition seen from two sides, which is why solutions move between the two packages exactly.
+In the finite-difference literature, a discretization with non-negative off-diagonal weights is called a *monotone* scheme — one of the conditions (together with consistency and stability) under which finite-difference solutions of HJB equations converge to the viscosity solution, and the reason upwinding is the standard discretization there (see [EconPDEs' discussion of upwinding](https://matthieugomez.github.io/EconPDEs.jl/dev/getting_started/#Upwinding)). "Monotone scheme" and "valid Markov generator" are the same sign condition seen from two sides, which is why the two packages produce consistent results on the same grid.
 
 ## Convenience constructors
 
@@ -38,7 +38,7 @@ Xcir = CoxIngersollRoss(; xbar = 0.1, κ = 0.1, σ = 0.07)  # dx = -κ (x - xbar
 nothing # hide
 ```
 
-By default the grid spans the `p` and `1 - p` quantiles of the stationary distribution with `length` points; pass `length`, `xmin`, `xmax`, or `pow` (grid-spacing power) to override. The default `p = 1e-10` is deliberately extreme: reflecting boundaries distort solutions near the edges of the grid (see the [expectations tutorial](expectations.md)), and a wide grid pushes that distortion where the process never goes — which matters especially when computing [tail indices](tail_index.md).
+By default the grid spans the `p` and `1 - p` quantiles of the stationary distribution with `length` points; pass `length`, `xmin`, `xmax`, or `pow` (grid-spacing power) to override. The default `p = 1e-10` errs on the side of a wide grid: reflecting boundaries distort solutions near the edges of the grid (see the [expectations tutorial](expectations.md)), and a wide grid pushes that distortion where the process never goes — which matters especially when computing [tail indices](tail_index.md).
 
 To combine these building blocks — independent products, regime switching, correlated states — see [Multivariate processes](multivariate.md).
 

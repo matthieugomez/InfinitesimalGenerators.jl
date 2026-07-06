@@ -21,7 +21,7 @@ If expectations satisfy the backward equation ``\partial_t u = \mathbb{A} u``, d
 \partial_t g = \mathbb{A}' g.
 ```
 
-The transpose is not incidental: ``E[f(x_t)] = g' f`` for any test function, so whatever operator advances expectations backward, its transpose advances the distribution forward. On the discretized state space, `g` is the vector of probability masses at each grid point, and the forward equation is again a linear ODE solved with implicit Euler steps:
+The transpose comes from duality: ``E[f(x_t)] = g' f`` for any test function, so whatever operator advances expectations backward, its transpose advances the distribution forward. On the discretized state space, `g` is the vector of probability masses at each grid point, and the forward equation is again a linear ODE solved with implicit Euler steps:
 
 ```@example distributions
 function evolve(𝔸, g0, T; dt = 0.1)
@@ -53,7 +53,7 @@ current()
 
 The division by `Δx` converts masses to a *density* for plotting: `g` sums to one without grid weights, so the density at a grid point is the mass divided by the cell width. On this uniform grid the two differ only by a constant factor; on a non-uniform grid (as in the [HJB tutorial](hjb.md)) the distinction matters, since raw masses would trace the grid spacing rather than the shape of the distribution.
 
-The discretized process is an honest Markov chain — rows of ``\mathbb{A}`` sum to zero and off-diagonals are non-negative — so the masses stay non-negative and sum to one at every date, with no renormalization needed:
+The discretized process is a well-defined Markov chain — rows of ``\mathbb{A}`` sum to zero and off-diagonals are non-negative — so the masses stay non-negative and sum to one at every date, with no renormalization needed:
 
 ```@example distributions
 sum(evolve(𝔸, g0, 100))

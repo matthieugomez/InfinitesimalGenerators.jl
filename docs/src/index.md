@@ -38,7 +38,7 @@ X = DiffusionProcess(x, -0.03 .* x, 0.01 .* ones(100))
 generator(X)
 ```
 
-Drift terms are discretized by upwinding (forward differences where the drift is positive, backward where it is negative) and boundaries are reflecting, so the discretized operator is always a *bona fide* generator: probability is conserved and the associated Markov chain is well defined. This is the same monotone scheme used to solve HJB equations, which is why solutions and distributions computed with this package are exactly consistent with finite-difference HJB solutions.
+Drift terms are discretized by upwinding (forward differences where the drift is positive, backward where it is negative) and boundaries are reflecting, so the discretized operator is always a valid generator: probability is conserved and the associated Markov chain is well defined. This is the same monotone scheme used by finite-difference HJB solvers, so distributions and expectations computed with this package are consistent with HJB solutions computed on the same grid with the same scheme, as in [EconPDEs.jl](https://github.com/matthieugomez/EconPDEs.jl).
 
 ## Tutorials
 

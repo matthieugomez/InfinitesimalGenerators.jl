@@ -36,7 +36,7 @@ xs = only(state_space(X))
 nothing # hide
 ```
 
-(The grids built by `OrnsteinUhlenbeck` deliberately extend to the ``10^{-10}`` quantiles of the state's stationary distribution: the principal eigenvalue is sensitive to the far tails of the state space, so wide grids matter here more than anywhere else.)
+(The grids built by `OrnsteinUhlenbeck` deliberately extend to the ``10^{-10}`` quantiles of the state's stationary distribution: the principal eigenvalue is sensitive to the far tails of the state space, so a wide grid matters especially here.)
 
 ## The CGF by hand
 
@@ -99,7 +99,7 @@ Now compare: the persistent economy has the *same* average growth rate (zero) an
 (persistent = ζ, constant = ζ_const)
 ```
 
-The reason is that a persistent growth state adds long-run variance: individuals who draw a high ``x`` keep growing fast for ``1/\kappa \approx 10`` years, and it is precisely those lucky histories that populate the far tail. Quantitatively, the persistent component contributes ``2 \, \text{Var}(x)/\kappa = \sigma_x^2/\kappa^2`` to the long-run variance of ``m_t/\sqrt{t}``, so the tail behaves roughly like a constant economy with total variance ``\nu^2 + \sigma_x^2/\kappa^2``:
+The reason is that a persistent growth state adds long-run variance: individuals who draw a high ``x`` keep growing fast for ``1/\kappa \approx 10`` years, and those lucky histories populate the far tail. Quantitatively, the persistent component contributes ``2 \, \text{Var}(x)/\kappa = \sigma_x^2/\kappa^2`` to the long-run variance of ``m_t/\sqrt{t}``, so the tail behaves roughly like a constant economy with total variance ``\nu^2 + \sigma_x^2/\kappa^2``:
 
 ```@example tail
 σ2_longrun = ν^2 + σx^2 / κ^2    # long-run variance of m_t / √t
@@ -107,7 +107,7 @@ The reason is that a persistent growth state adds long-run variance: individuals
 (exact = ζ, gaussian_approximation = ζ_approx)
 ```
 
-The approximation is close but not exact — the exact ``\Lambda`` is *not* quadratic, and its curvature beyond the second cumulant is part of what the eigenvalue computation captures. This matters in applications: as Gouin-Bonenfant and Toda (2023) emphasize, treating the tail exponent with a two-moment approximation can misstate tail inequality substantially when growth rates are persistent.
+The approximation is close but not exact — the exact ``\Lambda`` is *not* quadratic, and its curvature beyond the second cumulant is part of what the eigenvalue computation captures. This is why applications work with the exact eigenvalue characterization rather than a moment approximation — Gouin-Bonenfant and Toda (2023), for example, exploit the exact Pareto exponent to characterize tail inequality in heterogeneous-agent models.
 
 ## Beyond diffusions: growth driven by a discrete state
 
