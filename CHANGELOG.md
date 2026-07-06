@@ -2,6 +2,12 @@
 
 ## 3.3.0
 
+### Added
+- A PrecompileTools workload compiles the main entry points (`stationary_distribution`
+  and `feynman_kac` across process types, `FirstDerivative` and `SecondDerivative`) at
+  package precompilation, cutting the first-call latency at the cost of a few extra
+  seconds of one-time precompilation.
+
 ### Changed
 - `generator(::SwitchingProcess)` and `jointoperator` now return a `SparseMatrixCSC`
   instead of a `BandedBlockBandedMatrix`, matching `ProductProcess` and
