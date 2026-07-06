@@ -1,4 +1,4 @@
-# Solving HJB equations
+# Application to a consumption-saving problem
 
 The previous tutorials took the Markov process as given. In economic models, the process is usually *chosen*: a household picks consumption, a firm picks investment, and the law of motion of the state depends on that policy. The value function then solves a nonlinear Hamilton–Jacobi–Bellman equation.
 
@@ -49,54 +49,55 @@ Each iteration therefore has three steps, and only the last one is a solve — a
 3. **One implicit time step**: a single sparse linear solve.
 
 ```@example hjb
-function solve_implicit(v; Δ = 1000.0, tol = 1e-8)
-    for iter in 1:1000
-        # 1. the policy implied by the current guess, chosen by upwinding
-        c = similar(v)
-        for (j, y) in enumerate((yl, yh))
-            bc = ((y + r * amin)^(-γ), 0)  # borrowing constraint at amin; reflecting at amax
-            va_up = FirstDerivative(as, view(v, :, j); direction = :forward, bc = bc)
-            va_down = FirstDerivative(as, view(v, :, j); direction = :backward, bc = bc)
-            for i in eachindex(as)
-                budget = y + r * as[i]
-                # clamp marginal values: the iteration can visit v with negative differences
-                c_up, c_down = max(va_up[i], 1e-10)^(-1 / γ), max(va_down[i], 1e-10)^(-1 / γ)
-                if budget - c_up >= 0        # positive drift: use the forward difference
-                    c[i, j] = c_up
-                elseif budget - c_down <= 0  # negative drift: use the backward difference
-                    c[i, j] = c_down
-                else                         # steady point: consume the budget
-                    c[i, j] = budget
-                end
+v0 = [u(y + r * a) / ρ for a in as, y in (yl, yh)]   # guess: consume the budget forever
+v = copy(v0)
+c = similar(v)
+Δ, tol = 1000.0, 1e-8
+
+for iter in 1:1000
+    # 1. the policy implied by the current guess, chosen by upwinding
+    for (j, y) in enumerate((yl, yh))
+        bc = ((y + r * amin)^(-γ), 0)  # borrowing constraint at amin; reflecting at amax
+        va_up = FirstDerivative(as, view(v, :, j); direction = :forward, bc = bc)
+        va_down = FirstDerivative(as, view(v, :, j); direction = :backward, bc = bc)
+        for i in eachindex(as)
+            budget = y + r * as[i]
+            # clamp marginal values: the iteration can visit v with negative differences
+            c_up, c_down = max(va_up[i], 1e-10)^(-1 / γ), max(va_down[i], 1e-10)^(-1 / γ)
+            if budget - c_up >= 0        # positive drift: use the forward difference
+                c[i, j] = c_up
+            elseif budget - c_down <= 0  # negative drift: use the backward difference
+                c[i, j] = c_down
+            else                         # steady point: consume the budget
+                c[i, j] = budget
             end
         end
-        # 2. the Markov process for (a, y) implied by this policy
-        μa = [y + r * a for a in as, y in (yl, yh)] .- c
-        X = SwitchingProcess(Z, [DiffusionProcess(as, μa[:, 1], zeros(length(as))),
-                                 DiffusionProcess(as, μa[:, 2], zeros(length(as)))])
-        # 3. one implicit time step: a linear solve in the new value
-        vnew = reshape(((ρ + 1 / Δ) * I - generator(X)) \ vec(u.(c) .+ v ./ Δ), size(v))
-        if maximum(abs, vnew - v) < tol
-            println("converged in $iter iterations")
-            return (; v = vnew, c, X)
-        end
-        v = vnew
     end
-    error("no convergence")
-end
 
-v0 = [u(y + r * a) / ρ for a in as, y in (yl, yh)]   # guess: consume the budget forever
-(; v, c, X) = solve_implicit(v0)
+    # 2. the Markov process for (a, y) implied by this policy
+    μa = [y + r * a for a in as, y in (yl, yh)] .- c
+    global X = SwitchingProcess(Z, [DiffusionProcess(as, μa[:, 1], zeros(length(as))),
+                                    DiffusionProcess(as, μa[:, 2], zeros(length(as)))])
+
+    # 3. one implicit time step: a linear solve in the new value
+    vnew = reshape(((ρ + 1 / Δ) * I - generator(X)) \ vec(u.(c) .+ v ./ Δ), size(v))
+    if maximum(abs, vnew - v) < tol
+        v .= vnew
+        println("converged in $iter iterations")
+        break
+    end
+    v .= vnew
+end
 nothing # hide
 ```
 
 At a fixed point ``v_{n+1} = v_n``, the ``\Delta`` terms cancel and the exact discretized HJB holds, with a policy consistent with the value function.
 
-The function above closely follows the reference Matlab implementation [`huggett_partialeq.m`](https://benjaminmoll.com/wp-content/uploads/2020/06/huggett_partialeq.m) from [Ben Moll's code library](https://benjaminmoll.com/codes/): the same upwind rule, the same implicit step, the same treatment of the borrowing constraint.
+The code above closely follows the reference Matlab implementation [`huggett_partialeq.m`](https://benjaminmoll.com/wp-content/uploads/2020/06/huggett_partialeq.m) from [Ben Moll's code library](https://benjaminmoll.com/codes/): the same upwind rule, the same implicit step, the same treatment of the borrowing constraint.
 
 ## The stationary distribution
 
-Step 2 of the solver builds a Markov process for the household's state ``(a, y)`` — a `SwitchingProcess` over two zero-volatility `DiffusionProcess`es, the same objects as in the previous tutorials. The `X` returned by `solve_implicit` is that process evaluated at the *solved* policy: the **equilibrium wealth process**. The matrix that was just used to solve the HJB is, at the fixed point, the generator of the model's cross-sectional dynamics, so everything from the previous tutorials applies to it directly — in particular the stationary wealth distribution is one more linear solve:
+Step 2 of the iteration builds a Markov process for the household's state ``(a, y)`` — a `SwitchingProcess` over two zero-volatility `DiffusionProcess`es, the same objects as in the previous tutorials. The `X` left behind by the last iteration is that process evaluated at the *solved* policy: the **equilibrium wealth process**. The matrix that was just used to solve the HJB is, at the fixed point, the generator of the model's cross-sectional dynamics, so everything from the previous tutorials applies to it directly — in particular the stationary wealth distribution is one more linear solve:
 
 ```@example hjb
 using Plots

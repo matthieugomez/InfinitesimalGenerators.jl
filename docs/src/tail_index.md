@@ -1,4 +1,4 @@
-# Tail indices: power laws from random growth
+# Computing tail indices
 
 Wealth, firm size, and city size all have Pareto upper tails. The canonical explanation is **random growth**: if log size grows by increments whose distribution does not depend on size, and units die (or reset) at some rate ``\delta``, the stationary distribution has a power-law tail
 

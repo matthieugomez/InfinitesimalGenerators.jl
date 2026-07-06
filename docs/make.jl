@@ -21,15 +21,14 @@ makedocs(;
     pages = [
         "Home" => "index.md",
         "Manual" => [
-            "Univariate processes"   => "univariate.md",
-            "Multivariate processes" => "multivariate.md",
-            "Operators"              => "operators.md",
+            "Processes and generators" => "processes.md",
+            "Operators"                => "operators.md",
         ],
         "Tutorials" => [
-            "Expected values (Feynman–Kac)" => "expectations.md",
-            "Distribution dynamics"         => "distributions.md",
-            "Solving HJB equations"         => "hjb.md",
-            "Tail indices"                  => "tail_index.md",
+            "Computing expectations (Kolmogorov backward)" => "expectations.md",
+            "Computing distributions (Kolmogorov forward)" => "distributions.md",
+            "Application to a consumption-saving problem"  => "hjb.md",
+            "Computing tail indices"                       => "tail_index.md",
         ],
         "API reference" => "api.md",
     ],

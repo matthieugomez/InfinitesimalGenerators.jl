@@ -54,7 +54,7 @@ maximum(abs, u[:, 1] - (1.0 .+ exp(-0.1 * 10.0) .* (xs .- 1.0)))
 
 ## Additive functionals: long-run CGFs and tail indices
 
-An [`AdditiveFunctional`](@ref)`(X, μm, σm)` represents a cumulative quantity ``dm_t = \mu_m(x_t) dt + \sigma_m(x_t) dZ^m_t`` driven by the state — think ``m = \log w`` for a size ``w`` growing at a state-dependent rate; `X` can be any process in the package. [`cgf`](@ref)`(m, ξ)` returns the long-run scaled cumulant generating function ``\Lambda(\xi) = \lim_{t\to\infty} \log E[e^{\xi m_t}]/t`` — the principal eigenvalue of the tilted generator [`tilted_generator`](@ref)`(m, ξ)` — and [`tail_index`](@ref)`(m; δ)` returns the Pareto exponent of the stationary distribution of ``e^m`` under death rate ``\delta``. See the [tail indices tutorial](tail_index.md):
+An [`AdditiveFunctional`](@ref)`(X, μm, σm)` represents a cumulative quantity ``dm_t = \mu_m(x_t) dt + \sigma_m(x_t) dZ^m_t`` driven by the state — think ``m = \log w`` for a size ``w`` growing at a state-dependent rate; `X` can be any process in the package. [`cgf`](@ref)`(m, ξ)` returns the long-run scaled cumulant generating function ``\Lambda(\xi) = \lim_{t\to\infty} \log E[e^{\xi m_t}]/t`` — the principal eigenvalue of the tilted generator [`tilted_generator`](@ref)`(m, ξ)` — and [`tail_index`](@ref)`(m; δ)` returns the Pareto exponent of the stationary distribution of ``e^m`` under death rate ``\delta``. See [Computing tail indices](tail_index.md):
 
 ```@example operators
 m = AdditiveFunctional(X, collect(xs .- 1.0), 0.1 .* ones(length(xs)))
@@ -80,7 +80,7 @@ SecondDerivative(grid, F, 1, 2; direction = :up)
 nothing # hide
 ```
 
-The argument `bc` of [`FirstDerivative`](@ref) and [`SecondDerivative`](@ref) is the value of the *first derivative* at each limit of the grid. It defaults to zero, the right condition for reflecting boundaries — and the hook through which HJB boundary conditions like borrowing constraints enter (see the [HJB tutorial](hjb.md)). The convention is deliberately the same as the `bc` keyword of [EconPDEs.jl](https://github.com/matthieugomez/EconPDEs.jl)'s `pdesolve` (the outward first derivative at each boundary), so boundary conditions carry over unchanged between the two packages.
+The argument `bc` of [`FirstDerivative`](@ref) and [`SecondDerivative`](@ref) is the value of the *first derivative* at each limit of the grid. It defaults to zero, the right condition for reflecting boundaries — and the hook through which HJB boundary conditions like borrowing constraints enter (see [Application to a consumption-saving problem](hjb.md)). The convention is deliberately the same as the `bc` keyword of [EconPDEs.jl](https://github.com/matthieugomez/EconPDEs.jl)'s `pdesolve` (the outward first derivative at each boundary), so boundary conditions carry over unchanged between the two packages.
 
 ```@example operators
 @assert abs(sum(g) - 1) <= 1e-10 # hide

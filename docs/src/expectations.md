@@ -1,14 +1,37 @@
-# Expected values: the Kolmogorov backward equation
+# Computing expectations (Kolmogorov backward)
 
-Many objects in economics are conditional expectations over the path of a Markov process: forecasts, present values, survival probabilities, option values. This tutorial computes them *by hand* from the generator matrix — each is a few lines of linear algebra — and then introduces [`feynman_kac`](@ref), the helper function that packages the computation.
-
-Throughout, take a cash flow ``y_t`` that follows an Ornstein–Uhlenbeck process
+Many objects in economics are conditional expectations over the path of a Markov process: forecasts, present values, survival probabilities, option values. The mathematical problem is to compute
 
 ```math
-dy_t = \kappa (\bar y - y_t) \, dt + \sigma \, dZ_t,
+u(y, t) = E[\psi(y_T) \mid y_t = y],
 ```
 
-a natural model of a mean-reverting dividend or income stream. The convenience constructor [`OrnsteinUhlenbeck`](@ref) chooses a grid spanning the stationary distribution and returns the discretized process:
+where ``\psi`` is a terminal payoff or event indicator. This object solves the **Kolmogorov backward equation**
+
+```math
+0 = \partial_t u + \mathbb{A} u, \qquad u(\cdot, T) = \psi,
+```
+
+where ``\mathbb{A}`` is the infinitesimal generator of the continuous-time process. For instance, if ``y_t`` is the diffusion
+
+```math
+dy_t = \mu(y_t) \, dt + \sigma(y_t) \, dZ_t,
+```
+
+then the PDE is
+
+```math
+0 = \partial_t u + \mu(y) \partial_y u + \frac{1}{2}\sigma(y)^2 \partial_{yy} u,
+\qquad u(y, T) = \psi(y).
+```
+
+InfinitesimalGenerators.jl solves this PDE on a finite grid. First construct a process object; the package then builds the generator matrix ``\mathbb{A}`` on that grid. For example, take an Ornstein-Uhlenbeck cash flow,
+
+```math
+dy_t = \kappa(\bar y - y_t) \, dt + \sigma \, dZ_t,
+```
+
+a natural model of a mean-reverting dividend or income stream:
 
 ```@example expectations
 using InfinitesimalGenerators, LinearAlgebra
@@ -19,39 +42,34 @@ ys = only(state_space(Y))
 𝔸 = generator(Y)
 ```
 
-## Forecasts by hand
-
-Fix a horizon ``T`` and consider the forecast ``u(y, t) = E[\psi(y_T) \mid y_t = y]``. It solves the **Kolmogorov backward equation**
+On the grid, ``u_t`` is the vector of values at the grid points, and the backward PDE becomes the linear ODE
 
 ```math
-0 = \partial_t u + \mathbb{A} u, \qquad u(\cdot, T) = \psi,
+0 = \partial_t u_t + \mathbb{A} u_t, \qquad u_T = \psi.
 ```
 
-where, on the grid, ``\mathbb{A}`` is the matrix representation of the infinitesimal operator
-``(\mathbb{A}f)(y_i) = \lim_{\Delta t \downarrow 0} \left(E[f(y_{t+\Delta t}) \mid y_t = y_i] - f(y_i)\right) / \Delta t``.
-After discretizing the state space, this is a linear ODE in ``\mathbb{R}^n``, solved by marching backward from ``T`` with implicit Euler steps:
+Marching backward from ``T`` with implicit Euler gives
 
 ```math
 u_{t - dt} = (I - dt \, \mathbb{A})^{-1} u_t.
 ```
 
-In code — factorize once, then one back-substitution per time step:
+The reason to use an implicit step is monotonicity. A finite-difference scheme for a backward equation should preserve the order of payoffs: if ``\psi_1 \leq \psi_2`` at the terminal date, the computed values should satisfy ``u_1 \leq u_2`` at earlier dates. This is the discrete analogue of the maximum principle, and it is one of the standard conditions for convergence of finite-difference schemes for viscosity solutions ([Barles and Souganidis 1991](https://doi.org/10.3233/ASY-1991-4305)).
+
+For a valid Markov generator, ``I - dt \, \mathbb{A}`` is an M-matrix for any ``dt > 0``, so its inverse is non-negative and the implicit scheme is monotone for any time step. By contrast, an explicit step ``u_{t - dt} = (I + dt \, \mathbb{A}) u_t`` is monotone only under the CFL restriction ``dt \leq \min_i 1 / (-\mathbb{A}_{ii})``.
+
+Here is the computation for ``\psi(y) = y``, the conditional mean ``E[y_T \mid y_0]``:
 
 ```@example expectations
-function expectation(𝔸, ψ, T; dt = 0.01)
-    B = factorize(I - dt * 𝔸)
-    u = copy(ψ)
-    for _ in 1:round(Int, T / dt)
-        u = B \ u
-    end
-    return u
+dt = 0.01
+u = collect(ys)
+for _ in 1:round(Int, 10.0 / dt)
+    u .= (I - dt * 𝔸) \ u
 end
-
-u = expectation(𝔸, collect(ys), 10.0)   # ψ(y) = y: the conditional mean E[y_T | y_0]
 nothing # hide
 ```
 
-For the Ornstein–Uhlenbeck process the conditional mean is known in closed form, ``E[y_T \mid y_0] = \bar y + e^{-\kappa T}(y_0 - \bar y)``, which pins down the accuracy of the discretization:
+For the Ornstein-Uhlenbeck process the conditional mean is known in closed form, ``E[y_T \mid y_0] = \bar y + e^{-\kappa T}(y_0 - \bar y)``, which pins down the accuracy of the discretization:
 
 ```@example expectations
 maximum(abs, u - (ȳ .+ exp(-κ * 10.0) .* (ys .- ȳ)))
@@ -59,32 +77,50 @@ maximum(abs, u - (ȳ .+ exp(-κ * 10.0) .* (ys .- ȳ)))
 
 The error has two sources: the ``O(dt)`` bias of implicit Euler, which shrinks with the time step, and the reflecting boundaries of the grid, examined below.
 
-## ... and with the helper
-
-`feynman_kac` runs exactly this backward march (reusing the factorization, as above) and returns the whole time path. The terminal condition is the keyword `ψ`; the result has one column per date in `ts`, and the first column is the expectation at horizon `ts[end] - ts[1]`:
-
-```@example expectations
-ts = range(0, 10, step = 0.01)
-u2 = feynman_kac(Y, ts; ψ = collect(ys))
-maximum(abs, u2[:, 1] - u)
-```
-
-Because ``\psi`` is arbitrary, probabilities are the same computation — a probability is the expectation of an indicator. The probability that the cash flow is below its long-run mean in ten years:
-
-```@example expectations
-prob = feynman_kac(Y, ts; ψ = float.(ys .<= ȳ))[:, 1]
-extrema(prob)
-```
-
 ## Present values by hand
 
-Now price a claim to the flow ``y_t`` discounted at rate ``r``:
+The same backward equation also handles flow payoffs. The general finite-horizon Feynman-Kac formula is
+
+```math
+u(y, t) =
+E\left[
+\int_t^T e^{-\int_t^s v(y_\tau, \tau) d\tau} f(y_s, s) \, ds
++ e^{-\int_t^T v(y_\tau, \tau) d\tau} \psi(y_T)
+\,\Big|\, y_t = y
+\right],
+```
+
+where ``f`` is a flow payoff, ``v`` is a discount or hazard rate, and ``\psi`` is a terminal payoff. It solves
+
+```math
+0 = \partial_t u + \mathbb{A} u - v u + f,
+\qquad u(\cdot, T) = \psi.
+```
+
+On a finite grid, let ``u_i``, ``f_i``, and ``v_i`` denote the vectors at date ``t_i``, let ``V_i = \operatorname{diag}(v_i)``, and let ``\Delta t_i = t_{i+1} - t_i``. The implicit Euler algorithm is:
+
+1. Set ``u_N = \psi``.
+2. For ``i = N-1, \ldots, 0``, solve
+
+```math
+u_i = \left(I + \Delta t_i (V_i - \mathbb{A})\right)^{-1} (u_{i+1} + \Delta t_i f_i).
+```
+
+The earlier terminal-expectation example is the special case ``f = 0`` and ``v = 0``.
+
+For a time-homogeneous infinite-horizon present value, the algorithm collapses to one resolvent solve:
+
+```math
+(V - \mathbb{A}) P = f.
+```
+
+With a constant discount rate, ``V = r I``. For example, price a claim to the flow ``y_t`` discounted at rate ``r``:
 
 ```math
 P(y) = E\left[\int_0^\infty e^{-rt} y_t \, dt \,\Big|\, y_0 = y\right].
 ```
 
-Differentiating with respect to the starting date gives the stationary backward equation ``r P = y + \mathbb{A} P`` — the continuous-time analogue of "price equals dividend plus discounted expected price". Discretized, it is a single linear solve in the resolvent of the generator:
+Differentiating with respect to the starting date gives the stationary backward equation ``r P = y + \mathbb{A} P`` — the continuous-time analogue of "price equals dividend plus discounted expected price". On the grid, solve
 
 ```@example expectations
 r = 0.05
@@ -105,13 +141,22 @@ This is why the grids chosen by `OrnsteinUhlenbeck` and `CoxIngersollRoss` span 
 
 ## ... and with the helper
 
-`feynman_kac` computes the general finite-horizon version,
+`feynman_kac` implements the finite-horizon algorithm above. With only a terminal condition, it reproduces the backward march for ``E[y_T \mid y_0]``. The result has one column per date in `ts`, and the first column is the expectation at horizon `ts[end] - ts[1]`:
 
-```math
-u(y, 0) = E\left[\int_0^T e^{-\int_0^t v(y_s) ds} f(y_t) \, dt + e^{-\int_0^T v(y_s) ds} \psi(y_T) \,\Big|\, y_0 = y\right],
+```@example expectations
+ts = range(0, 10, step = 0.01)
+u2 = feynman_kac(Y, ts; ψ = collect(ys))
+maximum(abs, u2[:, 1] - u)
 ```
 
-with a flow payoff `f`, a state-dependent (or time-varying) discount rate `v`, and a terminal payoff `ψ`. With `f = ys`, `v = r`, and a horizon long enough that ``e^{-rT} \approx 0``, it converges to the resolvent solve above:
+Because ``\psi`` is arbitrary, probabilities are the same computation — a probability is the expectation of an indicator. The probability that the cash flow is below its long-run mean in ten years:
+
+```@example expectations
+prob = feynman_kac(Y, ts; ψ = float.(ys .<= ȳ))[:, 1]
+extrema(prob)
+```
+
+For flow payoffs, pass `f`; for discounting or hazards, pass `v`; for terminal payoffs, pass `ψ`. With `f = ys`, `v = r`, and a horizon long enough that ``e^{-rT} \approx 0``, the helper converges to the resolvent solve above:
 
 ```@example expectations
 ts = range(0, 400, step = 0.25)

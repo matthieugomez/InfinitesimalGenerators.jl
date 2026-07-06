@@ -1,8 +1,28 @@
-# Distribution dynamics: the Kolmogorov forward equation
+# Computing distributions (Kolmogorov forward)
 
-The previous tutorial computed expectations, which march *backward* in time. Cross-sectional distributions march *forward*: given today's distribution of income, wealth, or firm size across agents, where is the distribution next year, and where does it settle in the long run? This tutorial computes both by hand from the generator matrix, and then introduces the helper [`stationary_distribution`](@ref).
+The previous tutorial computed expectations, which march *backward* in time. Cross-sectional distributions march *forward*: given today's distribution of income, wealth, or firm size across agents, where is the distribution next year, and where does it settle in the long run?
 
-Take the same Ornstein–Uhlenbeck process as before — now interpreted as the log productivity of a cross-section of firms:
+The mathematical problem is to compute the distribution ``g(x, t)`` of a known Markov process ``x_t``. This distribution solves the **Kolmogorov forward (Fokker-Planck) equation**
+
+```math
+\partial_t g = \mathbb{A}^* g,
+```
+
+where ``\mathbb{A}^*`` is the adjoint of the infinitesimal generator. For instance, if ``x_t`` is the diffusion
+
+```math
+dx_t = \mu(x_t) \, dt + \sigma(x_t) \, dZ_t,
+```
+
+then the PDE is
+
+```math
+\partial_t g
+= -\partial_x\left(\mu(x) g\right)
+  + \frac{1}{2}\partial_{xx}\left(\sigma(x)^2 g\right).
+```
+
+InfinitesimalGenerators.jl solves this PDE on a finite grid. First construct a process object; the package then builds the generator matrix ``\mathbb{A}`` on that grid. Take the same Ornstein-Uhlenbeck process as before, now interpreted as the log productivity of a cross-section of firms:
 
 ```@example distributions
 using InfinitesimalGenerators, LinearAlgebra
@@ -13,57 +33,56 @@ xs = only(state_space(X))
 𝔸 = generator(X)
 ```
 
-## Evolving a distribution by hand
-
-If expectations satisfy the backward equation ``\partial_t u = \mathbb{A} u``, densities satisfy its adjoint, the **Kolmogorov forward (Fokker–Planck) equation**:
+On the grid, ``g_t`` is the vector of probability masses at the grid points. The adjoint operator becomes the transpose of the generator matrix, so the forward PDE becomes the linear ODE
 
 ```math
-\partial_t g = \mathbb{A}' g.
+\partial_t g_t = \mathbb{A}' g_t.
 ```
 
-The transpose comes from duality: ``E[f(x_t)] = g' f`` for any test function, so whatever operator advances expectations backward, its transpose advances the distribution forward. On the discretized state space, `g` is the vector of probability masses at each grid point, and the forward equation is again a linear ODE solved with implicit Euler steps:
+Marching forward with implicit Euler gives
 
-```@example distributions
-function evolve(𝔸, g0, T; dt = 0.1)
-    B = factorize(I - dt * copy(𝔸'))
-    g = copy(g0)
-    for _ in 1:round(Int, T / dt)
-        g = B \ g
-    end
-    return g
-end
-nothing # hide
+```math
+g_{t + dt} = (I - dt \, \mathbb{A}')^{-1} g_t.
 ```
 
-Start every firm at the same productivity — a point mass one standard deviation above the mean — and watch the cross-section spread out and recenter:
+This implicit step preserves the probabilistic interpretation. Since ``\mathbb{A}`` is a valid Markov generator, ``I - dt \, \mathbb{A}'`` is an M-matrix for any ``dt > 0``: its inverse is non-negative, so non-negative masses remain non-negative. And because rows of ``\mathbb{A}`` sum to zero, total mass remains one.
+
+Here is the computation starting every firm at the same productivity — a point mass one standard deviation above the mean — and watching the cross-section spread out and recenter (each date's distribution is stored in `gs` for the checks below):
 
 ```@example distributions
 using Plots
 
+dt = 0.1
 g0 = zeros(length(xs))
 g0[findmin(abs.(xs .- σ / sqrt(2κ)))[2]] = 1.0
 
+gs = Dict()
 Δx = step(xs)
 plot(xlabel = "log productivity x", ylabel = "cross-sectional density")
 for T in (1, 5, 20, 100)
-    plot!(xs, evolve(𝔸, g0, T) ./ Δx; label = "t = $T")
+    gT = copy(g0)
+    for _ in 1:round(Int, T / dt)
+        gT .= (I - dt * 𝔸') \ gT
+    end
+    gs[T] = gT
+    plot!(xs, gT ./ Δx; label = "t = $T")
 end
 current()
 ```
 
-The division by `Δx` converts masses to a *density* for plotting: `g` sums to one without grid weights, so the density at a grid point is the mass divided by the cell width. On this uniform grid the two differ only by a constant factor; on a non-uniform grid (as in the [HJB tutorial](hjb.md)) the distinction matters, since raw masses would trace the grid spacing rather than the shape of the distribution.
+The division by `Δx` converts masses to a *density* for plotting: `g` sums to one without grid weights, so the density at a grid point is the mass divided by the cell width. On this uniform grid the two differ only by a constant factor; on a non-uniform grid (as in [Application to a consumption-saving problem](hjb.md)) the distinction matters, since raw masses would trace the grid spacing rather than the shape of the distribution.
 
 The discretized process is a well-defined Markov chain — rows of ``\mathbb{A}`` sum to zero and off-diagonals are non-negative — so the masses stay non-negative and sum to one at every date, with no renormalization needed:
 
 ```@example distributions
-sum(evolve(𝔸, g0, 100))
+sum(gs[100])
 ```
 
 For the Ornstein–Uhlenbeck process the transition distribution is known in closed form — Gaussian with mean ``e^{-\kappa t} x_0`` and variance ``\frac{\sigma^2}{2\kappa}(1 - e^{-2\kappa t})`` — which checks the discretization at, say, ``t = 5``:
 
 ```@example distributions
-t, x0 = 5.0, xs[findmax(g0)[2]]
-gt = evolve(𝔸, g0, t)
+t, x0 = 5, xs[findmax(g0)[2]]
+gt = gs[t]
 mean_t = sum(gt .* xs)
 var_t = sum(gt .* xs .^ 2) - mean_t^2
 (; mean_t, closed_mean = exp(-κ * t) * x0,
@@ -113,15 +132,19 @@ maximum(abs, g - g∞)
 
 Two variations are worth knowing:
 
-- **Convergence check.** The evolved distribution approaches the stationary one at the speed of mean reversion: `maximum(abs, evolve(𝔸, g0, 100) - g)` is of the order of the autocorrelation ``e^{-\kappa \cdot 100} \approx 5 \times 10^{-5}``, and by ``t = 300`` the two agree to machine precision.
+- **Convergence check.** The evolved distribution approaches the stationary one at the speed of mean reversion: `maximum(abs, gs[100] - g)` is of the order of the autocorrelation ``e^{-\kappa \cdot 100} \approx 5 \times 10^{-5}``, and by ``t = 300`` the two agree to machine precision.
 - **Death and rebirth.** `stationary_distribution(X; δ = δ, rebirth = ψ)` computes the stationary distribution when agents die at rate ``\delta`` and are reborn with distribution ``\psi`` — the resolvent ``(\delta I - \mathbb{A}')^{-1} \delta \psi`` — which is the relevant object in perpetual-youth and firm-entry models.
 
 ```@example distributions
-@assert abs(sum(evolve(𝔸, g0, 100)) - 1) <= 1e-10 # hide
+g300 = copy(gs[100]) # hide
+for _ in 1:round(Int, 200 / dt) # hide
+    g300 .= (I - dt * 𝔸') \ g300 # hide
+end # hide
+@assert abs(sum(gs[100]) - 1) <= 1e-10 # hide
 @assert maximum(abs, g - g∞) <= 1e-10 # hide
 @assert abs(mean_t - exp(-κ * t) * x0) <= 1e-3 # hide
 @assert abs(var_t / (σ^2 / (2κ) * (1 - exp(-2κ * t))) - 1) <= 0.1 # hide
-@assert maximum(abs, evolve(𝔸, g0, 100) - g) <= 1e-5 # hide
-@assert maximum(abs, evolve(𝔸, g0, 300) - g) <= 1e-12 # hide
+@assert maximum(abs, gs[100] - g) <= 1e-5 # hide
+@assert maximum(abs, g300 - g) <= 1e-12 # hide
 nothing # hide
 ```
