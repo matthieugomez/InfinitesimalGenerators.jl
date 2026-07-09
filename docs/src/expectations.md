@@ -77,6 +77,27 @@ maximum(abs, u - (ȳ .+ exp(-κ * 10.0) .* (ys .- ȳ)))
 
 The error has two sources: the ``O(dt)`` bias of implicit Euler, which shrinks with the time step, and the reflecting boundaries of the grid, examined below.
 
+!!! note "Implicit step keeps the probabilistic interpretation when time is discretized"
+    The exact finite-step update is ``u_{t-dt} = e^{dt \, \mathbb{A}} \, u_t``. The matrix ``e^{dt \, \mathbb{A}}`` is the Markov transition matrix over horizon ``dt``: its entries are non-negative and each row sums to one.
+
+    For large sparse grids, forming this update is usually unattractive: a matrix exponential is expensive and generally dense, so it destroys the sparsity of ``\mathbb{A}``.
+
+    An **explicit** time step would approximate the exponential by its first-order truncation ``e^{dt \, \mathbb{A}} \approx I + dt \, \mathbb{A}``. It is sparse, but stays a stochastic matrix only when ``dt`` is small enough to keep its diagonal non-negative — the CFL restriction ``dt \leq \min_i 1/(-\mathbb{A}_{ii})``.
+
+    In contrast, the **implicit** step ``u_{t-dt} = (I - dt \, \mathbb{A})^{-1} u_t`` is *always* a stochastic matrix, because it is the exact update ``e^{\mathbb{A} s}`` averaged over an exponentially distributed horizon ``s`` of mean ``dt``:
+
+    ```math
+    (I - dt \, \mathbb{A})^{-1} = \frac{1}{dt} \int_0^\infty e^{-s/dt} \, e^{\mathbb{A} s} \, ds = E\left[e^{\mathbb{A} \tau}\right].
+    ```
+
+    An average of stochastic matrices is stochastic, so — unlike the explicit step — the implicit update always keeps this probabilistic interpretation, a weighted average of exact discrete-time updates, for *every* ``dt``, while remaining sparse (one linear solve).
+
+    | scheme | update | stochastic matrix? |
+    |:---|:---|:---|
+    | exact | ``u_{t-dt} = e^{dt \, \mathbb{A}} \, u_t`` | always, but dense |
+    | explicit | ``u_{t-dt} = (I + dt \, \mathbb{A}) \, u_t`` | only for small ``dt`` |
+    | implicit | ``u_{t-dt} = (I - dt \, \mathbb{A})^{-1} u_t`` | always, and sparse |
+
 ## Present values by hand
 
 The same backward equation also handles flow payoffs. The general finite-horizon Feynman-Kac formula is

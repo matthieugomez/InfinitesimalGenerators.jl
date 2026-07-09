@@ -55,6 +55,9 @@ nothing # hide
 
 By default the grid spans the `p` and `1 - p` quantiles of the stationary distribution with `length` points; pass `length`, `xmin`, `xmax`, or `pow` (grid-spacing power) to override. The default `p = 1e-10` errs on the side of a wide grid: reflecting boundaries distort solutions near the edges of the grid (see [Computing expectations (Kolmogorov backward)](expectations.md)), and a wide grid pushes that distortion where the process almost never goes — which matters especially when computing [tail indices](tail_index.md).
 
+!!! note "Upwinding keeps the probabilistic interpretation when the state space is discretized"
+    A `DiffusionProcess` is discretized so that its generator matrix has non-negative off-diagonal elements and rows summing to zero. This allows a probabilistic interpretation of the discretized operator — it can be seen as a continuous-time Markov chain, with non-negative rates of jumping between neighboring grid points. This is what upwinding is for: differencing the drift in the direction it points — forward where ``\mu > 0``, backward where ``\mu < 0`` — keeps those rates non-negative on any grid, where a centered difference would not.
+
 ## Combining processes
 
 Scalar processes can be combined into higher-dimensional processes. These processes live on tensor-product state spaces: `size(X)` is the shape of the grid, and `state_space(X)` returns one axis per tensor dimension.
