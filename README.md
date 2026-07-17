@@ -3,9 +3,9 @@
 [![Stable documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/)
 [![Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://matthieugomez.com/InfinitesimalGenerators.jl/dev/)
 
-InfinitesimalGenerators.jl computes stationary distributions, conditional expectations, and tail indices of continuous-time Markov processes. It works in two steps. The first step is to build the generator matrix: a Markov-chain approximation of the process on a finite grid, representing transition rates between grid points (in particular, rows must sum to zero and off-diagonal elements are non-negative).
+InfinitesimalGenerators.jl computes stationary distributions, conditional expectations, and tail indices of continuous-time Markov processes. 
 
-The second step is to use this generator to turn the linear PDEs associated with the process into linear algebra. In particular, the package covers the following problems:
+The key step in all of these problems is to approximate the continuous-time process by a Markov chain on a finite grid. This is what the package does: given a process, it builds the generator matrix of the approximating chain — the matrix of transition rates between grid points (each row sums to zero, and off-diagonal elements are non-negative). Once this matrix is in hand, the linear PDEs associated with the process — including the Kolmogorov forward and backward equations — become linear algebra. Specifically, the package covers:
 
 - **Stationary distributions** (the Kolmogorov forward equation): the distribution of wealth, firm size, or any state in the long run — see [Computing distributions (Kolmogorov forward)](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/distributions/).
 - **Conditional expectations** (the Kolmogorov backward equation): present values, forecasts, survival probabilities — see [Computing expectations (Kolmogorov backward)](https://matthieugomez.com/InfinitesimalGenerators.jl/stable/expectations/).
