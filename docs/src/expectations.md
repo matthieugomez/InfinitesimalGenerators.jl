@@ -78,19 +78,17 @@ maximum(abs, u - (ȳ .+ exp(-κ * 10.0) .* (ys .- ȳ)))
 The error has two sources: the ``O(dt)`` bias of implicit Euler, which shrinks with the time step, and the reflecting boundaries of the grid, examined below.
 
 !!! info "Implicit step keeps the probabilistic interpretation when time is discretized"
-    The exact finite-step update is ``u_{t-dt} = e^{dt \, \mathbb{A}} \, u_t``. The matrix ``e^{dt \, \mathbb{A}}`` is the Markov transition matrix over horizon ``dt``: its entries are non-negative and each row sums to one.
+    The exact finite-step update would be ``u_{t-dt} = e^{dt \, \mathbb{A}} \, u_t``. The matrix ``e^{dt \, \mathbb{A}}`` is the Markov transition matrix over horizon ``dt``, and, in particular, it is a stochastic matrix: its entries are non-negative and each row sums to one. For large sparse grids, forming this update is typically unattractive: a matrix exponential is expensive and generally dense, so it destroys the sparsity of ``\mathbb{A}``.
 
-    For large sparse grids, forming this update is usually unattractive: a matrix exponential is expensive and generally dense, so it destroys the sparsity of ``\mathbb{A}``.
+    Iterating using an **explicit** time step is equivalent to approximating the exponential by its first-order truncation ``e^{dt \, \mathbb{A}} \approx I + dt \, \mathbb{A}``. It is sparse, but stays a stochastic matrix only when ``dt`` is small enough to keep its diagonal non-negative — the Courant-Friedrichs-Lewy (CFL) restriction ``dt \leq \min_i 1/(-\mathbb{A}_{ii})``.
 
-    An **explicit** time step would approximate the exponential by its first-order truncation ``e^{dt \, \mathbb{A}} \approx I + dt \, \mathbb{A}``. It is sparse, but stays a stochastic matrix only when ``dt`` is small enough to keep its diagonal non-negative — the CFL restriction ``dt \leq \min_i 1/(-\mathbb{A}_{ii})``.
-
-    In contrast, the **implicit** step ``u_{t-dt} = (I - dt \, \mathbb{A})^{-1} u_t`` is *always* a stochastic matrix, because it is the exact update ``e^{\mathbb{A} s}`` averaged over an exponentially distributed horizon ``s`` of mean ``dt``:
+    In contrast, the **implicit** step ``u_{t-dt} = (I - dt \, \mathbb{A})^{-1} u_t`` is *always* a stochastic matrix. One way to see it is that it can be seen as average of stochastic matrices ``e^{\mathbb{A} s}`` averaged over an exponentially distributed horizon ``s`` of mean ``dt``:
 
     ```math
     (I - dt \, \mathbb{A})^{-1} = \frac{1}{dt} \int_0^\infty e^{-s/dt} \, e^{\mathbb{A} s} \, ds = E\left[e^{\mathbb{A} \tau}\right].
     ```
 
-    An average of stochastic matrices is stochastic, so — unlike the explicit step — the implicit update always keeps this probabilistic interpretation, a weighted average of exact discrete-time updates, for *every* ``dt``, while remaining sparse (one linear solve).
+    Hence, unlike the explicit step, the implicit update always keeps a probabilistic interpretation, a weighted average of exact discrete-time updates, for *every* ``dt``.
 
     | scheme | update | stochastic matrix? |
     |:---|:---|:---|
