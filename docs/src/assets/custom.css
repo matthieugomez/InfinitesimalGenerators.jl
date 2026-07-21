@@ -2,3 +2,8 @@
 #documenter .docs-sidebar ul.internal {
     display: none;
 }
+
+/* Give probabilistic-interpretation callouts a subtle blue tint in every theme. */
+.admonition.is-info {
+    background-color: rgba(60, 93, 205, 0.10);
+}

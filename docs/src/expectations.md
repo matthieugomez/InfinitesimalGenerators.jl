@@ -77,7 +77,7 @@ maximum(abs, u - (ȳ .+ exp(-κ * 10.0) .* (ys .- ȳ)))
 
 The error has two sources: the ``O(dt)`` bias of implicit Euler, which shrinks with the time step, and the reflecting boundaries of the grid, examined below.
 
-!!! note "Implicit step keeps the probabilistic interpretation when time is discretized"
+!!! info "Implicit step keeps the probabilistic interpretation when time is discretized"
     The exact finite-step update is ``u_{t-dt} = e^{dt \, \mathbb{A}} \, u_t``. The matrix ``e^{dt \, \mathbb{A}}`` is the Markov transition matrix over horizon ``dt``: its entries are non-negative and each row sums to one.
 
     For large sparse grids, forming this update is usually unattractive: a matrix exponential is expensive and generally dense, so it destroys the sparsity of ``\mathbb{A}``.
