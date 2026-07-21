@@ -91,16 +91,24 @@ var_t = sum(gt .* xs .^ 2) - mean_t^2
 
 The mean is essentially exact: the upwind scheme discretizes the drift ``\kappa(\bar x - x)`` without bias. The variance is a few percent too high — upwinding adds a little numerical diffusion, the price paid for a discretization that is guaranteed to be a well-defined Markov chain (masses stay non-negative no matter how coarse the grid). Refining the grid shrinks the gap.
 
-!!! note "Implicit step keeps the probabilistic interpretation when time is discretized"
-    The exact finite-step update is ``g_{t+dt} = e^{dt \, \mathbb{A}'} \, g_t``. The matrix ``e^{dt \, \mathbb{A}'}`` is the Markov transition matrix acting on distributions: its entries are non-negative and each column sums to one.
+!!! info "Implicit step keeps the probabilistic interpretation when time is discretized"
+    The exact finite-step update would be ``g_{t+dt} = e^{dt \, \mathbb{A}'} \, g_t``. The matrix ``e^{dt \, \mathbb{A}'}`` is the Markov transition matrix acting on distributions, and, in particular, it is a column-stochastic matrix: its entries are non-negative and each column sums to one. For large sparse grids, forming this update is typically unattractive: a matrix exponential is expensive and generally dense, so it destroys the sparsity of ``\mathbb{A}'``.
 
-    For large sparse grids, forming this update is usually unattractive, since the matrix exponential is expensive and generally dense. The implicit step keeps the useful stochastic-matrix property without forming that exponential:
+    Iterating using an **explicit** time step is equivalent to approximating the exponential by its first-order truncation ``e^{dt \, \mathbb{A}'} \approx I + dt \, \mathbb{A}'``. It is sparse, but stays a column-stochastic matrix only when ``dt`` is small enough to keep its diagonal non-negative — the Courant-Friedrichs-Lewy (CFL) restriction ``dt \leq \min_i 1/(-\mathbb{A}_{ii})``.
+
+    In contrast, the **implicit** step ``g_{t+dt} = (I - dt \, \mathbb{A}')^{-1} g_t`` is *always* a column-stochastic matrix. One way to see it is that it is an average of column-stochastic matrices ``e^{\mathbb{A}' s}`` over an exponentially distributed horizon ``s`` of mean ``dt``:
 
     ```math
     (I - dt \, \mathbb{A}')^{-1} = \frac{1}{dt} \int_0^\infty e^{-s/dt} \, e^{\mathbb{A}' s} \, ds = E\left[e^{\mathbb{A}' \tau}\right].
     ```
 
-    The right-hand side is an average of exact transition matrices over an exponential horizon ``\tau`` with mean ``dt``. Hence the implicit update preserves non-negative masses and total probability for every ``dt``; the explicit step ``I + dt \, \mathbb{A}'`` does so only under the CFL restriction ``dt \leq \min_i 1/(-\mathbb{A}_{ii})``.
+    Hence, unlike the explicit step, the implicit update always keeps a probabilistic interpretation, a weighted average of exact discrete-time updates, for *every* ``dt``.
+
+    | scheme | update | column-stochastic matrix? |
+    |:---|:---|:---|
+    | exact | ``g_{t+dt} = e^{dt \, \mathbb{A}'} \, g_t`` | always, but dense |
+    | explicit | ``g_{t+dt} = (I + dt \, \mathbb{A}') \, g_t`` | only for small ``dt`` |
+    | implicit | ``g_{t+dt} = (I - dt \, \mathbb{A}')^{-1} g_t`` | always, and sparse |
 
 ## The stationary distribution by hand
 
